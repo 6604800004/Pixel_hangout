@@ -3852,7 +3852,9 @@ function maybeMigrateLayout() {
 }
 
 // ---------------------------------------------------------------- เพลง ----
-function currentMusic() { return G.music.sp || G.music.manual || null; }
+const spConnected = () => !!(G.net.spotifyClientId && lsGet('pixel.spotify', null));
+// เชื่อม Spotify แล้ว = ใช้เพลงที่เปิดอยู่จริงเท่านั้น (อัตโนมัติ) · ยังไม่เชื่อม = ใช้ที่พิมพ์เอง
+function currentMusic() { return spConnected() ? G.music.sp || null : G.music.manual || null; }
 function pushMusic() {
   const m = currentMusic();
   pres({ mu: m ? { t: m.t.slice(0, 60), a: (m.a || '').slice(0, 60), u: m.u || '', s: m.s } : null });
@@ -3882,53 +3884,45 @@ function paintMusic() {
     box.append(el('b', null, `${now.s === 'sp' ? '🟢 Spotify' : '✍️ พิมพ์เอง'} · ${musicLabel(now)}`));
     card.append(box);
   }
-  // ---- Spotify ----
+  // ---- Spotify: ดึงเพลงที่กำลังเปิดอยู่ให้อัตโนมัติ ----
   const sp = el('div', 'opt'); sp.style.marginTop = '14px';
-  sp.append(el('span', null, 'เชื่อม Spotify (อัปเดตเองอัตโนมัติ)'));
+  sp.append(el('span', null, '🟢 ดึงจาก Spotify อัตโนมัติ'));
   const cid = G.net.spotifyClientId;
+  const connected = spConnected();
   if (!cid) {
-    sp.append(el('p', 'tip', 'เจ้าของห้องยังไม่ได้ตั้งค่า Spotify — ใส่ SPOTIFY_CLIENT_ID ใน Render (ดูวิธีใน README) ระหว่างนี้พิมพ์ชื่อเพลงเองด้านล่างได้'));
-  } else if (lsGet('pixel.spotify', null)) {
+    sp.append(el('p', 'tip', 'ยังเปิดใช้ไม่ได้: เจ้าของห้องต้องตั้งค่า Spotify ครั้งเดียวก่อน (ใส่ SPOTIFY_CLIENT_ID ใน Render ตามวิธีใน README)'));
+  } else if (connected) {
     const row = el('div', 'vbtns');
-    row.append(el('span', 'tip', G.music.sp ? 'เชื่อมแล้ว ✅' : 'เชื่อมแล้ว ✅ (ตอนนี้ยังไม่ได้เปิดเพลง)'));
+    row.append(el('span', 'tip', G.music.sp ? 'เชื่อมแล้ว ✅ เพลงจะเปลี่ยนตามที่คุณเปิดใน Spotify เอง' : 'เชื่อมแล้ว ✅ เปิดเพลงใน Spotify แล้วชื่อเพลงจะขึ้นเองภายในไม่กี่วินาที'));
     const off = el('button', 'pbtn sm', 'เลิกเชื่อม');
     off.onclick = () => { lsSet('pixel.spotify', null); G.music.sp = null; pushMusic(); };
     row.append(off); sp.append(row);
   } else {
-    const b = el('button', 'pbtn', '🟢 เชื่อม Spotify');
+    const b = el('button', 'pbtn', '🟢 เชื่อม Spotify (ครั้งเดียว)');
     b.style.background = '#1db954'; b.style.color = '#fff';
     b.onclick = () => spLogin();
     sp.append(b);
-    sp.append(el('p', 'tip', 'ต้องเป็นบัญชี Spotify ที่เจ้าของห้องเพิ่มไว้ใน Spotify Developer Dashboard แล้ว'));
+    sp.append(el('p', 'tip', 'กดครั้งเดียว หลังจากนั้นเพลงที่คุณเปิดอยู่ใน Spotify จะขึ้นเหนือหัวเอง ไม่ต้องแนบลิงก์ · บัญชีต้องถูกเพิ่มไว้ใน Spotify Dashboard ของเจ้าของห้อง'));
   }
   card.append(sp);
-  // ---- พิมพ์เอง ----
+  const foot = el('div', 'foot');
+  const close = el('button', 'pbtn', 'ปิด'); close.onclick = closeModal;
+  if (connected) { foot.append(close); card.append(foot); return; }
+  // ---- สำรอง: พิมพ์เอง (เฉพาะตอนยังไม่เชื่อม Spotify) ----
   const man = el('label', 'field opt'); man.style.marginTop = '14px';
-  man.append(el('span', null, 'หรือพิมพ์เอง / วางลิงก์เพลง Spotify'));
+  man.append(el('span', null, cid ? 'หรือพิมพ์ชื่อเพลงเอง' : 'ระหว่างนี้พิมพ์ชื่อเพลงเองได้'));
   const inp = el('input'); inp.maxLength = 90; inp.placeholder = 'เช่น ทางของฝุ่น – Atom ชนกันต์';
   const cur = G.music.manual;
-  inp.value = cur ? (cur.u && !cur.a && cur.t === 'เพลงจาก Spotify' ? cur.u : musicLabel(cur).replace(/…$/, '')) : '';
+  inp.value = cur ? musicLabel(cur).replace(/…$/, '') : '';
   man.append(inp); card.append(man);
-  const foot = el('div', 'foot');
   const clear = el('button', 'pbtn', 'ล้าง');
   clear.onclick = () => { G.music.manual = null; lsSet('pixel.music', null); pushMusic(); };
-  const close = el('button', 'pbtn', 'ปิด'); close.onclick = closeModal;
   const save = el('button', 'pbtn pink', 'บันทึก');
-  save.onclick = async () => {
+  save.onclick = () => {
     const v = inp.value.trim();
     if (!v) { clear.click(); return; }
-    const url = safeSpotifyUrl(v.split('?')[0]);
-    let m;
-    if (url) {
-      m = { t: 'เพลงจาก Spotify', a: '', u: url, s: 'm' };
-      try {
-        const r = await fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(url));
-        if (r.ok) { const j = await r.json(); if (j.title) m.t = String(j.title).slice(0, 60); }
-      } catch {}
-    } else {
-      const [t, a] = v.split(/\s+[–-]\s+/);
-      m = { t: (t || v).slice(0, 60), a: (a || '').slice(0, 60), u: '', s: 'm' };
-    }
+    const [t, a] = v.split(/\s+[–-]\s+/);
+    const m = { t: (t || v).slice(0, 60), a: (a || '').slice(0, 60), u: '', s: 'm' };
     G.music.manual = m; lsSet('pixel.music', m); pushMusic(); toast('ตั้งเพลงแล้ว 🎵');
   };
   foot.append(clear, close, save); card.append(foot);
@@ -3970,7 +3964,9 @@ async function spHandleRedirect() {
   try {
     await spToken({ grant_type: 'authorization_code', code: q.get('code'), redirect_uri: spRedirect(), code_verifier: saved.verifier });
     lsSet('pixel.spv', null);
-    toast('เชื่อม Spotify แล้ว 🎵', 3500);
+    toast('เชื่อม Spotify แล้ว 🎵 เพลงที่คุณเปิดอยู่จะขึ้นเอง', 3500);
+    G.music.manual = null; lsSet('pixel.music', null);
+    setTimeout(spPoll, 300);
   } catch { toast('เชื่อม Spotify ไม่สำเร็จ (บัญชีอาจยังไม่ได้ถูกเพิ่มใน Spotify Dashboard)', 5000); }
 }
 let spBackoff = 0;
@@ -3988,13 +3984,16 @@ async function spPoll() {
     if (r.status === 200) {
       const j = await r.json();
       const item = j && j.item;
+      clearTimeout(G.spEndTimer);
+      if (item && j.is_playing && item.duration_ms) G.spEndTimer = setTimeout(spPoll, Math.max(3000, item.duration_ms - (j.progress_ms || 0) + 1500));
       if (item && j.is_playing) m = { t: String(item.name || '').slice(0, 60), a: (item.artists || []).map((x) => x.name).join(', ').slice(0, 60) || (item.show && item.show.name) || '', u: safeSpotifyUrl(item.external_urls && item.external_urls.spotify), s: 'sp' };
     }
     const prev = JSON.stringify(G.music.sp), next = JSON.stringify(m);
     if (prev !== next) { G.music.sp = m; pushMusic(); }
   } catch { spBackoff = Date.now() + 60000; }
 }
-setInterval(spPoll, 20000);
+setInterval(spPoll, 10000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) spPoll(); });
 
 // ------------------------------------------------- YouTube ดูด้วยกัน ----
 // เปิดคลิปบนทีวี/จอนำเสนอ: คนที่อยู่ห้องเดียวกับจอจะเห็นและเล่นพร้อมกัน
