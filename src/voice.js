@@ -62,13 +62,14 @@ function makeVoice(net, onChange) {
     });
   }
   async function tune(peer) {
-    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 48000], [peer.videoTx, 700000]]) {
+    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 48000], [peer.videoTx, 700000], [peer.screenTx, 1800000]]) {
       if (!tx) continue;
       try {
         const p = tx.sender.getParameters();
         if (!p.encodings || !p.encodings.length) p.encodings = [{}];
         p.encodings[0].maxBitrate = max;
         if (tx === peer.videoTx) p.encodings[0].maxFramerate = 24;
+        if (tx === peer.screenTx) { p.encodings[0].maxFramerate = 15; p.degradationPreference = 'maintain-resolution'; }
         await tx.sender.setParameters(p);
       } catch {}
     }
@@ -78,10 +79,19 @@ function makeVoice(net, onChange) {
     const ok = !!peer.allowed;
     peer.audioTx?.sender.replaceTrack(ok ? V.audioTrack || null : null).catch(() => {});
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
+    peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
     peer.audioEl.muted = V.deaf || !ok;
     if (ok && !V.deaf) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
+  V.screenAudience = new Set();
+  V.setScreenAudience = (keys) => {
+    V.screenAudience = keys;
+    for (const p of V.peers.values()) {
+      const ok = keys.has(p.key);
+      if (ok !== p.screenOk) { p.screenOk = ok; p.screenTx?.sender.replaceTrack(ok && V.screenTrack ? V.screenTrack : null).catch(() => {}); }
+    }
+  };
   V.setVolume = (key, v) => {
     const p = V.peers.get(key);
     if (p && Math.abs((p.vol ?? 1) - v) > 0.04) { p.vol = v; try { p.audioEl.volume = v; } catch {} }
@@ -100,14 +110,21 @@ function makeVoice(net, onChange) {
     audioEl.autoplay = true; audioEl.setAttribute('playsinline', ''); audioEl.muted = V.deaf;
     const videoEl = document.createElement('video');
     videoEl.autoplay = true; videoEl.muted = true; videoEl.playsInline = true; videoEl.setAttribute('playsinline', '');
-    sink.append(audioEl, videoEl);
+    const screenEl = document.createElement('video');
+    screenEl.autoplay = true; screenEl.muted = true; screenEl.playsInline = true; screenEl.setAttribute('playsinline', '');
+    sink.append(audioEl, videoEl, screenEl);
     if (V.settings && V.settings.spkId && audioEl.setSinkId) audioEl.setSinkId(V.settings.spkId).catch(() => {});
-    const peer = { key, pc, initiator, audioEl, videoEl, audioTx: null, videoTx: null, hasVideo: false, state: 'new', allowed: V.audience.has(key) };
+    const peer = { key, pc, initiator, audioEl, videoEl, screenEl, audioTx: null, videoTx: null, screenTx: null, hasVideo: false, hasScreen: false, state: 'new', allowed: V.audience.has(key), screenOk: V.screenAudience.has(key) };
     V.peers.set(key, peer);
     pc.onicecandidate = (e) => e.candidate && net.signal(key, { candidate: e.candidate });
     pc.ontrack = (e) => {
       if (e.track.kind === 'audio') { audioEl.srcObject = new MediaStream([e.track]); audioEl.play().catch(() => onChange('unlock')); meter(key, e.track); }
-      else { videoEl.srcObject = new MediaStream([e.track]); videoEl.play().catch(() => {}); peer.hasVideo = true; }
+      else {
+        // วิดีโอช่องแรก = กล้อง, ช่องที่สอง = แชร์จอ
+        const vids = pc.getTransceivers().filter((t) => t.receiver.track.kind === 'video');
+        if (vids.indexOf(e.transceiver) === 1) { screenEl.srcObject = new MediaStream([e.track]); screenEl.play().catch(() => {}); peer.hasScreen = true; }
+        else { videoEl.srcObject = new MediaStream([e.track]); videoEl.play().catch(() => {}); peer.hasVideo = true; }
+      }
     };
     pc.onconnectionstatechange = () => {
       peer.state = pc.connectionState;
@@ -118,6 +135,7 @@ function makeVoice(net, onChange) {
     if (initiator) {
       peer.audioTx = pc.addTransceiver('audio', { direction: 'sendrecv' });
       peer.videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
+      peer.screenTx = pc.addTransceiver('video', { direction: 'sendrecv' });
       apply(peer);
       offer(peer);
     }
@@ -141,6 +159,7 @@ function makeVoice(net, onChange) {
           const k = tx.receiver.track.kind;
           if (k === 'audio' && !peer.audioTx) peer.audioTx = tx;
           if (k === 'video' && !peer.videoTx) peer.videoTx = tx;
+          else if (k === 'video' && tx !== peer.videoTx && !peer.screenTx) peer.screenTx = tx;
           tx.direction = 'sendrecv';
         }
         apply(peer);
@@ -165,7 +184,7 @@ function makeVoice(net, onChange) {
     if (!p) return;
     V.peers.delete(key);
     try { p.pc.close(); } catch {}
-    p.audioEl.remove(); p.videoEl.remove();
+    p.audioEl.remove(); p.videoEl.remove(); p.screenEl.remove();
     const m = V.meters.get(key); if (m) { try { m.src.disconnect(); } catch {} V.meters.delete(key); }
     chains.delete(key);
   }
@@ -318,7 +337,40 @@ function makeVoice(net, onChange) {
     if (V.mon) V.mon.gain.gain.value = V.deaf ? 0 : V.settings.monVol;
     onChange('media');
   };
-  V.unlock = () => { ensureCtx(); for (const p of V.peers.values()) { p.audioEl.play().catch(() => {}); p.videoEl.play().catch(() => {}); } };
+  // ---------- แชร์จอ ----------
+  V.canShare = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  V.screenTrack = null;
+  V.selfScreen = Object.assign(document.createElement('video'), { muted: true, playsInline: true, autoplay: true });
+  V.selfScreen.setAttribute('playsinline', ''); sink.append(V.selfScreen);
+  V.startScreen = async () => {
+    if (!V.canShare) { onChange('error', 'อุปกรณ์นี้แชร์จอไม่ได้ (ใช้คอมด้วย Chrome / Edge / Firefox / Safari)'); return; }
+    try {
+      const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 }, width: { max: 1920 }, height: { max: 1080 } }, audio: false });
+      const t = s.getVideoTracks()[0];
+      try { t.contentHint = 'detail'; } catch {}
+      t.onended = () => V.stopScreen();
+      V.screenTrack = t;
+      V.selfScreen.srcObject = new MediaStream([t]); V.selfScreen.play().catch(() => {});
+      for (const p of V.peers.values()) { p.screenTx?.sender.replaceTrack(p.screenOk ? t : null).catch(() => {}); tune(p); }
+      onChange('media');
+    } catch (e) {
+      if (e && e.name !== 'NotAllowedError' && e.name !== 'AbortError') onChange('error', 'แชร์จอไม่สำเร็จ');
+    }
+  };
+  V.stopScreen = () => {
+    if (!V.screenTrack) return;
+    const t = V.screenTrack; V.screenTrack = null;
+    t.onended = null; t.stop();
+    V.selfScreen.srcObject = null;
+    for (const p of V.peers.values()) p.screenTx?.sender.replaceTrack(null).catch(() => {});
+    onChange('media');
+  };
+  V.screenFor = (key) => {
+    if (key === net.myKey) return V.screenTrack ? V.selfScreen : null;
+    const p = V.peers.get(key);
+    return p && p.hasScreen && p.screenOk ? p.screenEl : null;
+  };
+  V.unlock = () => { ensureCtx(); for (const p of V.peers.values()) { p.audioEl.play().catch(() => {}); p.videoEl.play().catch(() => {}); p.screenEl.play().catch(() => {}); } };
   V.devices = async () => {
     try { return await navigator.mediaDevices.enumerateDevices(); } catch { return []; }
   };

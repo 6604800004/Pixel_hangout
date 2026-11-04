@@ -31,6 +31,7 @@
       <button class="pbtn sq hidden" id="micBtn" title="ไมค์">🎙️</button>
       <button class="pbtn sq hidden" id="camBtn" title="กล้อง">📷</button>
       <button class="pbtn sq hidden" id="deafBtn" title="ปิดเสียงเพื่อน">🔊</button>
+      <button class="pbtn sq hidden" id="shareBtn" title="แชร์จอ">🖥️</button>
       <button class="pbtn sq hidden" id="voiceSetBtn" title="ตั้งค่าไมค์/กล้อง/ฟังเสียงตัวเอง">⚙️</button>
       <div class="zoom">
         <button class="pbtn sq" id="zoomOut" title="ซูมออก">－</button>
@@ -81,6 +82,19 @@
 
 <div class="loading" id="loading"><div class="spinner"></div><p>กำลังเปิดห้อง…</p></div>
 <div class="modal hidden" id="modal"><div class="card" id="card"></div></div>
+<div class="dock" id="dock">
+<section class="yt hidden" id="scrPanel">
+  <header>
+    <b id="scrTitle">🖥️ แชร์จอ</b>
+    <div class="ytbtns">
+      <button id="scrStop" class="hidden" title="หยุดแชร์">⏹️</button>
+      <button id="scrBig" title="ขยาย">⤢</button>
+      <button id="scrHide" title="ซ่อน (เฉพาะเรา)">✕</button>
+    </div>
+  </header>
+  <div class="scrtabs hidden" id="scrTabs"></div>
+  <div class="ytbox"><video id="scrVideo" autoplay playsinline muted></video></div>
+</section>
 <section class="yt hidden" id="ytPanel">
   <header>
     <b id="ytTitle">📺 จอ</b>
@@ -92,6 +106,7 @@
   </header>
   <div class="ytbox"><div id="ytPlayer"></div><button class="pbtn pink hidden" id="ytTap">▶ แตะเพื่อดูด้วยกัน</button></div>
 </section>
+</div>
 <div class="focus hidden" id="focus"><video id="focusVideo" autoplay playsinline muted></video></div>
 <div class="toast" id="toast"></div>
 

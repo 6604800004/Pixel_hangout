@@ -160,8 +160,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card h2 { margin: 0 0 4px; font-family: 'Pixelify Sans', 'Mitr', sans-serif; font-size: 24px; }
 .card .sub { margin: 0 0 14px; color: var(--ink2); font-size: 14px; }
 .creator { display: grid; grid-template-columns: 240px 1fr; gap: 18px; align-items: start; }
-/* ตัวละครตัวอย่างค้างอยู่บนจอตลอดตอนเลื่อนดูตัวเลือก */
-.stage-wrap { position: sticky; top: -18px; z-index: 2; padding-top: 2px; }
+/* หน้าแต่งตัว/แต่งโต๊ะ: ภาพตัวอย่างอยู่กับที่ เลื่อนเฉพาะรายการตัวเลือก (ใช้ได้ทุกเบราว์เซอร์รวม Safari) */
+.card.split { display: flex; flex-direction: column; overflow: hidden; height: min(720px, calc(100dvh - 24px)); }
+.card.split > h2, .card.split > .sub, .card.split > .foot, .card.split > .tip { flex: none; }
+.card.split .creator { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+.card.split .stage-wrap { align-self: start; }
+.card.split .creator > .opts { overflow-y: auto; min-height: 0; padding: 2px 6px 8px 2px; overscroll-behavior: contain; }
+.card.split .foot { margin-top: 10px; padding-top: 10px; border-top: 3px dashed #e6d4c2; }
 .stage {
   position: relative; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; aspect-ratio: 1;
   background: repeating-linear-gradient(0deg, #e9c9a8 0 12px, #e2bf9b 12px 24px);
@@ -205,7 +210,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .focus img { max-width: 94vw; max-height: 88dvh; border: 4px solid #fff7ec; border-radius: 12px; background: #fff; }
 
 /* ---------- YouTube ดูด้วยกัน ---------- */
-.yt { position: fixed; left: 12px; bottom: calc(96px + var(--safe-b)); width: 400px; z-index: 6; background: var(--ink); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 rgba(0,0,0,.35); overflow: hidden; }
+.dock { position: fixed; left: 12px; bottom: calc(96px + var(--safe-b)); width: 400px; z-index: 6; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.dock > * { pointer-events: auto; }
+.yt { position: relative; width: 100%; background: var(--ink); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 rgba(0,0,0,.35); overflow: hidden; }
 .yt header { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; color: #fff7ec; font-size: 13px; }
 .yt header b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .ytbtns { display: flex; gap: 4px; }
@@ -214,7 +221,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ytbox { position: relative; aspect-ratio: 16 / 9; background: #000; }
 .ytbox iframe, .ytbox #ytPlayer { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 #ytTap { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; }
-.yt.big { left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1000px, 92vw); z-index: 12; }
+.yt.big { position: fixed; left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1100px, 94vw); z-index: 12; }
+.ytbox video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.scrtabs { display: flex; gap: 4px; padding: 0 8px 6px; flex-wrap: wrap; }
+.scrtabs button { border: 0; border-radius: 7px; padding: 3px 8px; font-size: 12px; background: rgba(255,247,236,.15); color: #fff7ec; }
+.scrtabs button.sel { background: var(--pink); color: #fff; }
 
 /* ---------- ตั้งค่าเสียง/กล้อง ---------- */
 .vset { display: grid; grid-template-columns: 250px 1fr; gap: 18px; }
@@ -239,14 +250,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .toolbar button { width: auto; flex: 1; font-size: 10.5px; }
   .toolbar button i { font-size: 20px; }
   .creator, .vset { grid-template-columns: 1fr; }
-  .stage-wrap { top: -14px; margin: 0 -14px; padding: 10px 14px 10px; background: var(--paper); border-bottom: 3px dashed #e6d4c2; }
-  .stage { max-width: 150px; margin: 0 auto; width: 100%; }
+  .card.split { height: calc(100dvh - 24px); }
+  .card.split .creator { grid-template-rows: auto minmax(0, 1fr); gap: 10px; }
+  .stage-wrap { padding-bottom: 8px; border-bottom: 3px dashed #e6d4c2; }
+  .stage { max-width: 140px; margin: 0 auto; width: 100%; }
   .card { padding: 14px; }
   .pbtn .lbl { display: none; }
   .chip b { display: none; }
   .top-right { gap: 4px; max-width: 60vw; }
   .bgrid { grid-template-columns: repeat(2, 1fr); }
-  .yt { left: 8px; right: 8px; width: auto; top: calc(96px + var(--safe-t)); bottom: auto; }
+  .dock { left: 8px; right: 8px; width: auto; top: calc(104px + var(--safe-t)); bottom: auto; }
   .yt.big { width: 100vw; border-radius: 0; left: 50%; }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }
@@ -275,6 +288,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       <button class="pbtn sq hidden" id="micBtn" title="ไมค์">🎙️</button>
       <button class="pbtn sq hidden" id="camBtn" title="กล้อง">📷</button>
       <button class="pbtn sq hidden" id="deafBtn" title="ปิดเสียงเพื่อน">🔊</button>
+      <button class="pbtn sq hidden" id="shareBtn" title="แชร์จอ">🖥️</button>
       <button class="pbtn sq hidden" id="voiceSetBtn" title="ตั้งค่าไมค์/กล้อง/ฟังเสียงตัวเอง">⚙️</button>
       <div class="zoom">
         <button class="pbtn sq" id="zoomOut" title="ซูมออก">－</button>
@@ -325,6 +339,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <div class="loading" id="loading"><div class="spinner"></div><p>กำลังเปิดห้อง…</p></div>
 <div class="modal hidden" id="modal"><div class="card" id="card"></div></div>
+<div class="dock" id="dock">
+<section class="yt hidden" id="scrPanel">
+  <header>
+    <b id="scrTitle">🖥️ แชร์จอ</b>
+    <div class="ytbtns">
+      <button id="scrStop" class="hidden" title="หยุดแชร์">⏹️</button>
+      <button id="scrBig" title="ขยาย">⤢</button>
+      <button id="scrHide" title="ซ่อน (เฉพาะเรา)">✕</button>
+    </div>
+  </header>
+  <div class="scrtabs hidden" id="scrTabs"></div>
+  <div class="ytbox"><video id="scrVideo" autoplay playsinline muted></video></div>
+</section>
 <section class="yt hidden" id="ytPanel">
   <header>
     <b id="ytTitle">📺 จอ</b>
@@ -336,6 +363,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   </header>
   <div class="ytbox"><div id="ytPlayer"></div><button class="pbtn pink hidden" id="ytTap">▶ แตะเพื่อดูด้วยกัน</button></div>
 </section>
+</div>
 <div class="focus hidden" id="focus"><video id="focusVideo" autoplay playsinline muted></video></div>
 <div class="toast" id="toast"></div>
 
@@ -1663,13 +1691,14 @@ function makeVoice(net, onChange) {
     });
   }
   async function tune(peer) {
-    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 48000], [peer.videoTx, 700000]]) {
+    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 48000], [peer.videoTx, 700000], [peer.screenTx, 1800000]]) {
       if (!tx) continue;
       try {
         const p = tx.sender.getParameters();
         if (!p.encodings || !p.encodings.length) p.encodings = [{}];
         p.encodings[0].maxBitrate = max;
         if (tx === peer.videoTx) p.encodings[0].maxFramerate = 24;
+        if (tx === peer.screenTx) { p.encodings[0].maxFramerate = 15; p.degradationPreference = 'maintain-resolution'; }
         await tx.sender.setParameters(p);
       } catch {}
     }
@@ -1679,10 +1708,19 @@ function makeVoice(net, onChange) {
     const ok = !!peer.allowed;
     peer.audioTx?.sender.replaceTrack(ok ? V.audioTrack || null : null).catch(() => {});
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
+    peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
     peer.audioEl.muted = V.deaf || !ok;
     if (ok && !V.deaf) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
+  V.screenAudience = new Set();
+  V.setScreenAudience = (keys) => {
+    V.screenAudience = keys;
+    for (const p of V.peers.values()) {
+      const ok = keys.has(p.key);
+      if (ok !== p.screenOk) { p.screenOk = ok; p.screenTx?.sender.replaceTrack(ok && V.screenTrack ? V.screenTrack : null).catch(() => {}); }
+    }
+  };
   V.setVolume = (key, v) => {
     const p = V.peers.get(key);
     if (p && Math.abs((p.vol ?? 1) - v) > 0.04) { p.vol = v; try { p.audioEl.volume = v; } catch {} }
@@ -1701,14 +1739,21 @@ function makeVoice(net, onChange) {
     audioEl.autoplay = true; audioEl.setAttribute('playsinline', ''); audioEl.muted = V.deaf;
     const videoEl = document.createElement('video');
     videoEl.autoplay = true; videoEl.muted = true; videoEl.playsInline = true; videoEl.setAttribute('playsinline', '');
-    sink.append(audioEl, videoEl);
+    const screenEl = document.createElement('video');
+    screenEl.autoplay = true; screenEl.muted = true; screenEl.playsInline = true; screenEl.setAttribute('playsinline', '');
+    sink.append(audioEl, videoEl, screenEl);
     if (V.settings && V.settings.spkId && audioEl.setSinkId) audioEl.setSinkId(V.settings.spkId).catch(() => {});
-    const peer = { key, pc, initiator, audioEl, videoEl, audioTx: null, videoTx: null, hasVideo: false, state: 'new', allowed: V.audience.has(key) };
+    const peer = { key, pc, initiator, audioEl, videoEl, screenEl, audioTx: null, videoTx: null, screenTx: null, hasVideo: false, hasScreen: false, state: 'new', allowed: V.audience.has(key), screenOk: V.screenAudience.has(key) };
     V.peers.set(key, peer);
     pc.onicecandidate = (e) => e.candidate && net.signal(key, { candidate: e.candidate });
     pc.ontrack = (e) => {
       if (e.track.kind === 'audio') { audioEl.srcObject = new MediaStream([e.track]); audioEl.play().catch(() => onChange('unlock')); meter(key, e.track); }
-      else { videoEl.srcObject = new MediaStream([e.track]); videoEl.play().catch(() => {}); peer.hasVideo = true; }
+      else {
+        // วิดีโอช่องแรก = กล้อง, ช่องที่สอง = แชร์จอ
+        const vids = pc.getTransceivers().filter((t) => t.receiver.track.kind === 'video');
+        if (vids.indexOf(e.transceiver) === 1) { screenEl.srcObject = new MediaStream([e.track]); screenEl.play().catch(() => {}); peer.hasScreen = true; }
+        else { videoEl.srcObject = new MediaStream([e.track]); videoEl.play().catch(() => {}); peer.hasVideo = true; }
+      }
     };
     pc.onconnectionstatechange = () => {
       peer.state = pc.connectionState;
@@ -1719,6 +1764,7 @@ function makeVoice(net, onChange) {
     if (initiator) {
       peer.audioTx = pc.addTransceiver('audio', { direction: 'sendrecv' });
       peer.videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
+      peer.screenTx = pc.addTransceiver('video', { direction: 'sendrecv' });
       apply(peer);
       offer(peer);
     }
@@ -1742,6 +1788,7 @@ function makeVoice(net, onChange) {
           const k = tx.receiver.track.kind;
           if (k === 'audio' && !peer.audioTx) peer.audioTx = tx;
           if (k === 'video' && !peer.videoTx) peer.videoTx = tx;
+          else if (k === 'video' && tx !== peer.videoTx && !peer.screenTx) peer.screenTx = tx;
           tx.direction = 'sendrecv';
         }
         apply(peer);
@@ -1766,7 +1813,7 @@ function makeVoice(net, onChange) {
     if (!p) return;
     V.peers.delete(key);
     try { p.pc.close(); } catch {}
-    p.audioEl.remove(); p.videoEl.remove();
+    p.audioEl.remove(); p.videoEl.remove(); p.screenEl.remove();
     const m = V.meters.get(key); if (m) { try { m.src.disconnect(); } catch {} V.meters.delete(key); }
     chains.delete(key);
   }
@@ -1919,7 +1966,40 @@ function makeVoice(net, onChange) {
     if (V.mon) V.mon.gain.gain.value = V.deaf ? 0 : V.settings.monVol;
     onChange('media');
   };
-  V.unlock = () => { ensureCtx(); for (const p of V.peers.values()) { p.audioEl.play().catch(() => {}); p.videoEl.play().catch(() => {}); } };
+  // ---------- แชร์จอ ----------
+  V.canShare = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  V.screenTrack = null;
+  V.selfScreen = Object.assign(document.createElement('video'), { muted: true, playsInline: true, autoplay: true });
+  V.selfScreen.setAttribute('playsinline', ''); sink.append(V.selfScreen);
+  V.startScreen = async () => {
+    if (!V.canShare) { onChange('error', 'อุปกรณ์นี้แชร์จอไม่ได้ (ใช้คอมด้วย Chrome / Edge / Firefox / Safari)'); return; }
+    try {
+      const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 }, width: { max: 1920 }, height: { max: 1080 } }, audio: false });
+      const t = s.getVideoTracks()[0];
+      try { t.contentHint = 'detail'; } catch {}
+      t.onended = () => V.stopScreen();
+      V.screenTrack = t;
+      V.selfScreen.srcObject = new MediaStream([t]); V.selfScreen.play().catch(() => {});
+      for (const p of V.peers.values()) { p.screenTx?.sender.replaceTrack(p.screenOk ? t : null).catch(() => {}); tune(p); }
+      onChange('media');
+    } catch (e) {
+      if (e && e.name !== 'NotAllowedError' && e.name !== 'AbortError') onChange('error', 'แชร์จอไม่สำเร็จ');
+    }
+  };
+  V.stopScreen = () => {
+    if (!V.screenTrack) return;
+    const t = V.screenTrack; V.screenTrack = null;
+    t.onended = null; t.stop();
+    V.selfScreen.srcObject = null;
+    for (const p of V.peers.values()) p.screenTx?.sender.replaceTrack(null).catch(() => {});
+    onChange('media');
+  };
+  V.screenFor = (key) => {
+    if (key === net.myKey) return V.screenTrack ? V.selfScreen : null;
+    const p = V.peers.get(key);
+    return p && p.hasScreen && p.screenOk ? p.screenEl : null;
+  };
+  V.unlock = () => { ensureCtx(); for (const p of V.peers.values()) { p.audioEl.play().catch(() => {}); p.videoEl.play().catch(() => {}); p.screenEl.play().catch(() => {}); } };
   V.devices = async () => {
     try { return await navigator.mediaDevices.enumerateDevices(); } catch { return []; }
   };
@@ -2785,7 +2865,8 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const name = (ch === G.me ? G.me.nick : p.n) || 'เพื่อน';
     const st = (ch === G.me ? G.me.st : p.st) || '';
     const micOff = G.voice && (ch === G.me ? !G.voice.mic : p.mic === 0);
-    const label = (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
+    const sharing = ch === G.me ? !!(G.voice && G.voice.screenTrack) : p.scr === 1;
+    const label = (sharing ? '🖥️ ' : '') + (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
     c.font = '500 12px Mitr, sans-serif';
     const w = c.measureText(label).width + 14;
     const ly = top - 20;
@@ -2980,6 +3061,8 @@ function renderPeople() {
 function openModal(build) {
   const card = $('#card');
   card.innerHTML = '';
+  card.className = 'card';
+  card.scrollTop = 0;
   build(card);
   $('#modal').classList.remove('hidden');
 }
@@ -3020,6 +3103,7 @@ function openCreator(first) {
   const draft = { ...G.me.look };
   let nick = G.me.nick || G.net.profileName || lsGet('pixel.nick', '') || '';
   openModal((card) => {
+    card.classList.add('split');
     card.append(el('h2', null, first ? 'สร้างตัวละครของคุณ ✨' : 'แต่งตัวละคร'));
     card.append(el('p', 'sub', first ? 'แต่งให้น่ารักแล้วเข้าห้องไปหาเพื่อนกัน' : 'เปลี่ยนแล้วเพื่อนเห็นทันที'));
     const wrap = el('div', 'creator');
@@ -3105,6 +3189,7 @@ function openDeskEditor() {
   if (!G.myDesk) { goToMyDesk(); return; }
   const draft = cleanDesk(G.myDeskStyle);
   openModal((card) => {
+    card.classList.add('split');
     card.append(el('h2', null, 'แต่งโต๊ะทำงาน 🖥️'));
     card.append(el('p', 'sub', 'เลือกได้ตามใจ เพื่อนๆ จะเห็นโต๊ะของคุณ'));
     const wrap = el('div', 'creator');
@@ -3188,11 +3273,12 @@ function setupVoice() {
   const V = makeVoice(G.net, (kind, msg) => {
     if (kind === 'error') toast(msg);
     if (kind === 'unlock') toast('แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียงเพื่อน');
-    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0 }); paintVoiceButtons(); if (G.voicePanelOpen) paintVoiceSettings(); }
+    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
   });
   G.voice = V;
   ['micBtn', 'camBtn', 'deafBtn', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
   $('#voiceSetBtn').onclick = openVoiceSettings;
+  if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : V.startScreen()); }
   $('#callBtn').classList.add('hidden');
   $('#micBtn').onclick = () => V.toggleMic();
   $('#camBtn').onclick = () => V.toggleCam();
@@ -3205,6 +3291,7 @@ function paintVoiceButtons() {
   $('#micBtn').textContent = V.mic ? '🎙️' : '🔇'; $('#micBtn').classList.toggle('off', !V.mic); $('#micBtn').title = V.mic ? 'ปิดไมค์' : 'เปิดไมค์';
   $('#camBtn').classList.toggle('on', V.cam); $('#camBtn').title = V.cam ? 'ปิดกล้อง' : 'เปิดกล้อง';
   $('#deafBtn').textContent = V.deaf ? '🔈' : '🔊'; $('#deafBtn').classList.toggle('off', V.deaf);
+  $('#shareBtn').classList.toggle('on', !!V.screenTrack); $('#shareBtn').title = V.screenTrack ? 'หยุดแชร์จอ' : 'แชร์จอ';
 }
 // ---------- หน้าต่างตั้งค่าไมค์ / กล้อง / ฟังเสียงตัวเอง ----------
 let voiceDevs = [];
@@ -3474,7 +3561,7 @@ function updateZones() {
   const n = othersInZone(z).size + 1;
   const label = `${ZONES[z].icon} ${ZONES[z].name} · ${G.voice && z === 'hall' ? `ได้ยิน ${audible.size} คน` : `${n} คน`}`;
   if (chip.textContent !== label) chip.textContent = label;
-  if (G.voice) G.voice.setAudience(audible);
+  if (G.voice) { G.voice.setAudience(audible); G.voice.setScreenAudience(othersInZone(z)); }
 }
 // วงระยะได้ยินรอบตัว (เฉพาะห้องรวม ตอนเปิดไมค์)
 function drawHearingRange(b, t) {
@@ -3971,6 +4058,21 @@ function openScreenModal(it) {
 // ภาพปกคลิปบนจอในห้อง
 const ytThumbs = new Map();
 function drawScreenThumb(c, it, sx, sy) {
+  // มีคนแชร์จออยู่ในห้องเดียวกัน → โชว์ภาพจอสดบนทีวี/จอนำเสนอ
+  const live = zoneAt(it.x, it.y + 6) === G.zone && shareSources()[0];
+  if (live) {
+    const v = live.el;
+    const r = it.t === 'tv' ? [sx + 4, sy + 1, 28, 15] : [sx + 3, sy + 3, 60, 28];
+    c.fillStyle = '#000'; c.fillRect(...r);
+    if (v.readyState >= 2 && v.videoWidth) {
+      const k = Math.min(r[2] / v.videoWidth, r[3] / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
+      const prev = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true;
+      c.drawImage(v, r[0] + (r[2] - w) / 2, r[1] + (r[3] - h) / 2, w, h);
+      c.imageSmoothingEnabled = prev;
+    }
+    c.fillStyle = '#e8505b'; c.fillRect(r[0] + 1, r[1] + 1, 3, 2);
+    return;
+  }
   const doc = G.screens.get(it.id);
   if (!doc || !doc.v) return;
   let e = ytThumbs.get(doc.v);
@@ -3983,6 +4085,59 @@ function drawScreenThumb(c, it, sx, sy) {
   c.fillStyle = '#ffffff'; c.fillRect(cx - 1, cy - 2, 1, 5); c.fillRect(cx, cy - 1, 1, 3); c.fillRect(cx + 1, cy, 1, 1);
   if (!doc.playing) { c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(...r); }
 }
+
+// ------------------------------------------------------------ แชร์จอ ----
+// คนในห้อง (โซน) เดียวกันจะเห็นจอที่แชร์ เลือกดูได้ถ้ามีหลายคนแชร์พร้อมกัน
+const SHARE = { sel: null, hidden: new Set(), lastIds: '' };
+function shareSources() {
+  const V = G.voice;
+  if (!V) return [];
+  const list = [];
+  for (const rt of G.others.values()) {
+    if (rt.p.scr !== 1 || !Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== G.zone) continue;
+    const el = V.screenFor(rt.key);
+    if (el) list.push({ key: rt.key, name: rt.p.n || 'เพื่อน', el });
+  }
+  if (V.screenTrack) list.push({ key: 'me', name: 'คุณ', el: V.selfScreen, me: true });
+  return list;
+}
+function syncShare() {
+  const panel = $('#scrPanel');
+  const all = shareSources();
+  const ids = all.map((s) => s.key).join(',');
+  // คนที่เริ่มแชร์ใหม่ → เลิกซ่อนให้อัตโนมัติ
+  for (const k of [...SHARE.hidden]) if (!all.some((s) => s.key === k)) SHARE.hidden.delete(k);
+  const list = all.filter((s) => !SHARE.hidden.has(s.key));
+  if (!list.length) {
+    panel.classList.add('hidden'); panel.classList.remove('big');
+    $('#scrVideo').srcObject = null; SHARE.sel = null;
+    return;
+  }
+  if (!list.some((s) => s.key === SHARE.sel)) SHARE.sel = (list.find((s) => !s.me) || list[0]).key;
+  const cur = list.find((s) => s.key === SHARE.sel);
+  panel.classList.remove('hidden');
+  $('#scrTitle').textContent = cur.me ? '🖥️ คุณกำลังแชร์จอ (คนในห้องนี้เห็น)' : `🖥️ ${cur.name} กำลังแชร์จอ`;
+  $('#scrStop').classList.toggle('hidden', !G.voice.screenTrack);
+  const vid = $('#scrVideo');
+  const src = cur.el.srcObject;
+  if (src && vid.srcObject !== src) { vid.srcObject = src; vid.play().catch(() => {}); }
+  const tabs = $('#scrTabs');
+  if (ids !== SHARE.lastIds || tabs.dataset.sel !== SHARE.sel) {
+    SHARE.lastIds = ids; tabs.dataset.sel = SHARE.sel;
+    tabs.innerHTML = '';
+    tabs.classList.toggle('hidden', list.length < 2);
+    for (const s of list) {
+      const b = el('button', s.key === SHARE.sel ? 'sel' : '', s.me ? 'จอของคุณ' : s.name);
+      b.onclick = () => { SHARE.sel = s.key; syncShare(); };
+      tabs.append(b);
+    }
+  }
+}
+setInterval(syncShare, 600);
+$('#scrStop').onclick = () => G.voice && G.voice.stopScreen();
+$('#scrBig').onclick = () => $('#scrPanel').classList.toggle('big');
+$('#scrHide').onclick = () => { if (SHARE.sel) SHARE.hidden.add(SHARE.sel); syncShare(); toast('ซ่อนจอที่แชร์แล้ว จะขึ้นใหม่เมื่อเขาเริ่มแชร์ครั้งถัดไป'); };
+$('#scrVideo').ondblclick = () => $('#scrPanel').classList.toggle('big');
 
 // สำหรับทดสอบ: เปิดด้วย #debug
 if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT };

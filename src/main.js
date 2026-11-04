@@ -856,7 +856,8 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const name = (ch === G.me ? G.me.nick : p.n) || 'เพื่อน';
     const st = (ch === G.me ? G.me.st : p.st) || '';
     const micOff = G.voice && (ch === G.me ? !G.voice.mic : p.mic === 0);
-    const label = (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
+    const sharing = ch === G.me ? !!(G.voice && G.voice.screenTrack) : p.scr === 1;
+    const label = (sharing ? '🖥️ ' : '') + (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
     c.font = '500 12px Mitr, sans-serif';
     const w = c.measureText(label).width + 14;
     const ly = top - 20;
@@ -1051,6 +1052,8 @@ function renderPeople() {
 function openModal(build) {
   const card = $('#card');
   card.innerHTML = '';
+  card.className = 'card';
+  card.scrollTop = 0;
   build(card);
   $('#modal').classList.remove('hidden');
 }
@@ -1091,6 +1094,7 @@ function openCreator(first) {
   const draft = { ...G.me.look };
   let nick = G.me.nick || G.net.profileName || lsGet('pixel.nick', '') || '';
   openModal((card) => {
+    card.classList.add('split');
     card.append(el('h2', null, first ? 'สร้างตัวละครของคุณ ✨' : 'แต่งตัวละคร'));
     card.append(el('p', 'sub', first ? 'แต่งให้น่ารักแล้วเข้าห้องไปหาเพื่อนกัน' : 'เปลี่ยนแล้วเพื่อนเห็นทันที'));
     const wrap = el('div', 'creator');
@@ -1176,6 +1180,7 @@ function openDeskEditor() {
   if (!G.myDesk) { goToMyDesk(); return; }
   const draft = cleanDesk(G.myDeskStyle);
   openModal((card) => {
+    card.classList.add('split');
     card.append(el('h2', null, 'แต่งโต๊ะทำงาน 🖥️'));
     card.append(el('p', 'sub', 'เลือกได้ตามใจ เพื่อนๆ จะเห็นโต๊ะของคุณ'));
     const wrap = el('div', 'creator');
@@ -1259,11 +1264,12 @@ function setupVoice() {
   const V = makeVoice(G.net, (kind, msg) => {
     if (kind === 'error') toast(msg);
     if (kind === 'unlock') toast('แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียงเพื่อน');
-    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0 }); paintVoiceButtons(); if (G.voicePanelOpen) paintVoiceSettings(); }
+    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
   });
   G.voice = V;
   ['micBtn', 'camBtn', 'deafBtn', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
   $('#voiceSetBtn').onclick = openVoiceSettings;
+  if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : V.startScreen()); }
   $('#callBtn').classList.add('hidden');
   $('#micBtn').onclick = () => V.toggleMic();
   $('#camBtn').onclick = () => V.toggleCam();
@@ -1276,6 +1282,7 @@ function paintVoiceButtons() {
   $('#micBtn').textContent = V.mic ? '🎙️' : '🔇'; $('#micBtn').classList.toggle('off', !V.mic); $('#micBtn').title = V.mic ? 'ปิดไมค์' : 'เปิดไมค์';
   $('#camBtn').classList.toggle('on', V.cam); $('#camBtn').title = V.cam ? 'ปิดกล้อง' : 'เปิดกล้อง';
   $('#deafBtn').textContent = V.deaf ? '🔈' : '🔊'; $('#deafBtn').classList.toggle('off', V.deaf);
+  $('#shareBtn').classList.toggle('on', !!V.screenTrack); $('#shareBtn').title = V.screenTrack ? 'หยุดแชร์จอ' : 'แชร์จอ';
 }
 // ---------- หน้าต่างตั้งค่าไมค์ / กล้อง / ฟังเสียงตัวเอง ----------
 let voiceDevs = [];

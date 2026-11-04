@@ -41,7 +41,7 @@ function updateZones() {
   const n = othersInZone(z).size + 1;
   const label = `${ZONES[z].icon} ${ZONES[z].name} · ${G.voice && z === 'hall' ? `ได้ยิน ${audible.size} คน` : `${n} คน`}`;
   if (chip.textContent !== label) chip.textContent = label;
-  if (G.voice) G.voice.setAudience(audible);
+  if (G.voice) { G.voice.setAudience(audible); G.voice.setScreenAudience(othersInZone(z)); }
 }
 // วงระยะได้ยินรอบตัว (เฉพาะห้องรวม ตอนเปิดไมค์)
 function drawHearingRange(b, t) {
@@ -538,6 +538,21 @@ function openScreenModal(it) {
 // ภาพปกคลิปบนจอในห้อง
 const ytThumbs = new Map();
 function drawScreenThumb(c, it, sx, sy) {
+  // มีคนแชร์จออยู่ในห้องเดียวกัน → โชว์ภาพจอสดบนทีวี/จอนำเสนอ
+  const live = zoneAt(it.x, it.y + 6) === G.zone && shareSources()[0];
+  if (live) {
+    const v = live.el;
+    const r = it.t === 'tv' ? [sx + 4, sy + 1, 28, 15] : [sx + 3, sy + 3, 60, 28];
+    c.fillStyle = '#000'; c.fillRect(...r);
+    if (v.readyState >= 2 && v.videoWidth) {
+      const k = Math.min(r[2] / v.videoWidth, r[3] / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
+      const prev = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true;
+      c.drawImage(v, r[0] + (r[2] - w) / 2, r[1] + (r[3] - h) / 2, w, h);
+      c.imageSmoothingEnabled = prev;
+    }
+    c.fillStyle = '#e8505b'; c.fillRect(r[0] + 1, r[1] + 1, 3, 2);
+    return;
+  }
   const doc = G.screens.get(it.id);
   if (!doc || !doc.v) return;
   let e = ytThumbs.get(doc.v);
@@ -550,6 +565,59 @@ function drawScreenThumb(c, it, sx, sy) {
   c.fillStyle = '#ffffff'; c.fillRect(cx - 1, cy - 2, 1, 5); c.fillRect(cx, cy - 1, 1, 3); c.fillRect(cx + 1, cy, 1, 1);
   if (!doc.playing) { c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(...r); }
 }
+
+// ------------------------------------------------------------ แชร์จอ ----
+// คนในห้อง (โซน) เดียวกันจะเห็นจอที่แชร์ เลือกดูได้ถ้ามีหลายคนแชร์พร้อมกัน
+const SHARE = { sel: null, hidden: new Set(), lastIds: '' };
+function shareSources() {
+  const V = G.voice;
+  if (!V) return [];
+  const list = [];
+  for (const rt of G.others.values()) {
+    if (rt.p.scr !== 1 || !Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== G.zone) continue;
+    const el = V.screenFor(rt.key);
+    if (el) list.push({ key: rt.key, name: rt.p.n || 'เพื่อน', el });
+  }
+  if (V.screenTrack) list.push({ key: 'me', name: 'คุณ', el: V.selfScreen, me: true });
+  return list;
+}
+function syncShare() {
+  const panel = $('#scrPanel');
+  const all = shareSources();
+  const ids = all.map((s) => s.key).join(',');
+  // คนที่เริ่มแชร์ใหม่ → เลิกซ่อนให้อัตโนมัติ
+  for (const k of [...SHARE.hidden]) if (!all.some((s) => s.key === k)) SHARE.hidden.delete(k);
+  const list = all.filter((s) => !SHARE.hidden.has(s.key));
+  if (!list.length) {
+    panel.classList.add('hidden'); panel.classList.remove('big');
+    $('#scrVideo').srcObject = null; SHARE.sel = null;
+    return;
+  }
+  if (!list.some((s) => s.key === SHARE.sel)) SHARE.sel = (list.find((s) => !s.me) || list[0]).key;
+  const cur = list.find((s) => s.key === SHARE.sel);
+  panel.classList.remove('hidden');
+  $('#scrTitle').textContent = cur.me ? '🖥️ คุณกำลังแชร์จอ (คนในห้องนี้เห็น)' : `🖥️ ${cur.name} กำลังแชร์จอ`;
+  $('#scrStop').classList.toggle('hidden', !G.voice.screenTrack);
+  const vid = $('#scrVideo');
+  const src = cur.el.srcObject;
+  if (src && vid.srcObject !== src) { vid.srcObject = src; vid.play().catch(() => {}); }
+  const tabs = $('#scrTabs');
+  if (ids !== SHARE.lastIds || tabs.dataset.sel !== SHARE.sel) {
+    SHARE.lastIds = ids; tabs.dataset.sel = SHARE.sel;
+    tabs.innerHTML = '';
+    tabs.classList.toggle('hidden', list.length < 2);
+    for (const s of list) {
+      const b = el('button', s.key === SHARE.sel ? 'sel' : '', s.me ? 'จอของคุณ' : s.name);
+      b.onclick = () => { SHARE.sel = s.key; syncShare(); };
+      tabs.append(b);
+    }
+  }
+}
+setInterval(syncShare, 600);
+$('#scrStop').onclick = () => G.voice && G.voice.stopScreen();
+$('#scrBig').onclick = () => $('#scrPanel').classList.toggle('big');
+$('#scrHide').onclick = () => { if (SHARE.sel) SHARE.hidden.add(SHARE.sel); syncShare(); toast('ซ่อนจอที่แชร์แล้ว จะขึ้นใหม่เมื่อเขาเริ่มแชร์ครั้งถัดไป'); };
+$('#scrVideo').ondblclick = () => $('#scrPanel').classList.toggle('big');
 
 // สำหรับทดสอบ: เปิดด้วย #debug
 if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT };

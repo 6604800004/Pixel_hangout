@@ -148,8 +148,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card h2 { margin: 0 0 4px; font-family: 'Pixelify Sans', 'Mitr', sans-serif; font-size: 24px; }
 .card .sub { margin: 0 0 14px; color: var(--ink2); font-size: 14px; }
 .creator { display: grid; grid-template-columns: 240px 1fr; gap: 18px; align-items: start; }
-/* ตัวละครตัวอย่างค้างอยู่บนจอตลอดตอนเลื่อนดูตัวเลือก */
-.stage-wrap { position: sticky; top: -18px; z-index: 2; padding-top: 2px; }
+/* หน้าแต่งตัว/แต่งโต๊ะ: ภาพตัวอย่างอยู่กับที่ เลื่อนเฉพาะรายการตัวเลือก (ใช้ได้ทุกเบราว์เซอร์รวม Safari) */
+.card.split { display: flex; flex-direction: column; overflow: hidden; height: min(720px, calc(100dvh - 24px)); }
+.card.split > h2, .card.split > .sub, .card.split > .foot, .card.split > .tip { flex: none; }
+.card.split .creator { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+.card.split .stage-wrap { align-self: start; }
+.card.split .creator > .opts { overflow-y: auto; min-height: 0; padding: 2px 6px 8px 2px; overscroll-behavior: contain; }
+.card.split .foot { margin-top: 10px; padding-top: 10px; border-top: 3px dashed #e6d4c2; }
 .stage {
   position: relative; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; aspect-ratio: 1;
   background: repeating-linear-gradient(0deg, #e9c9a8 0 12px, #e2bf9b 12px 24px);
@@ -193,7 +198,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .focus img { max-width: 94vw; max-height: 88dvh; border: 4px solid #fff7ec; border-radius: 12px; background: #fff; }
 
 /* ---------- YouTube ดูด้วยกัน ---------- */
-.yt { position: fixed; left: 12px; bottom: calc(96px + var(--safe-b)); width: 400px; z-index: 6; background: var(--ink); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 rgba(0,0,0,.35); overflow: hidden; }
+.dock { position: fixed; left: 12px; bottom: calc(96px + var(--safe-b)); width: 400px; z-index: 6; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.dock > * { pointer-events: auto; }
+.yt { position: relative; width: 100%; background: var(--ink); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 rgba(0,0,0,.35); overflow: hidden; }
 .yt header { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; color: #fff7ec; font-size: 13px; }
 .yt header b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .ytbtns { display: flex; gap: 4px; }
@@ -202,7 +209,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ytbox { position: relative; aspect-ratio: 16 / 9; background: #000; }
 .ytbox iframe, .ytbox #ytPlayer { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 #ytTap { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; }
-.yt.big { left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1000px, 92vw); z-index: 12; }
+.yt.big { position: fixed; left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1100px, 94vw); z-index: 12; }
+.ytbox video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.scrtabs { display: flex; gap: 4px; padding: 0 8px 6px; flex-wrap: wrap; }
+.scrtabs button { border: 0; border-radius: 7px; padding: 3px 8px; font-size: 12px; background: rgba(255,247,236,.15); color: #fff7ec; }
+.scrtabs button.sel { background: var(--pink); color: #fff; }
 
 /* ---------- ตั้งค่าเสียง/กล้อง ---------- */
 .vset { display: grid; grid-template-columns: 250px 1fr; gap: 18px; }
@@ -227,14 +238,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .toolbar button { width: auto; flex: 1; font-size: 10.5px; }
   .toolbar button i { font-size: 20px; }
   .creator, .vset { grid-template-columns: 1fr; }
-  .stage-wrap { top: -14px; margin: 0 -14px; padding: 10px 14px 10px; background: var(--paper); border-bottom: 3px dashed #e6d4c2; }
-  .stage { max-width: 150px; margin: 0 auto; width: 100%; }
+  .card.split { height: calc(100dvh - 24px); }
+  .card.split .creator { grid-template-rows: auto minmax(0, 1fr); gap: 10px; }
+  .stage-wrap { padding-bottom: 8px; border-bottom: 3px dashed #e6d4c2; }
+  .stage { max-width: 140px; margin: 0 auto; width: 100%; }
   .card { padding: 14px; }
   .pbtn .lbl { display: none; }
   .chip b { display: none; }
   .top-right { gap: 4px; max-width: 60vw; }
   .bgrid { grid-template-columns: repeat(2, 1fr); }
-  .yt { left: 8px; right: 8px; width: auto; top: calc(96px + var(--safe-t)); bottom: auto; }
+  .dock { left: 8px; right: 8px; width: auto; top: calc(104px + var(--safe-t)); bottom: auto; }
   .yt.big { width: 100vw; border-radius: 0; left: 50%; }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }
