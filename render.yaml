@@ -1,0 +1,12 @@
+# กด "New → Blueprint" บน render.com แล้วเลือก repo นี้ จะตั้งค่าให้เองทั้งหมด
+services:
+  - type: web
+    name: pixel-hangout
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: ROOM_NAME
+        value: Pixel Hangout

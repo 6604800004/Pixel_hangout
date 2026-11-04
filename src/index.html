@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#2e2235" />
+<title>Pixel Hangout</title>
+<!--PWA-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+/*CSS*/
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <header class="topbar">
+    <button class="chip" id="roomChip" aria-label="ใครอยู่บ้าง">
+      <span class="dot" id="connDot"></span>
+      <b id="roomName">Pixel Hangout</b>
+      <span class="count"><span>👥</span><span id="onlineCount">1</span></span>
+    </button>
+    <div class="top-right">
+      <button class="pbtn" id="callBtn" title="ห้องคุยเสียง">🎧 <span class="lbl">ห้องเสียง</span></button>
+      <button class="pbtn sq hidden" id="micBtn" title="ไมค์">🎙️</button>
+      <button class="pbtn sq hidden" id="camBtn" title="กล้อง">📷</button>
+      <button class="pbtn sq hidden" id="deafBtn" title="ปิดเสียงเพื่อน">🔊</button>
+      <button class="pbtn sq hidden" id="voiceSetBtn" title="ตั้งค่าไมค์/กล้อง/ฟังเสียงตัวเอง">⚙️</button>
+      <div class="zoom">
+        <button class="pbtn sq" id="zoomOut" title="ซูมออก">－</button>
+        <button class="pbtn sq" id="zoomIn" title="ซูมเข้า">＋</button>
+      </div>
+    </div>
+  </header>
+  <div class="banner hidden" id="banner"></div>
+
+  <section class="panel people hidden" id="people">
+    <header><b>ใครอยู่ในห้อง</b><button class="x" data-close="people">✕</button></header>
+    <ul id="peopleList"></ul>
+    <p class="note" id="shareNote"></p>
+  </section>
+
+  <div class="actions" id="actions"></div>
+
+  <div class="tray hidden" id="emoteTray"></div>
+  <div class="tray hidden" id="statusTray"></div>
+  <div class="tray edit hidden" id="editTray">
+    <div class="tray-scroll" id="paletteList"></div>
+    <button class="pbtn pink" id="editDone">เสร็จ</button>
+  </div>
+  <div class="selbar hidden" id="selBar">
+    <button class="pbtn sm" data-sel="color">🎨 สี</button>
+    <button class="pbtn sm" data-sel="flip">🔄 หมุน</button>
+    <button class="pbtn sm danger" data-sel="delete">🗑️ ลบ</button>
+  </div>
+
+  <nav class="toolbar" id="toolbar">
+    <button data-tool="look"><i>👕</i><span>แต่งตัว</span></button>
+    <button data-tool="desk"><i>🖥️</i><span>โต๊ะฉัน</span></button>
+    <button data-tool="edit"><i>🛋️</i><span>จัดห้อง</span></button>
+    <button data-tool="emote"><i>😊</i><span>อีโมต</span></button>
+    <button data-tool="status"><i id="statusIcon">💬</i><span>สถานะ</span></button>
+    <button data-tool="chat"><i>💌</i><span>แชต</span><b class="badge hidden" id="chatBadge">0</b></button>
+  </nav>
+
+  <aside class="chat" id="chat">
+    <header><b>💌 แชตในห้อง</b><button class="x" id="chatClose">✕</button></header>
+    <div class="msgs" id="msgs"></div>
+    <form id="chatForm" autocomplete="off">
+      <input id="chatInput" maxlength="200" placeholder="พิมพ์ข้อความ…" enterkeyhint="send" />
+      <button class="pbtn pink" type="submit">ส่ง</button>
+    </form>
+  </aside>
+</div>
+
+<div class="loading" id="loading"><div class="spinner"></div><p>กำลังเปิดห้อง…</p></div>
+<div class="modal hidden" id="modal"><div class="card" id="card"></div></div>
+<div class="focus hidden" id="focus"><video id="focusVideo" autoplay playsinline muted></video></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/*JS*/
+</script>
+</body>
+</html>
