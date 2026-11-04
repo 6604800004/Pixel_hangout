@@ -2552,7 +2552,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (G.edit) {
     const it = itemAt(w.x, w.y);
     if (it) { G.selected = it.id; G.drag = { id: it.id, ox: w.x - it.x, oy: w.y - it.y, moved: false }; }
-    else { G.selected = null; G.pan = { sx: e.clientX, sy: e.clientY, cx: G.cam.x, cy: G.cam.y }; }
+    else { G.selected = null; G.pan = { sx: e.clientX, sy: e.clientY, mx: G.cam.cx, my: G.cam.cy }; }
     updateSelBar();
     return;
   }
@@ -2607,8 +2607,9 @@ canvas.addEventListener('pointermove', (e) => {
     updateSelBar();
   } else if (G.pan) {
     G.camManual = true;
-    G.cam.tx = G.pan.cx - (e.clientX - G.pan.sx) / G.scale;
-    G.cam.ty = G.pan.cy - (e.clientY - G.pan.sy) / G.scale;
+    G.cam.mx = clamp(G.pan.mx - (e.clientX - G.pan.sx) / G.scale, 0, W);
+    G.cam.my = clamp(G.pan.my - (e.clientY - G.pan.sy) / G.scale, 0, H);
+    G.cam.cx = G.cam.mx; G.cam.cy = G.cam.my;
   } else if (G.holding && performance.now() - holdTimer > 160) {
     holdTimer = performance.now();
     walkTo(w.x, w.y);
@@ -2680,18 +2681,20 @@ function render(t) {
 
   // กล้อง
   const me = G.me;
-  let tx, ty;
+  // กล้องตามจุดกึ่งกลาง (ตัวละคร หรือจุดที่ลากไว้ตอนจัดห้อง) — ซูมเข้า/ออกแล้วตัวละครยังอยู่กลางจอเสมอ
+  // เผื่อที่ให้แผงแชตด้านขวาบนจอใหญ่ ให้อยู่กลางพื้นที่ที่มองเห็นจริง
   const vw = bw - (G.chatOpen && !isMobile() ? 330 / scale : 0);
-  if (G.camManual && Number.isFinite(G.cam.tx)) { tx = G.cam.tx + vw / 2; ty = G.cam.ty + bh / 2; }
+  let tx, ty;
+  if (G.camManual && Number.isFinite(G.cam.mx)) { tx = G.cam.mx; ty = G.cam.my; }
   else { tx = me.x; ty = me.y - 16; }
-  // เผื่อที่ให้แผงแชตด้านขวาบนจอใหญ่ ให้ห้องอยู่กลางพื้นที่ที่มองเห็นจริง
-  const fitX = (v) => (W <= vw ? -(vw - W) / 2 : clamp(v - vw / 2, 0, W - vw));
-  const fitY = (v) => (H <= bh ? -(bh - H) / 2 : clamp(v - bh / 2, 0, H - bh));
-  const cx = fitX(tx), cy = fitY(ty);
-  if (!G.cam.ready) { G.cam.fx = cx; G.cam.fy = cy; G.cam.ready = true; }
-  G.cam.fx += (cx - G.cam.fx) * 0.15; G.cam.fy += (cy - G.cam.fy) * 0.15;
-  if (G.camManual) { G.cam.tx = G.cam.fx; G.cam.ty = G.cam.fy; }
-  const camX = Math.round(G.cam.fx), camY = Math.round(G.cam.fy);
+  if (!G.cam.ready) { G.cam.cx = tx; G.cam.cy = ty; G.cam.ready = true; }
+  G.cam.cx += (tx - G.cam.cx) * 0.18; G.cam.cy += (ty - G.cam.cy) * 0.18;
+  if (Math.abs(tx - G.cam.cx) < 0.05) G.cam.cx = tx;
+  if (Math.abs(ty - G.cam.cy) < 0.05) G.cam.cy = ty;
+  // มือถือ: ถ้ามีหน้าต่าง YouTube/แชร์จอบังกลางจอ ให้ตัวละครอยู่กลางพื้นที่ที่เหลือด้านล่าง
+  const topOff = G.dockBottom || 0;
+  const botOff = 86; // แถบเครื่องมือด้านล่าง
+  const camX = Math.round(G.cam.cx - vw / 2), camY = Math.round(G.cam.cy - (topOff + ch - botOff) / 2 / scale);
   G.cam.x = camX; G.cam.y = camY;
 
   const b = bctx;
@@ -3577,6 +3580,8 @@ function setMic(patch) {
 }
 function updateZones() {
   if (!G.joined) return;
+  const dock = $('#dock');
+  G.dockBottom = isMobile() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
   const z = zoneAt(G.me.x, G.me.y);
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {

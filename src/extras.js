@@ -31,6 +31,8 @@ function setMic(patch) {
 }
 function updateZones() {
   if (!G.joined) return;
+  const dock = $('#dock');
+  G.dockBottom = isMobile() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
   const z = zoneAt(G.me.x, G.me.y);
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
