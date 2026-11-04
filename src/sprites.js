@@ -117,7 +117,10 @@ function charSprite(look, dir, frame, pose, blink) {
     const bc = CLOTH_COLORS[look.bc], bcD = shade(bc, -0.22);
     const shoe = '#4a3a4a';
     const dress = look.top === 'dress';
-    const legC = dress ? skin : bc, legD = dress ? skinD : bcD;
+    const fem = look.sex === 'f';
+    // ผู้หญิง: ใส่กระโปรงอัตโนมัติ (ยกเว้นชุดเดรส/เอี๊ยม) ให้ต่างจากผู้ชายชัดๆ
+    const skirt = fem && !dress && look.top !== 'overall';
+    const legC = dress || skirt ? skin : bc, legD = dress || skirt ? skinD : bcD;
     const side = d === 'left';
     const EYE = '#2e2235';
 
@@ -142,6 +145,9 @@ function charSprite(look, dir, frame, pose, blink) {
     U(7, 19, 8, 7, tc);
     U(14, 19, 1, 7, tcD); U(7, 25, 8, 1, tcD);
     if (dress) { U(6, 23, 10, 3, tc); U(5, 25, 12, 2, tc); U(5, 27, 12, 1, tcD); U(15, 23, 1, 3, tcD); }
+    if (skirt) { U(7, 24, 8, 2, bc); U(6, 25, 10, 2, bc); U(5, 27, 12, 1, bc); U(5, 28, 12, 1, bcD); U(9, 26, 1, 2, bcD); U(13, 26, 1, 2, bcD); }
+    if (fem) { U(7, 22, 1, 2, tcD); U(14, 22, 1, 2, tcD); } // เอวคอด
+    else { U(6, 19, 10, 1, tc); U(15, 19, 1, 1, tcD); }     // ไหล่กว้าง
     if (side) {
       const sw = frame === 1 ? -1 : frame === 3 ? 1 : 0;
       U(10 + sw, 20, 2, 3, tcD); U(10 + sw, 23, 2, 1, skin);
@@ -171,14 +177,17 @@ function charSprite(look, dir, frame, pose, blink) {
       if (blink) { U(7, 13, 2, 1, EYE); U(13, 13, 2, 1, EYE); }
       else { U(7, 12, 2, 2, EYE); U(13, 12, 2, 2, EYE); U(7, 12, 1, 1, '#ffffff'); U(13, 12, 1, 1, '#ffffff'); }
       U(5, 14, 2, 1, '#ff9fb0'); U(15, 14, 2, 1, '#ff9fb0');
-      if (look.sex === 'f') { U(6, 12, 1, 1, EYE); U(15, 12, 1, 1, EYE); U(10, 15, 2, 1, '#e0607a'); }
-      else { U(7, 11, 2, 1, hcD); U(13, 11, 2, 1, hcD); U(10, 15, 2, 1, '#c0605a'); }
+      if (fem) {
+        if (!blink) { U(7, 11, 2, 1, EYE); U(13, 11, 2, 1, EYE); U(7, 14, 2, 1, '#5a4f78'); U(13, 14, 2, 1, '#5a4f78'); }
+        U(6, 11, 1, 1, EYE); U(15, 11, 1, 1, EYE); U(6, 12, 1, 1, EYE); U(15, 12, 1, 1, EYE); // ขนตางอน
+        U(5, 14, 2, 2, '#ff7f9c'); U(15, 14, 2, 2, '#ff7f9c'); U(10, 15, 2, 1, '#e8506e'); U(10, 16, 2, 1, '#ff8fab');
+      } else { U(6, 10, 3, 1, hcD); U(13, 10, 3, 1, hcD); U(10, 15, 2, 1, '#a8584f'); }
     } else if (side) {
       if (blink) U(5, 13, 2, 1, EYE);
       else { U(5, 12, 2, 2, EYE); U(5, 12, 1, 1, '#ffffff'); }
       U(4, 14, 2, 1, '#ff9fb0');
-      if (look.sex === 'f') { U(4, 12, 1, 1, EYE); U(6, 15, 1, 1, '#e0607a'); }
-      else { U(5, 11, 2, 1, hcD); U(6, 15, 1, 1, '#c0605a'); }
+      if (fem) { U(4, 11, 1, 2, EYE); if (!blink) U(5, 11, 2, 1, EYE); U(4, 14, 2, 2, '#ff7f9c'); U(5, 15, 2, 1, '#e8506e'); }
+      else { U(4, 10, 3, 1, hcD); U(6, 15, 1, 1, '#a8584f'); }
     }
 
     // ---------- ผม ----------
@@ -203,6 +212,15 @@ function charSprite(look, dir, frame, pose, blink) {
       if (style === 'long') { U(13, 9, 5, 13, hc); U(13, 21, 5, 1, hcD); }
       if (style === 'bob') { U(12, 9, 6, 9, hc); U(12, 17, 6, 1, hcD); }
       if (style === 'twin') { U(17, 9, 3, 9, hc); U(17, 9, 3, 1, '#ff6b8a'); }
+    }
+    const shortStyle = style === 'short' || style === 'spiky' || style === 'bun';
+    if (fem && shortStyle) { // ผู้หญิงผมสั้นก็ยังมีปอยผมยาวถึงไหล่
+      if (d === 'down') { U(3, 8, 2, 11, hc); U(17, 8, 2, 11, hc); U(3, 18, 2, 1, hcD); U(17, 18, 2, 1, hcD); }
+      else if (d === 'up') { U(4, 17, 14, 3, hc); U(5, 19, 12, 1, hcD); }
+      else { U(12, 9, 6, 11, hc); U(12, 19, 6, 1, hcD); }
+    }
+    if (fem && (look.acc === 'none' || look.acc === 'glasses' || look.acc === 'shades') && d !== 'up') {
+      const cx = side ? 7 : 14; U(cx, 6, 3, 2, '#ff6b8a'); U(cx + 1, 6, 1, 1, '#ffd0dc'); // กิ๊บติดผม
     }
     if (style === 'spiky') { U(4, 3, 1, 2, hc); U(5, 2, 2, 1, hc); U(8, 1, 2, 2, hc); U(12, 1, 2, 2, hc); U(15, 2, 2, 1, hc); U(17, 3, 1, 2, hc); }
     if (style === 'bun') { U(8, 0, 6, 3, hc); U(9, -1, 4, 1, hc); U(9, 0, 2, 1, hcL); }
@@ -547,6 +565,67 @@ const FURN = {
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 30 - fx / 3, sy + 22, 4, 2); ctx.fillRect(sx + 28 - fx / 3, sy + 23, 1, 1);
     const r = Math.floor(t * 2) % 6;
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(sx + 34 - r, sy + 8, 2 + r * 2, 1);
+  } },  // ---------------- คาราโอเกะ ----------------
+  speaker: { label: 'ลำโพง', emo: '🔊', w: 18, h: 32, solid: true, foot: 7, draw(P) {
+    P(0, 0, 18, 32, '#2f3245'); P(1, 0, 16, 1, '#43475e'); P(0, 30, 18, 2, '#1d1f2e');
+    P(5, 3, 8, 6, '#1d1f2e'); P(7, 5, 4, 2, '#5a5f7a');
+    P(3, 12, 12, 13, '#1d1f2e'); P(1, 14, 16, 9, '#1d1f2e'); P(5, 15, 8, 7, '#43475e'); P(7, 17, 4, 3, '#5a5f7a');
+  },
+  anim(ctx, sx, sy, t) {
+    const k = Math.sin(t * 9) > 0.2 ? 1 : 0;
+    ctx.fillStyle = '#5a5f7a'; ctx.fillRect(sx + 5 - k, sy + 15 - k, 8 + k * 2, 7 + k * 2);
+    ctx.fillStyle = '#9aa0b8'; ctx.fillRect(sx + 8, sy + 17, 2, 3);
+    ctx.fillStyle = ['#ff5fa2', '#5fd8ff', '#ffe066'][Math.floor(t * 3) % 3]; ctx.fillRect(sx + 8, sy + 27, 2, 1);
+  } },
+  micStand: { label: 'ไมค์ร้องเพลง', emo: '🎤', w: 12, h: 30, solid: true, foot: 3, draw(P) {
+    P(4, 0, 4, 6, '#43475e'); P(4, 0, 4, 1, '#9aa0b8'); P(5, 1, 1, 4, '#5a5f7a'); P(3, 6, 6, 1, '#2f3245');
+    P(5, 7, 2, 20, '#9aa0b8'); P(5, 7, 1, 20, '#c8ccd8'); P(1, 27, 10, 2, '#5a5f7a'); P(2, 29, 8, 1, '#2f3245');
+    P(6, 10, 4, 1, '#ff8fab');
+  } },
+  // ---------------- ผับ ----------------
+  bottleShelf: { label: 'ชั้นขวดเครื่องดื่ม', emo: '🍾', w: 46, h: 34, solid: true, foot: 6, draw(P) {
+    P(0, 0, 46, 34, WOOD.dd); P(1, 0, 44, 1, WOOD.d);
+    const cols = ['#62b56c', '#c96a4a', '#ffd34d', '#7ec8ff', '#b48cf0', '#e8505b', '#f4f1e8'];
+    for (let s = 0; s < 3; s++) {
+      const y0 = 2 + s * 10;
+      P(2, y0, 42, 8, '#3a2418');
+      for (let i = 0; i < 7; i++) {
+        const c = cols[(i + s * 3) % 7], x = 3 + i * 6, h = 5 + ((i + s) % 3);
+        P(x + 1, y0 + 8 - h, 3, h, c); P(x + 2, y0 + 8 - h - 2, 1, 2, c); P(x + 1, y0 + 8 - h, 1, h, shade(c, 0.35));
+      }
+      P(1, y0 + 8, 44, 2, WOOD.d);
+    }
+  } },
+  barCounter: { label: 'บาร์', emo: '🍺', w: 112, h: 39, solid: true, foot: 12, draw(P) {
+    P(0, 9, 112, 8, '#c98d58'); P(0, 9, 112, 2, '#e6b07a'); P(0, 17, 112, 20, WOOD.dd); P(0, 35, 112, 2, '#3a2418');
+    for (let x = 4; x < 108; x += 18) { P(x, 20, 14, 13, '#5a3824'); P(x + 1, 21, 12, 1, '#7a4e34'); }
+    P(0, 17, 112, 1, '#ffd34d');
+    // ก๊อกเบียร์ + แก้ว
+    P(14, 1, 3, 8, '#c8ccd8'); P(12, 0, 7, 2, '#9aa0b8'); P(20, 1, 3, 8, '#c8ccd8'); P(18, 0, 7, 2, '#9aa0b8');
+    P(44, 10, 5, 6, '#ffd34d'); P(44, 9, 5, 2, '#ffffff'); P(49, 11, 1, 3, '#f4f1e8');
+    P(70, 10, 5, 6, '#ff8fab'); P(71, 9, 3, 1, '#8fd694'); P(92, 11, 6, 4, '#7ec8ff');
+  } },
+  barStool: { label: 'เก้าอี้บาร์', emo: '🪑', w: 14, h: 18, solid: false, variants: 6,
+    seats: () => [{ dx: 0, dy: -7, dir: 'up', over: true }],
+    draw(P, v) {
+      const [m, d, l] = COLORWAYS[(v + 1) % 6];
+      P(1, 0, 12, 5, m); P(2, 0, 10, 1, l); P(1, 4, 12, 1, d);
+      P(6, 5, 2, 10, '#9aa0b8'); P(3, 10, 8, 1, '#9aa0b8'); P(3, 15, 8, 2, '#5a5f7a');
+    } },
+  dartboard: { label: 'ปาเป้า', emo: '🎯', w: 22, h: 34, solid: true, foot: 4, draw(P) {
+    P(10, 18, 2, 14, WOOD.d); P(5, 31, 12, 3, WOOD.dd);
+    P(3, 0, 16, 18, '#2f3245'); P(1, 2, 20, 14, '#2f3245');
+    P(4, 2, 14, 14, '#f4f1e8'); P(3, 4, 16, 10, '#f4f1e8');
+    P(6, 4, 10, 10, '#e8505b'); P(5, 6, 12, 6, '#e8505b'); P(8, 6, 6, 6, '#62b56c'); P(10, 8, 2, 2, '#e8505b');
+    P(13, 5, 1, 3, '#ffd34d'); P(7, 9, 3, 1, '#7ec8ff');
+  } },
+  poolTable: { label: 'โต๊ะพูล', emo: '🎱', w: 66, h: 38, solid: true, foot: 28, draw(P) {
+    P(0, 0, 66, 30, '#74482a'); P(1, 1, 64, 2, '#9a6438');
+    P(4, 4, 58, 22, '#2f9a5a'); P(5, 5, 56, 1, '#4fb878');
+    for (const [x, y] of [[3, 3], [31, 2], [60, 3], [3, 24], [31, 25], [60, 24]]) P(x, y, 3, 3, '#1d1f2e');
+    P(0, 30, 66, 4, '#5a3824'); P(3, 34, 4, 4, '#3a2418'); P(59, 34, 4, 4, '#3a2418');
+    P(14, 14, 3, 3, '#ffffff'); P(42, 10, 3, 3, '#e8505b'); P(46, 13, 3, 3, '#ffd34d'); P(42, 16, 3, 3, '#7d9cf0'); P(49, 10, 3, 3, '#2f3245');
+    P(18, 15, 22, 1, '#e6b07a');
   } },
 };
 

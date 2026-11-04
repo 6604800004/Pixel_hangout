@@ -1,18 +1,26 @@
 // ============================================================================
 // world.js — แผนที่ห้อง พื้น ผนัง หน้าต่างตามเวลาจริง การชน และการหาเส้นทาง
 // ============================================================================
-const W = 512, H = 600, WALL = 58;
+const W = 512, H = 856, WALL = 58;
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
 const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
+// ชั้นล่างสุด: ห้องคาราโอเกะ (ซ้าย) + ผับ (ขวา) — เข้าผับจากสวน, เข้าคาราโอเกะจากในผับ
+const LOWER2_Y = 600, LOWER2_FLOOR = 630, DIVIDER2_X = 256;
+const DOOR_PUB = { x: 424, w: 32, y: LOWER2_Y, zone: 'pub' };
+const DOOR_KARAOKE = { x: DIVIDER2_X, y: 740, h: 34, zone: 'karaoke', side: true };
+const DANCE = { x: 84, y: 692, w: 88, h: 44 };
 const ZONES = {
   hall: { id: 'hall', name: 'ห้องรวม', icon: '🏠' },
   meet: { id: 'meet', name: 'ห้องประชุม', icon: '🔒' },
   garden: { id: 'garden', name: 'สวน', icon: '🌿' },
+  karaoke: { id: 'karaoke', name: 'ห้องคาราโอเกะ', icon: '🎤' },
+  pub: { id: 'pub', name: 'ผับ', icon: '🍻' },
 };
 function zoneAt(x, y) {
   if (y < LOWER_Y + 16) return 'hall';
-  return x < DIVIDER_X + 3 ? 'meet' : 'garden';
+  if (y < LOWER2_Y + 16) return x < DIVIDER_X + 3 ? 'meet' : 'garden';
+  return x < DIVIDER2_X + 3 ? 'karaoke' : 'pub';
 }
 const WORK_X = 256;
 const KITCHEN = { x: 4, y: 262, w: 132, h: 86 };
@@ -41,9 +49,21 @@ const DEFAULT_LAYOUT = [
   { t: 'flowerBed', v: 0, x: 336, y: 404 }, { t: 'tree', v: 0, x: 348, y: 470 }, { t: 'tree', v: 1, x: 482, y: 446 },
   { t: 'pond', x: 430, y: 530 }, { t: 'bench', x: 350, y: 572 }, { t: 'flowerBed', v: 2, x: 486, y: 590 },
   { t: 'flowerBed', v: 1, x: 486, y: 486 }, { t: 'beanbag', v: 4, x: 400, y: 590 }, { t: 'floorLamp', x: 318, y: 540 },
+  // ---- ห้องคาราโอเกะ ----
+  { t: 'bigScreen', x: 128, y: 680 }, { t: 'speaker', x: 66, y: 682 }, { t: 'speaker', x: 190, y: 682 },
+  { t: 'micStand', x: 106, y: 716 }, { t: 'micStand', x: 150, y: 716 },
+  { t: 'coffeeTable', x: 128, y: 782 }, { t: 'sofa', x: 98, y: 816, v: 4, f: 1 }, { t: 'sofa', x: 158, y: 816, v: 1, f: 1 },
+  { t: 'beanbag', v: 5, x: 36, y: 780 }, { t: 'beanbag', v: 2, x: 220, y: 790 }, { t: 'plant', v: 2, x: 18, y: 850 }, { t: 'plant', v: 0, x: 238, y: 850 },
+  // ---- ผับ ----
+  { t: 'bottleShelf', x: 344, y: 666 }, { t: 'bottleShelf', x: 396, y: 666 }, { t: 'barCounter', x: 366, y: 704 },
+  { t: 'barStool', x: 326, y: 722 }, { t: 'barStool', x: 352, y: 722 }, { t: 'barStool', x: 378, y: 722 }, { t: 'barStool', x: 404, y: 722 },
+  { t: 'tv', x: 482, y: 676 }, { t: 'dartboard', x: 496, y: 760 }, { t: 'poolTable', x: 424, y: 800 },
+  { t: 'roundTable', x: 304, y: 800 }, { t: 'armchair', x: 278, y: 806, v: 2 }, { t: 'armchair', x: 330, y: 806, v: 5 },
+  { t: 'plant', v: 1, x: 498, y: 850 }, { t: 'floorLamp', x: 270, y: 700 },
 ];
-const LAYOUT_VERSION = 2;
+const LAYOUT_VERSION = 3;
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
+const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
 
 // ---------- ท้องฟ้าตามเวลาจริงของคนดู ----------
 function skyAt(date) {
@@ -180,6 +200,52 @@ function buildBackground() {
   // ป้ายห้องประชุม
   P(28, LOWER_Y + 9, 40, 11, '#3a3150'); P(30, LOWER_Y + 11, 36, 7, '#5a4f78');
   for (let i = 0; i < 6; i++) P(33 + i * 5, LOWER_Y + 13, 3, 3, '#ffe07a');
+  // ================= ชั้นล่างสุด: คาราโอเกะ + ผับ =================
+  // พื้นคาราโอเกะ: พรมกรมท่ามีประกายดาว
+  for (let y = LOWER2_FLOOR; y < H; y += 8) for (let x = 0; x < DIVIDER2_X + 3; x += 8) {
+    P(x, y, 8, 8, ((x / 8 + y / 8) | 0) % 2 ? '#2f2a5a' : '#352f66');
+    if (rnd() > 0.9) P(x + 3, y + 3, 1, 1, ['#ff8fab', '#7ec8ff', '#ffe07a'][Math.floor(rnd() * 3)]);
+  }
+  // ขอบเวทีเต้น
+  P(DANCE.x - 3, DANCE.y - 3, DANCE.w + 6, DANCE.h + 6, '#1d1b3a'); P(DANCE.x - 2, DANCE.y - 2, DANCE.w + 4, 1, '#ffe07a');
+  // พื้นผับ: ไม้สีเข้ม
+  for (let y = LOWER2_FLOOR, row = 0; y < H; y += 8, row++) {
+    let x = DIVIDER2_X + 3 - ((row * 19) % 36);
+    while (x < W) {
+      const len = 26 + Math.floor(rnd() * 22);
+      P(Math.max(x, DIVIDER2_X + 3), y, len, 8, ['#7a4e34', '#6f4630', '#84573a'][Math.floor(rnd() * 3)]);
+      P(Math.max(x, DIVIDER2_X + 3), y, len, 1, '#946446'); P(x + len - 1, y, 1, 8, '#4f3020');
+      x += len;
+    }
+  }
+  // ผนังหน้า (เว้นประตูผับ)
+  for (let x = 0; x < W; x++) {
+    if (x >= DOOR_PUB.x && x < DOOR_PUB.x + DOOR_PUB.w) continue;
+    const pub = x >= DIVIDER2_X + 3;
+    if (!pub) {
+      P(x, LOWER2_Y + 6, 1, LOWER2_FLOOR - LOWER2_Y - 6, (x % 12) < 6 ? '#3a2f6e' : '#41357a');
+      P(x, LOWER2_FLOOR - 4, 1, 4, '#231d47');
+    } else {
+      const brick = ((x + (((LOWER2_Y + 6) / 6) | 0) * 7) % 14) === 0;
+      P(x, LOWER2_Y + 6, 1, LOWER2_FLOOR - LOWER2_Y - 6, '#9a4a3a');
+      for (let y = LOWER2_Y + 11; y < LOWER2_FLOOR - 4; y += 6) P(x, y, 1, 1, '#7a3428');
+      if (brick) P(x, LOWER2_Y + 6, 1, LOWER2_FLOOR - LOWER2_Y - 10, '#7a3428');
+      P(x, LOWER2_FLOOR - 4, 1, 4, '#4f3020');
+    }
+    P(x, LOWER2_Y, 1, 6, pub ? '#4f3020' : '#231d47');
+    P(x, LOWER2_Y, 1, 1, pub ? '#6f4630' : '#3a2f6e');
+  }
+  // ประตูผับจากสวน
+  { const d = DOOR_PUB;
+    for (let y = LOWER2_Y; y < LOWER2_FLOOR; y += 4) for (let x = d.x; x < d.x + d.w; x += 4) P(x, y, 4, 4, ((x + y) / 4 | 0) % 2 ? '#7a4e34' : '#84573a');
+    P(d.x - 2, LOWER2_Y, 2, LOWER2_FLOOR - LOWER2_Y, '#e0954a'); P(d.x + d.w, LOWER2_Y, 2, LOWER2_FLOOR - LOWER2_Y, '#e0954a');
+    P(d.x + 3, LOWER2_Y - 9, d.w - 6, 7, '#ffb86b'); P(d.x + 4, LOWER2_Y - 8, d.w - 8, 5, '#ffd8a8');
+  }
+  // ผนังกั้นคาราโอเกะ | ผับ (มีประตูตรงกลาง)
+  const k = DOOR_KARAOKE;
+  P(DIVIDER2_X, LOWER2_Y, 6, k.y - LOWER2_Y, '#231d47'); P(DIVIDER2_X, k.y + k.h, 6, H - k.y - k.h, '#231d47');
+  P(DIVIDER2_X, LOWER2_Y, 1, k.y - LOWER2_Y, '#3a2f6e'); P(DIVIDER2_X, k.y + k.h, 1, H - k.y - k.h, '#3a2f6e');
+  P(DIVIDER2_X - 1, k.y - 2, 8, 2, '#ff8fab'); P(DIVIDER2_X - 1, k.y + k.h, 8, 2, '#ff8fab');
   // ---- ขอบห้อง ----
   P(0, 0, 3, H, '#3a2c3f'); P(W - 3, 0, 3, H, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f');
   return c;
@@ -212,6 +278,27 @@ function drawLiveWall(ctx, now, t) {
     ctx.fillStyle = gr; ctx.fillRect(w.x, w.y, w.w, w.h);
     ctx.fillStyle = '#fff6e8'; ctx.fillRect(w.x + w.w / 2 - 1, w.y, 2, w.h);
   }
+  // ---- คาราโอเกะ: ป้ายนีออน + ลูกบอลดิสโก้ + พื้นเต้นไฟวิบวับ ----
+  const neon = ['#ff5fa2', '#5fd8ff', '#ffe066', '#b47dff'];
+  const on = Math.floor(t * 2) % 6 !== 0;
+  ctx.fillStyle = on ? neon[Math.floor(t / 2) % 4] : '#5a4f78';
+  for (let i = 0; i < 7; i++) ctx.fillRect(18 + i * 9, LOWER2_Y + 12, 6, 2), ctx.fillRect(18 + i * 9, LOWER2_Y + 18, 6, 2), ctx.fillRect(18 + i * 9 + (i % 2) * 4, LOWER2_Y + 14, 2, 4);
+  const bx = 128, by = LOWER2_Y + 16;
+  ctx.fillStyle = '#9aa0b8'; ctx.fillRect(bx, LOWER2_Y + 6, 1, 4);
+  ctx.fillStyle = '#c8ccd8'; ctx.fillRect(bx - 4, by - 5, 9, 10); ctx.fillRect(bx - 5, by - 3, 11, 6);
+  for (let i = 0; i < 6; i++) { ctx.fillStyle = neon[(i + Math.floor(t * 4)) % 4]; ctx.fillRect(bx - 4 + ((i * 3) % 9), by - 4 + ((i * 5) % 8), 2, 2); }
+  for (let gy = 0; gy < DANCE.h; gy += 11) for (let gx = 0; gx < DANCE.w; gx += 11) {
+    const k2 = (gx / 11 + gy / 11 + Math.floor(t * 3)) % 4;
+    ctx.fillStyle = neon[k2]; ctx.globalAlpha = 0.55 + 0.25 * Math.sin(t * 4 + gx);
+    ctx.fillRect(DANCE.x + gx, DANCE.y + gy, 10, 10);
+  }
+  ctx.globalAlpha = 1;
+  // ---- ผับ: ป้ายนีออน PUB ----
+  ctx.fillStyle = Math.floor(t * 1.3) % 7 ? '#ffb86b' : '#7a4e34';
+  const px = 470, py = LOWER2_Y + 10;
+  ctx.fillRect(px, py, 2, 12); ctx.fillRect(px, py, 6, 2); ctx.fillRect(px + 5, py, 2, 6); ctx.fillRect(px, py + 5, 6, 2);
+  ctx.fillRect(px + 10, py, 2, 12); ctx.fillRect(px + 15, py, 2, 12); ctx.fillRect(px + 10, py + 10, 7, 2);
+  ctx.fillRect(px + 20, py, 2, 12); ctx.fillRect(px + 20, py, 6, 2); ctx.fillRect(px + 20, py + 5, 6, 2); ctx.fillRect(px + 20, py + 10, 7, 2); ctx.fillRect(px + 25, py + 1, 2, 4); ctx.fillRect(px + 26, py + 6, 2, 5);
   // เข็มนาฬิกา
   const hrs = (now.getHours() % 12) + now.getMinutes() / 60;
   const hand = (a, len, col) => {
@@ -238,7 +325,12 @@ function solidRects(furniture) {
   let x0 = 0;
   for (const d of [...DOORS].sort((a, b) => a.x - b.x)) { list.push({ x: x0, y: LOWER_Y - 2, w: d.x - x0, h: LOWER_FLOOR - LOWER_Y + 2 }); x0 = d.x + d.w; }
   list.push({ x: x0, y: LOWER_Y - 2, w: W - x0, h: LOWER_FLOOR - LOWER_Y + 2 });
-  list.push({ x: DIVIDER_X - 1, y: LOWER_Y - 2, w: 8, h: H - LOWER_Y + 2 });
+  list.push({ x: DIVIDER_X - 1, y: LOWER_Y - 2, w: 8, h: LOWER2_Y - LOWER_Y + 2 });
+  // ผนังชั้นล่างสุด (เว้นประตูผับ) + ผนังกั้นคาราโอเกะ|ผับ (เว้นประตู)
+  list.push({ x: 0, y: LOWER2_Y - 2, w: DOOR_PUB.x, h: LOWER2_FLOOR - LOWER2_Y + 2 });
+  list.push({ x: DOOR_PUB.x + DOOR_PUB.w, y: LOWER2_Y - 2, w: W - DOOR_PUB.x - DOOR_PUB.w, h: LOWER2_FLOOR - LOWER2_Y + 2 });
+  list.push({ x: DIVIDER2_X - 1, y: LOWER2_Y - 2, w: 8, h: DOOR_KARAOKE.y - LOWER2_Y + 2 });
+  list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: H - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
   return list;
 }
 function hitsRects(rects, x, y) {

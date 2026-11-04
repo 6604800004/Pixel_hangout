@@ -20,6 +20,8 @@ const ZONE_TIPS = {
   hall: 'ได้ยินเฉพาะคนที่อยู่ในรัศมีไมค์',
   meet: 'ห้องส่วนตัว — ได้ยินทุกคนในห้อง คนข้างนอกไม่ได้ยิน',
   garden: 'ได้ยินทุกคนในสวน',
+  karaoke: 'ห้องส่วนตัว — ร้องเพลงได้เต็มที่ คนข้างนอกไม่ได้ยิน',
+  pub: 'ห้องส่วนตัว — ได้ยินทุกคนในผับ คนข้างนอกไม่ได้ยิน',
 };
 const peerRange = (p) => clamp(Number(p.mr) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
 const peerRingColor = (p) => MIC_COLORS[Number.isInteger(p.mc) && p.mc >= 0 && p.mc < MIC_COLORS.length ? p.mc : 0];
@@ -82,9 +84,10 @@ function drawHearingRange(b, t) {
 function drawDoorLabels(c, camX, camY, scale) {
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = '500 11px Mitr, sans-serif';
-  for (const d of DOORS) {
+  for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE]) {
     const Z = ZONES[d.zone];
-    const sx = (d.x + d.w / 2 - camX) * scale, sy = (LOWER_Y - 16 - camY) * scale;
+    const sx = d.side ? (d.x + 44 - camX) * scale : (d.x + d.w / 2 - camX) * scale;
+    const sy = d.side ? (d.y + d.h / 2 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
     const label = `${Z.icon} ${Z.name}`;
     const w = c.measureText(label).width + 14;
     c.fillStyle = 'rgba(46,34,53,.82)';
@@ -236,7 +239,8 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    for (let i = LAYOUT_V2_FROM; i < DEFAULT_LAYOUT.length; i++) {
+    const from = G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       if (G.furnDocs.some((d) => d.id === id)) continue;
       const d = DEFAULT_LAYOUT[i];
@@ -673,4 +677,4 @@ $('#micPopClose').onclick = () => setMicPop(false);
 G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|TikTok/i.test(navigator.userAgent);
 
 // สำหรับทดสอบ: เปิดด้วย #debug
-if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT };
+if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
