@@ -41,12 +41,12 @@ function makeVoice(net, onChange) {
   V.speaking = (key) => {
     if (key === net.myKey) return V.mic && !V.deaf && (V.meters.get('me')?.hold || 0) > 0;
     const p = V.peers.get(key);
-    return !!(p && p.allowed) && (V.meters.get(key)?.hold || 0) > 0;
+    return !!(p && p.playOk) && (V.meters.get(key)?.hold || 0) > 0;
   };
   V.videoFor = (key) => {
     if (key === net.myKey) return V.cam && V.videoTrack ? V.selfVideo : null;
     const p = V.peers.get(key);
-    return p && p.hasVideo && p.allowed ? p.videoEl : null;
+    return p && p.hasVideo && p.playOk ? p.videoEl : null;
   };
 
   function tuneOpus(sdp) {
@@ -80,8 +80,9 @@ function makeVoice(net, onChange) {
     peer.audioTx?.sender.replaceTrack(ok ? V.audioTrack || null : null).catch(() => {});
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
     peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
-    peer.audioEl.muted = V.deaf || !ok;
-    if (ok && !V.deaf) peer.audioEl.play().catch(() => {});
+    const play = !!peer.playOk;
+    peer.audioEl.muted = V.deaf || !play;
+    if (play && !V.deaf) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
   V.screenAudience = new Set();
@@ -96,11 +97,13 @@ function makeVoice(net, onChange) {
     const p = V.peers.get(key);
     if (p && Math.abs((p.vol ?? 1) - v) > 0.04) { p.vol = v; try { p.audioEl.volume = v; } catch {} }
   };
-  V.setAudience = (keys) => {
-    V.audience = keys;
+  // sendKeys = คนที่เสียงเราไปถึง (ตามรัศมีไมค์ของเรา), playKeys = คนที่เราได้ยิน (ตามรัศมีไมค์ของเขา)
+  V.playAud = new Set();
+  V.setAudience = (sendKeys, playKeys = sendKeys) => {
+    V.audience = sendKeys; V.playAud = playKeys;
     for (const p of V.peers.values()) {
-      const ok = keys.has(p.key);
-      if (ok !== p.allowed) { p.allowed = ok; apply(p); }
+      const ok = sendKeys.has(p.key), pl = playKeys.has(p.key);
+      if (ok !== p.allowed || pl !== p.playOk) { p.allowed = ok; p.playOk = pl; apply(p); }
     }
   };
   function create(key, initiator) {
@@ -114,7 +117,7 @@ function makeVoice(net, onChange) {
     screenEl.autoplay = true; screenEl.muted = true; screenEl.playsInline = true; screenEl.setAttribute('playsinline', '');
     sink.append(audioEl, videoEl, screenEl);
     if (V.settings && V.settings.spkId && audioEl.setSinkId) audioEl.setSinkId(V.settings.spkId).catch(() => {});
-    const peer = { key, pc, initiator, audioEl, videoEl, screenEl, audioTx: null, videoTx: null, screenTx: null, hasVideo: false, hasScreen: false, state: 'new', allowed: V.audience.has(key), screenOk: V.screenAudience.has(key) };
+    const peer = { key, pc, initiator, audioEl, videoEl, screenEl, audioTx: null, videoTx: null, screenTx: null, hasVideo: false, hasScreen: false, state: 'new', allowed: V.audience.has(key), playOk: V.playAud.has(key), screenOk: V.screenAudience.has(key) };
     V.peers.set(key, peer);
     pc.onicecandidate = (e) => e.candidate && net.signal(key, { candidate: e.candidate });
     pc.ontrack = (e) => {

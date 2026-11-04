@@ -99,6 +99,7 @@ function fullPresence() {
     say: G.mySay, em: null, dk: G.myDesk ? { slot: G.myDesk, style: G.myDeskStyle } : null, dr: null,
     uid: G.net.uid || null, mic: G.voice && G.voice.mic ? 1 : 0, cam: G.voice && G.voice.cam ? 1 : 0,
     mu: currentMusic() ? { ...currentMusic() } : null,
+    mr: G.micSet.r, mc: G.micSet.c,
   };
 }
 
@@ -1358,6 +1359,28 @@ function paintVoiceSettings() {
   mon.append(vol);
   mon.append(el('p', 'warn', 'ใส่หูฟังก่อนเปิด ไม่งั้นเสียงจะวนจากลำโพงเข้าไมค์จนหอน · ฟังได้แม้ปิดไมค์กับเพื่อนอยู่ (เพื่อนไม่ได้ยิน)'));
   right.append(mon);
+
+  // ---- รัศมีไมค์ (ห้องรวม) ----
+  const mr = el('div', 'mon');
+  mr.style.borderColor = MIC_COLORS[G.micSet.c];
+  mr.append(el('b', null, '⭕ รัศมีไมค์ (ห้องรวม)'));
+  mr.append(el('p', 'tip', 'เสียงคุณไปถึงเฉพาะคนที่อยู่ในวงนี้ (ในห้องประชุมและสวนได้ยินทั้งห้องเสมอ) ดูวงได้รอบตัวละครตอนเปิดหน้านี้'));
+  const colRow = el('div', 'row'); colRow.style.marginTop = '8px';
+  MIC_COLORS.forEach((c, i) => {
+    const b = el('button', 'sw' + (G.micSet.c === i ? ' sel' : '')); b.type = 'button'; b.style.background = c;
+    b.onclick = () => { setMic({ c: i }); paintVoiceSettings(); };
+    colRow.append(b);
+  });
+  mr.append(colRow);
+  const rl = el('div', 'vbtns'); rl.style.alignItems = 'center';
+  const rangeLabel = el('span', 'tip', '');
+  const paintR = () => (rangeLabel.textContent = `ระยะ ${G.micSet.r <= 90 ? 'กระซิบ' : G.micSet.r <= 150 ? 'ปกติ' : G.micSet.r <= 210 ? 'ดัง' : 'ตะโกน'} (${G.micSet.r})`);
+  const rr = el('input'); rr.type = 'range'; rr.min = String(MIC_R_MIN); rr.max = String(MIC_R_MAX); rr.step = '5'; rr.value = String(G.micSet.r);
+  rr.style.accentColor = MIC_COLORS[G.micSet.c];
+  rr.oninput = () => { setMic({ r: Number(rr.value) }); paintR(); };
+  paintR();
+  mr.append(rr); rl.append(rangeLabel); mr.append(rl);
+  right.append(mr);
 
   const opt = el('div', 'opt');
   opt.append(el('span', null, 'คุณภาพเสียง'));

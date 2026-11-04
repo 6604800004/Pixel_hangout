@@ -8,51 +8,71 @@ function othersInZone(z) {
   for (const rt of G.others.values()) if (Number.isFinite(rt.p.x) && zoneAt(rt.p.x, rt.p.y) === z) keys.add(rt.key);
   return keys;
 }
-// ห้องรวม: ได้ยินเฉพาะคนที่อยู่ใกล้ (ไกลเกินจะไม่ได้ยินเลย)
+// ห้องรวม: เสียงไปได้ไกลตาม "รัศมีไมค์" ของแต่ละคน (ปรับเองได้) ไกลเกินจะไม่ได้ยินเลย
 // ห้องประชุม / สวน: ได้ยินทุกคนในห้องเดียวกัน
-const HEAR_R = 130, HEAR_R_OUT = 150, HEAR_FULL = 70;
-G.audible = new Set();
+const MIC_R_MIN = 60, MIC_R_MAX = 260, MIC_R_DEFAULT = 130, MIC_HYST = 20;
+const MIC_COLORS = ['#3fd07a', '#ff8fab', '#7d9cf0', '#ffe07a', '#b48cf0', '#6cc6d9', '#ffb86b', '#ffffff', '#e8505b'];
+G.micSet = Object.assign({ r: MIC_R_DEFAULT, c: 0 }, lsGet('pixel.mic', {}));
+G.micSet.r = clamp(Number(G.micSet.r) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
+if (!(G.micSet.c >= 0 && G.micSet.c < MIC_COLORS.length)) G.micSet.c = 0;
+G.audible = new Set(); G.sendTo = new Set();
 const ZONE_TIPS = {
-  hall: 'ได้ยินเสียงเฉพาะคนที่อยู่ใกล้ๆ',
+  hall: 'ได้ยินเฉพาะคนที่อยู่ในรัศมีไมค์',
   meet: 'ห้องส่วนตัว — ได้ยินทุกคนในห้อง คนข้างนอกไม่ได้ยิน',
   garden: 'ได้ยินทุกคนในสวน',
 };
+const peerRange = (p) => clamp(Number(p.mr) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
+const peerRingColor = (p) => MIC_COLORS[Number.isInteger(p.mc) && p.mc >= 0 && p.mc < MIC_COLORS.length ? p.mc : 0];
+function setMic(patch) {
+  Object.assign(G.micSet, patch);
+  G.micSet.r = clamp(Math.round(G.micSet.r), MIC_R_MIN, MIC_R_MAX);
+  lsSet('pixel.mic', G.micSet);
+  pres({ mr: G.micSet.r, mc: G.micSet.c });
+}
 function updateZones() {
   if (!G.joined) return;
   const z = zoneAt(G.me.x, G.me.y);
-  const audible = new Set();
+  const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
     if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== z) continue;
+    if (z !== 'hall') { hear.add(rt.key); send.add(rt.key); if (G.voice) G.voice.setVolume(rt.key, 1); continue; }
     const d = Math.hypot(rt.x - G.me.x, rt.y - G.me.y);
-    let vol = 1;
-    if (z === 'hall') {
-      if (d > (G.audible.has(rt.key) ? HEAR_R_OUT : HEAR_R)) continue;
-      vol = clamp(1 - (d - HEAR_FULL) / (HEAR_R_OUT - HEAR_FULL), 0.2, 1);
+    const theirR = peerRange(rt.p), myR = G.micSet.r;
+    if (d < myR + (G.sendTo.has(rt.key) ? MIC_HYST : 0)) send.add(rt.key);
+    if (d < theirR + (G.audible.has(rt.key) ? MIC_HYST : 0)) {
+      hear.add(rt.key);
+      if (G.voice) G.voice.setVolume(rt.key, clamp(1 - (d - theirR * 0.55) / (theirR * 0.45 + MIC_HYST), 0.2, 1));
     }
-    audible.add(rt.key);
-    if (G.voice) G.voice.setVolume(rt.key, vol);
   }
-  G.audible = audible;
+  G.audible = hear; G.sendTo = send;
   if (z !== G.zone) {
     G.zone = z;
     toast(`${ZONES[z].icon} ${ZONES[z].name}` + (G.voice ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
   const chip = $('#zoneChip');
   const n = othersInZone(z).size + 1;
-  const label = `${ZONES[z].icon} ${ZONES[z].name} · ${G.voice && z === 'hall' ? `ได้ยิน ${audible.size} คน` : `${n} คน`}`;
+  const label = `${ZONES[z].icon} ${ZONES[z].name} · ${G.voice && z === 'hall' ? `ได้ยิน ${hear.size} คน` : `${n} คน`}`;
   if (chip.textContent !== label) chip.textContent = label;
-  if (G.voice) { G.voice.setAudience(audible); G.voice.setScreenAudience(othersInZone(z)); }
+  if (G.voice) { G.voice.setAudience(send, hear); G.voice.setScreenAudience(othersInZone(z)); }
 }
-// วงระยะได้ยินรอบตัว (เฉพาะห้องรวม ตอนเปิดไมค์)
-function drawHearingRange(b, t) {
-  if (!G.voice || !G.voice.mic || G.zone !== 'hall') return;
-  b.fillStyle = 'rgba(63,208,122,.55)';
-  const n = 200, off = t * 0.05;
-  for (let i = 0; i < n; i++) {
-    if (i % 2) continue;
+// วงรัศมีไมค์ (เฉพาะห้องรวม): ของเราตอนเปิดไมค์/ตอนตั้งค่า, ของเพื่อนตอนเขากำลังพูด
+function ring(b, x, y, r, color, alpha, t) {
+  b.globalAlpha = alpha;
+  b.fillStyle = color;
+  const n = Math.max(60, Math.round(r * 1.5)), off = t * 0.05;
+  for (let i = 0; i < n; i += 2) {
     const a = (i / n) * Math.PI * 2 + off;
-    b.fillRect(Math.round(G.me.x + Math.cos(a) * HEAR_R), Math.round(G.me.y + Math.sin(a) * HEAR_R * 0.75), 2, 1);
+    b.fillRect(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r * 0.75), 2, 2);
   }
+  b.globalAlpha = 1;
+}
+function drawHearingRange(b, t) {
+  if (!G.voice || G.zone !== 'hall') return;
+  for (const rt of G.others.values()) {
+    if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== 'hall' || !G.voice.speaking(rt.key)) continue;
+    ring(b, rt.x, rt.y, peerRange(rt.p), peerRingColor(rt.p), 0.35, t);
+  }
+  if (G.voice.mic || G.voicePanelOpen) ring(b, G.me.x, G.me.y, G.micSet.r, MIC_COLORS[G.micSet.c], G.voicePanelOpen ? 0.95 : 0.7, t);
 }
 
 // วาดป้ายชื่อห้องที่ประตู (บนจอ)
