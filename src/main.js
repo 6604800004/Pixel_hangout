@@ -10,10 +10,26 @@ const SPEED = 72;
 
 // ---- ล็อกหน้าเว็บไม่ให้ซูม/เลื่อนทั้งหน้า (Safari บน iPad/iPhone ชอบเลื่อนจน UI ด้านบนไปอยู่ใต้แถบเบราว์เซอร์) ----
 const resetPageScroll = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = document.body.scrollTop = 0; };
-['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+// ถ้าหน้าถูกซูมค้างไว้แล้ว (scale > 1) ยอมให้บีบนิ้วออกได้ ไม่งั้นจะติดอยู่
+const pageZoomed = () => !!(window.visualViewport && window.visualViewport.scale > 1.02);
+['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => { if (!pageZoomed()) e.preventDefault(); }, { passive: false }));
 document.addEventListener('touchmove', (e) => {
-  if (e.touches.length > 1) e.preventDefault(); // กันซูมทั้งหน้าด้วยสองนิ้ว (ซูมแผนที่ยังใช้ได้ตามปกติ)
+  if (e.touches.length > 1 && !pageZoomed()) e.preventDefault(); // กันซูมทั้งหน้าด้วยสองนิ้ว (ซูมแผนที่ยังใช้ได้ตามปกติ)
 }, { passive: false });
+function checkPageZoom() {
+  const z = pageZoomed();
+  let tip = document.getElementById('zoomTip');
+  if (z && !tip) {
+    tip = document.createElement('button'); tip.id = 'zoomTip'; tip.className = 'zoomtip';
+    tip.textContent = '🔍 หน้าเว็บถูกซูมอยู่ — ใช้สองนิ้วบีบเข้าเพื่อกลับขนาดปกติ';
+    document.body.append(tip);
+  }
+  if (tip) {
+    tip.classList.toggle('hidden', !z);
+    if (z) { const v = window.visualViewport; tip.style.left = v.offsetLeft + v.width / 2 + 'px'; tip.style.top = v.offsetTop + 8 + 'px'; tip.style.transform = `translateX(-50%) scale(${1 / v.scale})`; }
+  }
+}
+if (window.visualViewport) { ['resize', 'scroll'].forEach((ev) => window.visualViewport.addEventListener(ev, checkPageZoom)); setTimeout(checkPageZoom, 500); }
 window.addEventListener('scroll', resetPageScroll, { passive: true });
 document.addEventListener('focusout', () => setTimeout(resetPageScroll, 60));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resetPageScroll, 60));
