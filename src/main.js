@@ -4,12 +4,15 @@
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const isMobile = () => matchMedia('(max-width: 760px)').matches;
+const LAND_Q = '(max-height: 500px) and (orientation: landscape)';
+const isLand = () => matchMedia(LAND_Q).matches; // มือถือแนวนอน
+const isMobile = () => matchMedia('(max-width: 760px), ' + LAND_Q).matches;
 const EMOTES = ['👋', '😂', '❤️', '👍', '🎉', '😮', '🔥', '😴', '🥳', '✨'];
 const SPEED = 72;
 
 // ---- ล็อกหน้าเว็บไม่ให้ซูม/เลื่อนทั้งหน้า (Safari บน iPad/iPhone ชอบเลื่อนจน UI ด้านบนไปอยู่ใต้แถบเบราว์เซอร์) ----
-const resetPageScroll = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = document.body.scrollTop = 0; };
+const isTyping = () => ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+const resetPageScroll = () => { if (isTyping()) return; if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = document.body.scrollTop = 0; };
 // ถ้าหน้าถูกซูมค้างไว้แล้ว (scale > 1) ยอมให้บีบนิ้วออกได้ ไม่งั้นจะติดอยู่
 const pageZoomed = () => !!(window.visualViewport && window.visualViewport.scale > 1.02);
 ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => { if (!pageZoomed()) e.preventDefault(); }, { passive: false }));
@@ -32,7 +35,21 @@ function checkPageZoom() {
 if (window.visualViewport) { ['resize', 'scroll'].forEach((ev) => window.visualViewport.addEventListener(ev, checkPageZoom)); setTimeout(checkPageZoom, 500); }
 window.addEventListener('scroll', resetPageScroll, { passive: true });
 document.addEventListener('focusout', () => setTimeout(resetPageScroll, 60));
-if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resetPageScroll, 60));
+// คีย์บอร์ดมือถือ: ให้แผงแชตพอดีกับพื้นที่ที่เหลือเหนือคีย์บอร์ด จะได้เห็นช่องพิมพ์เสมอ
+function fitVisualViewport() {
+  const v = window.visualViewport; if (!v) return;
+  const r = document.documentElement.style;
+  r.setProperty('--vvh', Math.round(v.height) + 'px');
+  r.setProperty('--vvt', Math.round(v.offsetTop) + 'px');
+  const box = document.getElementById('msgs');
+  if (box && isTyping()) box.scrollTop = box.scrollHeight;
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => { fitVisualViewport(); setTimeout(resetPageScroll, 60); });
+  window.visualViewport.addEventListener('scroll', fitVisualViewport);
+  fitVisualViewport();
+}
+document.addEventListener('focusin', () => setTimeout(fitVisualViewport, 300));
 
 const canvas = $('#game');
 const ctx = canvas.getContext('2d');
@@ -720,7 +737,7 @@ function render(t) {
   const pop = document.getElementById('micPop');
   const popTop = pop && !pop.classList.contains('hidden') ? pop.getBoundingClientRect().top : 0;
   const topOff = popTop ? (isMobile() ? 96 : 0) : (G.dockBottom || 0);
-  const botOff = popTop ? ch - popTop : 86; // แถบเครื่องมือด้านล่าง
+  const botOff = popTop ? ch - popTop : isLand() ? 52 : 86; // แถบเครื่องมือด้านล่าง
   const camX = Math.round(G.cam.cx - vw / 2), camY = Math.round(G.cam.cy - (topOff + ch - botOff) / 2 / scale);
   G.cam.x = camX; G.cam.y = camY;
 

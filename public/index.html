@@ -260,7 +260,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- มือถือ ---------- */
 @media (max-width: 760px) {
-  .chat { left: 0; right: 0; top: 0; bottom: 0; width: auto; border-radius: 0; border: 0; padding-top: var(--safe-t); padding-bottom: var(--safe-b); z-index: 15; background: var(--paper); }
+  .chat { left: 0; right: 0; top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 100%); width: auto; border-radius: 0; border: 0; padding-top: var(--safe-t); padding-bottom: var(--safe-b); z-index: 15; background: var(--paper); }
   .toolbar { gap: 2px; padding: 4px; width: calc(100vw - 16px); justify-content: space-between; }
   .toolbar button { width: auto; flex: 1; font-size: 10.5px; }
   .toolbar button i { font-size: 20px; }
@@ -286,6 +286,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 .zoomtip { position: absolute; z-index: 50; transform-origin: top center; background: var(--yellow); border: 3px solid var(--ink); border-radius: 10px; padding: 6px 12px; font-size: 13px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap; pointer-events: none; }
+
+/* ---------- มือถือแนวนอน ---------- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .topbar { left: calc(10px + env(safe-area-inset-left)); right: calc(10px + env(safe-area-inset-right)); top: calc(6px + var(--safe-t)); }
+  .pbtn.sq { width: 34px; height: 34px; font-size: 15px; }
+  .chip b { display: none; }
+  .toolbar { bottom: calc(6px + var(--safe-b)); gap: 2px; padding: 3px; border-radius: 14px; }
+  .toolbar button { width: 46px; padding: 3px 0; font-size: 0; }
+  .toolbar button i { font-size: 20px; }
+  .toolbar .badge { font-size: 11px; }
+  .actions { bottom: calc(56px + var(--safe-b)); }
+  .tray, .micpop { bottom: calc(56px + var(--safe-b)); }
+  .chat { left: auto; right: 0; top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 100%); width: min(380px, 55vw); border-radius: 0; border: 0; border-left: 3px solid var(--ink);
+    padding: var(--safe-t) env(safe-area-inset-right) var(--safe-b) 0; z-index: 15; background: var(--paper); }
+  .dock { left: auto; right: calc(8px + env(safe-area-inset-right)); top: calc(52px + var(--safe-t)); bottom: auto; width: min(34vw, 300px); }
+  .yt header { font-size: 12px; padding: 3px 6px 3px 8px; }
+  .ytbtns button { width: 26px; height: 22px; font-size: 12px; }
+  .yt.big { width: min(100vw, calc(100dvh * 1.6)); }
+  .people { top: calc(52px + var(--safe-t)); max-height: calc(100dvh - 120px); }
+  .card { max-height: calc(100dvh - 16px); padding: 12px 14px; }
+  .card.split { height: calc(100dvh - 16px); }
+  .modal { padding: 8px; }
+  .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
+}
 
 </style>
 </head>
@@ -2214,12 +2238,15 @@ function makeVoice(net, onChange) {
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const isMobile = () => matchMedia('(max-width: 760px)').matches;
+const LAND_Q = '(max-height: 500px) and (orientation: landscape)';
+const isLand = () => matchMedia(LAND_Q).matches; // มือถือแนวนอน
+const isMobile = () => matchMedia('(max-width: 760px), ' + LAND_Q).matches;
 const EMOTES = ['👋', '😂', '❤️', '👍', '🎉', '😮', '🔥', '😴', '🥳', '✨'];
 const SPEED = 72;
 
 // ---- ล็อกหน้าเว็บไม่ให้ซูม/เลื่อนทั้งหน้า (Safari บน iPad/iPhone ชอบเลื่อนจน UI ด้านบนไปอยู่ใต้แถบเบราว์เซอร์) ----
-const resetPageScroll = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = document.body.scrollTop = 0; };
+const isTyping = () => ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+const resetPageScroll = () => { if (isTyping()) return; if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = document.body.scrollTop = 0; };
 // ถ้าหน้าถูกซูมค้างไว้แล้ว (scale > 1) ยอมให้บีบนิ้วออกได้ ไม่งั้นจะติดอยู่
 const pageZoomed = () => !!(window.visualViewport && window.visualViewport.scale > 1.02);
 ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => { if (!pageZoomed()) e.preventDefault(); }, { passive: false }));
@@ -2242,7 +2269,21 @@ function checkPageZoom() {
 if (window.visualViewport) { ['resize', 'scroll'].forEach((ev) => window.visualViewport.addEventListener(ev, checkPageZoom)); setTimeout(checkPageZoom, 500); }
 window.addEventListener('scroll', resetPageScroll, { passive: true });
 document.addEventListener('focusout', () => setTimeout(resetPageScroll, 60));
-if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resetPageScroll, 60));
+// คีย์บอร์ดมือถือ: ให้แผงแชตพอดีกับพื้นที่ที่เหลือเหนือคีย์บอร์ด จะได้เห็นช่องพิมพ์เสมอ
+function fitVisualViewport() {
+  const v = window.visualViewport; if (!v) return;
+  const r = document.documentElement.style;
+  r.setProperty('--vvh', Math.round(v.height) + 'px');
+  r.setProperty('--vvt', Math.round(v.offsetTop) + 'px');
+  const box = document.getElementById('msgs');
+  if (box && isTyping()) box.scrollTop = box.scrollHeight;
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => { fitVisualViewport(); setTimeout(resetPageScroll, 60); });
+  window.visualViewport.addEventListener('scroll', fitVisualViewport);
+  fitVisualViewport();
+}
+document.addEventListener('focusin', () => setTimeout(fitVisualViewport, 300));
 
 const canvas = $('#game');
 const ctx = canvas.getContext('2d');
@@ -2930,7 +2971,7 @@ function render(t) {
   const pop = document.getElementById('micPop');
   const popTop = pop && !pop.classList.contains('hidden') ? pop.getBoundingClientRect().top : 0;
   const topOff = popTop ? (isMobile() ? 96 : 0) : (G.dockBottom || 0);
-  const botOff = popTop ? ch - popTop : 86; // แถบเครื่องมือด้านล่าง
+  const botOff = popTop ? ch - popTop : isLand() ? 52 : 86; // แถบเครื่องมือด้านล่าง
   const camX = Math.round(G.cam.cx - vw / 2), camY = Math.round(G.cam.cy - (topOff + ch - botOff) / 2 / scale);
   G.cam.x = camX; G.cam.y = camY;
 
@@ -3834,7 +3875,7 @@ function setMic(patch) {
 function updateZones() {
   if (!G.joined) return;
   const dock = $('#dock');
-  G.dockBottom = isMobile() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
+  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
   const z = zoneAt(G.me.x, G.me.y);
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
