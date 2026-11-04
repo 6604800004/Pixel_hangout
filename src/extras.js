@@ -8,19 +8,51 @@ function othersInZone(z) {
   for (const rt of G.others.values()) if (Number.isFinite(rt.p.x) && zoneAt(rt.p.x, rt.p.y) === z) keys.add(rt.key);
   return keys;
 }
+// ห้องรวม: ได้ยินเฉพาะคนที่อยู่ใกล้ (ไกลเกินจะไม่ได้ยินเลย)
+// ห้องประชุม / สวน: ได้ยินทุกคนในห้องเดียวกัน
+const HEAR_R = 130, HEAR_R_OUT = 150, HEAR_FULL = 70;
+G.audible = new Set();
+const ZONE_TIPS = {
+  hall: 'ได้ยินเสียงเฉพาะคนที่อยู่ใกล้ๆ',
+  meet: 'ห้องส่วนตัว — ได้ยินทุกคนในห้อง คนข้างนอกไม่ได้ยิน',
+  garden: 'ได้ยินทุกคนในสวน',
+};
 function updateZones() {
   if (!G.joined) return;
   const z = zoneAt(G.me.x, G.me.y);
-  const same = othersInZone(z);
+  const audible = new Set();
+  for (const rt of G.others.values()) {
+    if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== z) continue;
+    const d = Math.hypot(rt.x - G.me.x, rt.y - G.me.y);
+    let vol = 1;
+    if (z === 'hall') {
+      if (d > (G.audible.has(rt.key) ? HEAR_R_OUT : HEAR_R)) continue;
+      vol = clamp(1 - (d - HEAR_FULL) / (HEAR_R_OUT - HEAR_FULL), 0.2, 1);
+    }
+    audible.add(rt.key);
+    if (G.voice) G.voice.setVolume(rt.key, vol);
+  }
+  G.audible = audible;
   if (z !== G.zone) {
     G.zone = z;
-    const Z = ZONES[z];
-    toast(`${Z.icon} ${Z.name}` + (G.voice ? ' — ได้ยินเสียงเฉพาะคนในห้องนี้' : ''));
+    toast(`${ZONES[z].icon} ${ZONES[z].name}` + (G.voice ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
   const chip = $('#zoneChip');
-  const label = `${ZONES[z].icon} ${ZONES[z].name} · ${same.size + 1}`;
+  const n = othersInZone(z).size + 1;
+  const label = `${ZONES[z].icon} ${ZONES[z].name} · ${G.voice && z === 'hall' ? `ได้ยิน ${audible.size} คน` : `${n} คน`}`;
   if (chip.textContent !== label) chip.textContent = label;
-  if (G.voice) G.voice.setAudience(same);
+  if (G.voice) G.voice.setAudience(audible);
+}
+// วงระยะได้ยินรอบตัว (เฉพาะห้องรวม ตอนเปิดไมค์)
+function drawHearingRange(b, t) {
+  if (!G.voice || !G.voice.mic || G.zone !== 'hall') return;
+  b.fillStyle = 'rgba(63,208,122,.55)';
+  const n = 200, off = t * 0.05;
+  for (let i = 0; i < n; i++) {
+    if (i % 2) continue;
+    const a = (i / n) * Math.PI * 2 + off;
+    b.fillRect(Math.round(G.me.x + Math.cos(a) * HEAR_R), Math.round(G.me.y + Math.sin(a) * HEAR_R * 0.75), 2, 1);
+  }
 }
 
 // วาดป้ายชื่อห้องที่ประตู (บนจอ)
@@ -34,7 +66,7 @@ function drawDoorLabels(c, camX, camY, scale) {
     const w = c.measureText(label).width + 14;
     c.fillStyle = 'rgba(46,34,53,.82)';
     rrect(c, sx - w / 2, sy - 9, w, 18, 6); c.fill();
-    c.fillStyle = '#fff7ec'; c.fillText(label, sx, sy + 0.5);
+    c.fillStyle = '#fff7ec'; fillCenter(c, label, sx, sy + 0.5);
   }
 }
 
@@ -336,5 +368,188 @@ async function spPoll() {
 }
 setInterval(spPoll, 20000);
 
+// ------------------------------------------------- YouTube ดูด้วยกัน ----
+// เปิดคลิปบนทีวี/จอนำเสนอ: คนที่อยู่ห้องเดียวกับจอจะเห็นและเล่นพร้อมกัน
+const SCREEN_TYPES = new Set(['tv', 'bigScreen']);
+G.screens = new Map();
+const YT = { player: null, ready: false, apiPromise: null, cur: null, suppressUntil: 0, hiddenKey: '', lastPlayTry: 0 };
+function parseYouTube(text) {
+  try {
+    const u = new URL(String(text).trim());
+    let id = null;
+    if (/(^|\.)youtu\.be$/.test(u.hostname)) id = u.pathname.slice(1).split('/')[0];
+    else if (/(^|\.)youtube\.com$/.test(u.hostname)) {
+      if (u.pathname === '/watch') id = u.searchParams.get('v');
+      else { const m = u.pathname.match(/^\/(shorts|embed|live)\/([\w-]{11})/); if (m) id = m[2]; }
+    }
+    if (!id || !/^[\w-]{11}$/.test(id)) return null;
+    let t = 0;
+    const ts = u.searchParams.get('t') || u.searchParams.get('start');
+    if (ts) { const m = ts.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/); if (m) t = (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0); }
+    return { id, t };
+  } catch { return null; }
+}
+const ytNow = () => (G.net.now ? G.net.now() : Date.now());
+function screenExpected(doc) { return (doc.pos || 0) + (doc.playing ? Math.max(0, (ytNow() - doc.ts) / 1000) : 0); }
+function nearScreen(it) { return Math.abs(G.me.x - it.x) < 34 && G.me.y > it.y - 4 && G.me.y < it.y + 44; }
+function activeScreen() {
+  let best = null;
+  for (const [id, doc] of G.screens) {
+    if (!doc || !doc.v) continue;
+    const it = G.furniture.find((f) => f.id === id);
+    if (!it || zoneAt(it.x, it.y + 6) !== G.zone) continue;
+    if (!best || doc.ts > best.doc.ts) best = { id, doc, it };
+  }
+  return best;
+}
+function loadYTApi() {
+  if (YT.apiPromise) return YT.apiPromise;
+  YT.apiPromise = new Promise((res) => {
+    if (window.YT && window.YT.Player) return res();
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (prev) try { prev(); } catch {} res(); };
+    const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; document.head.append(sc);
+  });
+  return YT.apiPromise;
+}
+async function ensurePlayer(doc) {
+  await loadYTApi();
+  if (YT.player) return;
+  await new Promise((res) => {
+    YT.player = new window.YT.Player('ytPlayer', {
+      videoId: doc.v, width: '100%', height: '100%',
+      playerVars: { playsinline: 1, rel: 0, modestbranding: 1, start: Math.floor(screenExpected(doc)) },
+      events: { onReady: () => { YT.ready = true; res(); }, onStateChange: onYTState },
+    });
+  });
+}
+function ytCall(fn) { YT.suppressUntil = Date.now() + 1500; try { fn(); } catch {} }
+// คนกด เล่น/หยุด/เลื่อน บนตัว YouTube เอง → แชร์ให้ทุกคน
+function onYTState(e) {
+  const cur = YT.cur;
+  if (!cur || Date.now() < YT.suppressUntil) return;
+  const doc = G.screens.get(cur.id);
+  if (!doc) return;
+  const S = window.YT.PlayerState;
+  const pos = YT.player.getCurrentTime();
+  if (e.data === S.PAUSED && doc.playing) shareScreen(cur.id, { ...doc, playing: false, pos, ts: ytNow() });
+  else if (e.data === S.PLAYING && (!doc.playing || Math.abs(pos - screenExpected(doc)) > 3)) shareScreen(cur.id, { ...doc, playing: true, pos, ts: ytNow() });
+  if (e.data === S.PLAYING) $('#ytTap').classList.add('hidden');
+}
+async function shareScreen(id, doc) {
+  G.screens.set(id, doc);
+  try { await G.net.set('screens', id, doc); } catch { toast('ส่งคำสั่งไปที่จอไม่สำเร็จ'); }
+}
+async function syncScreens() {
+  if (!G.joined || !G.net.youtube) return;
+  const act = activeScreen();
+  const panel = $('#ytPanel');
+  if (!act) {
+    if (YT.cur) { YT.cur = null; if (YT.ready) ytCall(() => YT.player.pauseVideo()); }
+    panel.classList.add('hidden');
+    return;
+  }
+  const key = act.doc.v + ':' + act.doc.ts0;
+  if (YT.hiddenKey === key) { panel.classList.add('hidden'); if (YT.ready) ytCall(() => YT.player.pauseVideo()); YT.cur = null; return; }
+  panel.classList.remove('hidden');
+  const where = ZONES[zoneAt(act.it.x, act.it.y + 6)];
+  $('#ytTitle').textContent = `📺 ${act.doc.title || 'YouTube'} · ${where.name}`;
+  const expected = screenExpected(act.doc);
+  if (!YT.player) { YT.cur = { id: act.id, v: act.doc.v }; await ensurePlayer(act.doc); }
+  if (!YT.ready) return;
+  if (!YT.cur || YT.cur.v !== act.doc.v || YT.cur.id !== act.id) {
+    YT.cur = { id: act.id, v: act.doc.v };
+    ytCall(() => (act.doc.playing ? YT.player.loadVideoById({ videoId: act.doc.v, startSeconds: expected }) : YT.player.cueVideoById({ videoId: act.doc.v, startSeconds: expected })));
+    return;
+  }
+  const S = window.YT.PlayerState;
+  const st = YT.player.getPlayerState();
+  const pos = YT.player.getCurrentTime();
+  if (Math.abs(pos - expected) > 2.5 && st !== S.BUFFERING) ytCall(() => YT.player.seekTo(expected, true));
+  if (act.doc.playing && st !== S.PLAYING && st !== S.BUFFERING && st !== S.ENDED) {
+    ytCall(() => YT.player.playVideo());
+    if (!YT.lastPlayTry) YT.lastPlayTry = Date.now();
+    else if (Date.now() - YT.lastPlayTry > 2500) $('#ytTap').classList.remove('hidden');
+  } else { YT.lastPlayTry = 0; if (st === S.PLAYING) $('#ytTap').classList.add('hidden'); }
+  if (!act.doc.playing && st === S.PLAYING) ytCall(() => YT.player.pauseVideo());
+}
+setInterval(syncScreens, 700);
+$('#ytTap').onclick = () => { $('#ytTap').classList.add('hidden'); YT.lastPlayTry = 0; if (YT.ready) ytCall(() => YT.player.playVideo()); };
+$('#ytToggle').onclick = () => {
+  const cur = YT.cur && G.screens.get(YT.cur.id);
+  if (!cur || !YT.ready) return;
+  const pos = YT.player.getCurrentTime();
+  shareScreen(YT.cur.id, { ...cur, playing: !cur.playing, pos, ts: ytNow() });
+};
+$('#ytBig').onclick = () => $('#ytPanel').classList.toggle('big');
+$('#ytHide').onclick = () => {
+  const act = activeScreen();
+  if (act) YT.hiddenKey = act.doc.v + ':' + act.doc.ts0;
+  $('#ytPanel').classList.add('hidden'); $('#ytPanel').classList.remove('big');
+  toast('ซ่อนจอแล้ว เดินไปกดที่จอเพื่อดูต่อได้');
+};
+
+function openScreenModal(it) {
+  if (!G.net.youtube) { toast('ดู YouTube ด้วยกันใช้ได้ในเวอร์ชันเซิร์ฟเวอร์ (onrender.com)'); return; }
+  const doc = G.screens.get(it.id);
+  openModal((card) => {
+    card.append(el('h2', null, `📺 ${FURN[it.t].label}: ดู YouTube ด้วยกัน`));
+    card.append(el('p', 'sub', `ทุกคนที่อยู่ใน${ZONES[zoneAt(it.x, it.y + 6)].name}จะเห็นคลิปเดียวกันและเล่นพร้อมกัน ใครกด เล่น/หยุด/เลื่อน ทุกคนก็จะตามไปด้วย`));
+    if (doc && doc.v) {
+      const box = el('div', 'mon');
+      box.append(el('b', null, `กำลังฉาย: ${doc.title || doc.v}`), el('p', 'tip', `เปิดโดย ${doc.by || 'เพื่อน'}`));
+      card.append(box);
+    }
+    const f = el('label', 'field opt'); f.style.marginTop = '14px';
+    f.append(el('span', null, 'วางลิงก์ YouTube'));
+    const inp = el('input'); inp.placeholder = 'https://youtu.be/… หรือ https://www.youtube.com/watch?v=…';
+    f.append(inp); card.append(f);
+    const foot = el('div', 'foot');
+    if (doc && doc.v) {
+      const stop = el('button', 'pbtn danger', '⏹️ หยุดฉาย');
+      stop.onclick = async () => { closeModal(); YT.hiddenKey = ''; try { await G.net.del('screens', it.id); } catch {} G.screens.delete(it.id); };
+      foot.append(stop);
+      const show = el('button', 'pbtn', '👀 ดูต่อ');
+      show.onclick = () => { YT.hiddenKey = ''; closeModal(); syncScreens(); };
+      foot.append(show);
+    }
+    const close = el('button', 'pbtn', 'ปิด'); close.onclick = closeModal;
+    const play = el('button', 'pbtn pink', '▶ เล่นบนจอ');
+    play.onclick = async () => {
+      const y = parseYouTube(inp.value);
+      if (!y) { toast('ลิงก์ YouTube ไม่ถูกต้อง'); return; }
+      let title = '';
+      try {
+        const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + y.id));
+        if (r.ok) title = String((await r.json()).title || '').slice(0, 80);
+      } catch {}
+      const now = ytNow();
+      YT.hiddenKey = '';
+      closeModal();
+      await shareScreen(it.id, { v: y.id, title, playing: true, pos: y.t, ts: now, ts0: now, by: G.me.nick });
+      addSys(`${G.me.nick} เปิดคลิปบน${FURN[it.t].label}${title ? ': ' + title : ''}`);
+      syncScreens();
+    };
+    foot.append(close, play); card.append(foot);
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+
+// ภาพปกคลิปบนจอในห้อง
+const ytThumbs = new Map();
+function drawScreenThumb(c, it, sx, sy) {
+  const doc = G.screens.get(it.id);
+  if (!doc || !doc.v) return;
+  let e = ytThumbs.get(doc.v);
+  if (!e) { const img = new Image(); e = { img, ready: false }; img.onload = () => (e.ready = true); img.src = `https://i.ytimg.com/vi/${doc.v}/mqdefault.jpg`; ytThumbs.set(doc.v, e); }
+  const r = it.t === 'tv' ? [sx + 4, sy + 1, 28, 15] : [sx + 3, sy + 3, 60, 28];
+  c.fillStyle = '#000'; c.fillRect(...r);
+  if (e.ready) { const prev = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true; c.drawImage(e.img, ...r); c.imageSmoothingEnabled = prev; }
+  const cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2;
+  c.fillStyle = '#ff0033'; c.fillRect(cx - 4, cy - 3, 9, 7);
+  c.fillStyle = '#ffffff'; c.fillRect(cx - 1, cy - 2, 1, 5); c.fillRect(cx, cy - 1, 1, 3); c.fillRect(cx + 1, cy, 1, 1);
+  if (!doc.playing) { c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(...r); }
+}
+
 // สำหรับทดสอบ: เปิดด้วย #debug
-if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt };
+if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT };

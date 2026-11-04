@@ -82,6 +82,10 @@ function makeVoice(net, onChange) {
     if (ok && !V.deaf) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
+  V.setVolume = (key, v) => {
+    const p = V.peers.get(key);
+    if (p && Math.abs((p.vol ?? 1) - v) > 0.04) { p.vol = v; try { p.audioEl.volume = v; } catch {} }
+  };
   V.setAudience = (keys) => {
     V.audience = keys;
     for (const p of V.peers.values()) {

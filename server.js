@@ -16,7 +16,7 @@ const ROOM_PASSWORD = process.env.ROOM_PASSWORD || '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'room.json');
 const PUBLIC = path.join(__dirname, 'public');
-const COLS = ['furniture', 'desks', 'chat', 'settings', 'board'];
+const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
 // กระดานแนบรูป: เก็บไว้ 24 ชม. แล้วลบเอง
 const BOARD_DIR = path.join(DATA_DIR, 'board');
@@ -132,7 +132,7 @@ wss.on('connection', (ws) => {
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
       peers.set(key, { ws, uid, p });
       send(ws, {
-        t: 'welcome', key, ice: ICE, roomName: ROOM_NAME,
+        t: 'welcome', key, ice: ICE, roomName: ROOM_NAME, now: Date.now(),
         peers: [...peers].filter(([k]) => k !== key).map(([k, c]) => ({ key: k, uid: c.uid, p: c.p })),
         cols: Object.fromEntries(COLS.map((c) => [c, list(c)])),
       });

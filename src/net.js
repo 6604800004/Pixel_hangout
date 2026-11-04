@@ -4,7 +4,7 @@
 //   ws     : เปิดจากเซิร์ฟเวอร์ Node ของเราเอง (มีเสียง/กล้อง)
 //   solo   : เล่นคนเดียว (เช่นตอนยังไม่ได้ล็อกอิน)
 // ============================================================================
-const COLS = ['furniture', 'desks', 'chat', 'settings', 'board'];
+const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
 
 function randomId(n = 10) {
   const a = 'abcdefghijkmnpqrstuvwxyz23456789';
@@ -117,6 +117,7 @@ function makeWsNet(cfg) {
       if (m.t === 'welcome') {
         retry = 0;
         net.myKey = m.key;
+        if (Number.isFinite(m.now)) net.timeOffset = m.now - Date.now();
         net.iceServers = m.ice || net.iceServers;
         peers.clear();
         for (const p of m.peers) peers.set(p.key, p);
@@ -176,6 +177,7 @@ function makeWsNet(cfg) {
     async savePrivate(o) { lsSet('pixel.private', o); },
     signal(to, data) { send({ t: 'signal', to, data }); },
     // กระดานแนบรูป (มีเฉพาะเวอร์ชันเซิร์ฟเวอร์)
+    timeOffset: 0, now() { return Date.now() + (net.timeOffset || 0); }, youtube: true,
     board: true, boardMax: cfg.boardMax || 20, boardTtl: cfg.boardTtl || 86400000, spotifyClientId: cfg.spotifyClientId || '',
     async uploadBoard(boardId, blob, meta) {
       const r = await fetch(`/api/board/${encodeURIComponent(boardId)}`, {

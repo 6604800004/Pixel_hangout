@@ -70,6 +70,11 @@ function wrapText(c, text, maxW, maxLines) {
   if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = Array.from(lines[maxLines - 1]).slice(0, -1).join('') + '…'; }
   return lines;
 }
+// วางข้อความกึ่งกลางเอง (บางเบราว์เซอร์/ส่วนขยายทำให้ textAlign = center ไม่ทำงาน)
+function fillCenter(c, text, cx, y) {
+  c.textAlign = 'left';
+  c.fillText(text, Math.round(cx - c.measureText(text).width / 2), y);
+}
 function rrect(c, x, y, w, h, r) { c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); }
 function myBy() { return G.net.uid || G.net.myKey || 'me'; }
 function lookColor(look) { return CLOTH_COLORS[cleanLook(look).tc]; }
@@ -141,7 +146,7 @@ function sitOn(seat) {
 }
 function walkTo(x, y, seat) {
   standUp();
-  G.me.pendingBoard = null;
+  G.me.pendingBoard = null; G.me.pendingScreen = null;
   const path = findPath(G.grid, G.me.x, G.me.y, x, y);
   if (!path) { toast('ไปตรงนั้นไม่ได้'); return; }
   G.me.path = path;
@@ -178,6 +183,7 @@ function updateMe(dt) {
       me.x = t.x; me.y = t.y; me.path.shift();
       if (!me.path.length) {
         me.path = null;
+        if (me.pendingScreen) { const sc = G.furniture.find((f) => f.id === me.pendingScreen); me.pendingScreen = null; if (sc) openScreenModal(sc); }
         if (me.pendingBoard) { const bd = G.furniture.find((f) => f.id === me.pendingBoard); me.pendingBoard = null; if (bd) openBoard(bd); }
         if (me.pendingSeat) {
           const seat = me.pendingSeat;
@@ -541,6 +547,11 @@ canvas.addEventListener('pointerdown', (e) => {
   // แตะที่นั่ง/โต๊ะ = เดินไปนั่ง
   let target = null;
   const it = itemAt(w.x, w.y);
+  if (it && SCREEN_TYPES.has(it.t)) {
+    if (nearScreen(it)) openScreenModal(it);
+    else { walkTo(it.x, it.y + 14); G.me.pendingScreen = it.id; }
+    return;
+  }
   if (it && FURN[it.t].board) {
     if (Math.abs(G.me.x - it.x) < 24 && G.me.y > it.y - 4 && G.me.y < it.y + 24) openBoard(it);
     else { walkTo(it.x, it.y + 12); G.me.pendingBoard = it.id; }
@@ -721,6 +732,7 @@ function render(t) {
       drawSprite(b, spr, o.it.x, o.it.y);
       if (d.anim) d.anim(b, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1, t, o.it);
       if (d.board) drawBoardThumbs(b, o.it, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1);
+      if (SCREEN_TYPES.has(o.it.t)) drawScreenThumb(b, o.it, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1);
     } else if (o.kind === 'desk') {
       const info = deskInfos.get(o.s.id);
       drawSprite(b, deskSprite(info ? info.style : { c: 2, s: 'none', items: [] }), o.s.x, o.s.y);
@@ -748,6 +760,7 @@ function render(t) {
     }
   }
 
+  drawHearingRange(b, t);
   // เป้าหมายที่แตะ
   if (me.path && me.path.length && !G.edit) {
     const goal = me.path[me.path.length - 1];
@@ -810,7 +823,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     c.fillStyle = info ? (info.mine ? '#ffe07a' : '#fff7ec') : 'rgba(255,247,236,.7)';
     c.strokeStyle = '#2e2235'; c.lineWidth = 2;
     rrect(c, sx - w / 2, sy - 1, w, 15, 5); c.fill(); c.stroke();
-    c.fillStyle = '#2e2235'; c.fillText(label, sx, sy + 7);
+    c.fillStyle = '#2e2235'; fillCenter(c, label, sx, sy + 7);
   }
   // ตัวละคร: ชื่อ สถานะ บับเบิล วิดีโอ
   const sorted = [...chars].sort((a, b) => a.y - b.y);
@@ -819,7 +832,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const [sx, sy0] = S(ch.x, ch.y);
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
     let top = sy0 - (ch.sit ? 33 : 35) * scale;
-    const away = ch !== G.me && zoneAt(ch.x, ch.y) !== G.zone;
+    const away = ch !== G.me && (G.voice ? !G.audible.has(ch.key) : zoneAt(ch.x, ch.y) !== G.zone);
     c.globalAlpha = away && G.voice ? 0.5 : 1;
     const key = ch === G.me ? G.net.myKey : ch.key;
     const speaking = G.voice && G.voice.speaking(key);
@@ -849,7 +862,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const ly = top - 20;
     c.fillStyle = speaking ? '#3fd07a' : ch === G.me ? '#ff8fab' : 'rgba(46,34,53,.88)';
     rrect(c, sx - w / 2, ly, w, 18, 6); c.fill();
-    c.fillStyle = '#ffffff'; c.fillText(label, sx, ly + 9.5);
+    c.fillStyle = '#ffffff'; fillCenter(c, label, sx, ly + 9.5);
     top = ly;
     // เพลงที่กำลังฟัง
     const mu = ch === G.me ? currentMusic() : (p.mu && typeof p.mu.t === 'string' ? p.mu : null);
@@ -859,7 +872,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       const mw = c.measureText(lab).width + 12, my = top - 17;
       c.fillStyle = mu.s === 'sp' ? '#1db954' : '#5a4f78';
       rrect(c, sx - mw / 2, my, mw, 15, 5); c.fill();
-      c.fillStyle = '#ffffff'; c.fillText(lab, sx, my + 8);
+      c.fillStyle = '#ffffff'; fillCenter(c, lab, sx, my + 8);
       const u = safeSpotifyUrl(mu.u);
       if (u) G.musicHits.push({ x0: sx - mw / 2, y0: my, x1: sx + mw / 2, y1: my + 15, u });
       top = my;
@@ -881,7 +894,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       c.beginPath(); c.moveTo(tx - 5, by + bh - 1); c.lineTo(tx, by + bh + 6); c.lineTo(tx + 5, by + bh - 1); c.closePath(); c.fill();
       c.beginPath(); c.moveTo(tx - 5, by + bh); c.lineTo(tx, by + bh + 6); c.lineTo(tx + 5, by + bh); c.stroke();
       c.fillStyle = '#2e2235';
-      bub.lines.forEach((l, i) => c.fillText(l, bx, by + 5 + 8.5 + i * 17));
+      bub.lines.forEach((l, i) => fillCenter(c, l, bx, by + 5 + 8.5 + i * 17));
       c.globalAlpha = 1;
       top = by;
     } else if (bub) { if (ch === G.me) G.me.bubble = null; else ch.bubble = null; }
@@ -898,7 +911,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const pop = k < 0.12 ? k / 0.12 : 1;
     c.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
     c.font = `${Math.round(28 * (0.5 + pop * 0.5))}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-    c.fillText(e.e, sx + e.dx + Math.sin(k * 10) * 3, (ch._top ?? 0) - 16 - k * 50);
+    fillCenter(c, e.e, sx + e.dx + Math.sin(k * 10) * 3, (ch._top ?? 0) - 16 - k * 50);
     c.globalAlpha = 1;
   }
 }
@@ -912,6 +925,8 @@ function updateActions() {
   if (!G.edit && !me.sit && !me.path) {
     const bd = G.furniture.find((it) => FURN[it.t].board && Math.abs(me.x - it.x) < 24 && me.y > it.y - 4 && me.y < it.y + 24);
     if (bd) acts.push(['🖼️ เปิดกระดาน', 'board:' + bd.id]);
+    const sc = G.furniture.find((it) => SCREEN_TYPES.has(it.t) && nearScreen(it));
+    if (sc) acts.push(['📺 YouTube บนจอ', 'screen:' + sc.id]);
   }
   if (!G.edit) {
     if (me.sit) {
@@ -946,6 +961,7 @@ function updateActions() {
       if (act === 'stand') standUp();
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
+      else if (act.startsWith('screen:')) { const it = G.furniture.find((f) => f.id === act.slice(7)); if (it) openScreenModal(it); }
       else if (act.startsWith('board:')) { const it = G.furniture.find((f) => f.id === act.slice(6)); if (it) openBoard(it); }
       else if (act.startsWith('sit:')) { const s = G.seats.find((x) => x.id === act.slice(4)); if (s) sitOn(s); }
       G.actionSig = '';
@@ -1086,7 +1102,7 @@ function openCreator(first) {
     dice.type = 'button';
     turn.append(dice);
     stage.append(turn);
-    wrap.append(stage);
+    const sticky = el('div', 'stage-wrap'); sticky.append(stage); wrap.append(sticky);
     const opts = el('div', 'opts');
     const nameField = el('label', 'field opt');
     nameField.append(el('span', null, 'ชื่อเล่น'));
@@ -1165,7 +1181,7 @@ function openDeskEditor() {
     const wrap = el('div', 'creator');
     const stage = el('div', 'stage');
     const cv = mkCanvas(64, 64);
-    stage.append(cv); wrap.append(stage);
+    stage.append(cv); const sticky = el('div', 'stage-wrap'); sticky.append(stage); wrap.append(sticky);
     const opts = el('div', 'opts');
     const sec = el('div', 'opts');
     const paint = () => {
@@ -1462,6 +1478,10 @@ function frame(ms) {
     G.layoutV = lv && Number(lv.v) || 1;
     G.settingsLoaded = true;
     maybeMigrateLayout();
+  });
+  net.watch('screens', (docs) => {
+    G.screens = new Map(docs.filter((d) => d && typeof d.v === 'string' && /^[\w-]{11}$/.test(d.v)).map((d) => [d.id, d]));
+    syncScreens();
   });
   net.watch('board', (docs) => {
     G.boardDocs = docs.filter((d) => d && typeof d.b === 'string');
