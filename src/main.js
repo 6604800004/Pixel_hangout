@@ -8,6 +8,16 @@ const isMobile = () => matchMedia('(max-width: 760px)').matches;
 const EMOTES = ['👋', '😂', '❤️', '👍', '🎉', '😮', '🔥', '😴', '🥳', '✨'];
 const SPEED = 72;
 
+// ---- ล็อกหน้าเว็บไม่ให้ซูม/เลื่อนทั้งหน้า (Safari บน iPad/iPhone ชอบเลื่อนจน UI ด้านบนไปอยู่ใต้แถบเบราว์เซอร์) ----
+const resetPageScroll = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = document.body.scrollTop = 0; };
+['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 1) e.preventDefault(); // กันซูมทั้งหน้าด้วยสองนิ้ว (ซูมแผนที่ยังใช้ได้ตามปกติ)
+}, { passive: false });
+window.addEventListener('scroll', resetPageScroll, { passive: true });
+document.addEventListener('focusout', () => setTimeout(resetPageScroll, 60));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resetPageScroll, 60));
+
 const canvas = $('#game');
 const ctx = canvas.getContext('2d');
 const buf = mkCanvas(2, 2);
@@ -1023,14 +1033,17 @@ $('#toolbar').addEventListener('click', (e) => {
   if (tool === 'status') toggleTray('statusTray');
   if (tool === 'chat') setChatOpen(!G.chatOpen);
 });
-$('#roomChip').onclick = () => { const p = $('#people'); p.classList.toggle('hidden'); if (!p.classList.contains('hidden')) renderPeople(); };
+$('#roomChip').onclick = () => { const p = $('#people'); p.classList.toggle('hidden'); G.peopleSig = ''; if (!p.classList.contains('hidden')) renderPeople(); };
 $$('[data-close]').forEach((b) => (b.onclick = () => $('#' + b.dataset.close).classList.add('hidden')));
 
 function renderPeople() {
   const ul = $('#peopleList');
-  ul.innerHTML = '';
   const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk, z: zoneAt(G.me.x, G.me.y), mu: currentMusic() }];
   for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest, z: zoneAt(rt.p.x, rt.p.y), mu: rt.p.mu });
+  const sig = JSON.stringify(rows.map((r) => [r.n, r.l, r.st, r.desk, r.z, r.mu && r.mu.t, r.guest, !!r.me]));
+  if (sig === G.peopleSig && ul.children.length) return;
+  G.peopleSig = sig;
+  ul.innerHTML = '';
   for (const r of rows) {
     const li = document.createElement('li');
     const cv = mkCanvas(22, 36);

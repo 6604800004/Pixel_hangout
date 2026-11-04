@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#2e2235" />
 <title>Pixel Hangout</title>
 <link rel="manifest" href="/manifest.webmanifest" />
@@ -32,6 +32,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #2e2235; overflow: hidden; }
+body { position: fixed; inset: 0; width: 100%; touch-action: manipulation; }
 body { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
 input, textarea { user-select: text; -webkit-user-select: text; }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -84,7 +85,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   position: fixed; z-index: 6; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink);
 }
 .panel header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 3px dashed #e6d4c2; }
-.x { width: 30px; height: 30px; border: 0; background: var(--paper2); border-radius: 8px; font-size: 14px; }
+.x { width: 34px; height: 34px; border: 0; background: var(--paper2); border-radius: 8px; font-size: 15px; flex: none; position: relative; touch-action: manipulation; }
+.x::after { content: ''; position: absolute; inset: -8px; }
 .people { top: calc(64px + var(--safe-t)); left: 10px; width: min(300px, calc(100vw - 20px)); max-height: 60dvh; display: flex; flex-direction: column; }
 .people ul { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
 .people li { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; }
@@ -2039,6 +2041,16 @@ const isMobile = () => matchMedia('(max-width: 760px)').matches;
 const EMOTES = ['👋', '😂', '❤️', '👍', '🎉', '😮', '🔥', '😴', '🥳', '✨'];
 const SPEED = 72;
 
+// ---- ล็อกหน้าเว็บไม่ให้ซูม/เลื่อนทั้งหน้า (Safari บน iPad/iPhone ชอบเลื่อนจน UI ด้านบนไปอยู่ใต้แถบเบราว์เซอร์) ----
+const resetPageScroll = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = document.body.scrollTop = 0; };
+['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 1) e.preventDefault(); // กันซูมทั้งหน้าด้วยสองนิ้ว (ซูมแผนที่ยังใช้ได้ตามปกติ)
+}, { passive: false });
+window.addEventListener('scroll', resetPageScroll, { passive: true });
+document.addEventListener('focusout', () => setTimeout(resetPageScroll, 60));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resetPageScroll, 60));
+
 const canvas = $('#game');
 const ctx = canvas.getContext('2d');
 const buf = mkCanvas(2, 2);
@@ -3054,14 +3066,17 @@ $('#toolbar').addEventListener('click', (e) => {
   if (tool === 'status') toggleTray('statusTray');
   if (tool === 'chat') setChatOpen(!G.chatOpen);
 });
-$('#roomChip').onclick = () => { const p = $('#people'); p.classList.toggle('hidden'); if (!p.classList.contains('hidden')) renderPeople(); };
+$('#roomChip').onclick = () => { const p = $('#people'); p.classList.toggle('hidden'); G.peopleSig = ''; if (!p.classList.contains('hidden')) renderPeople(); };
 $$('[data-close]').forEach((b) => (b.onclick = () => $('#' + b.dataset.close).classList.add('hidden')));
 
 function renderPeople() {
   const ul = $('#peopleList');
-  ul.innerHTML = '';
   const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk, z: zoneAt(G.me.x, G.me.y), mu: currentMusic() }];
   for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest, z: zoneAt(rt.p.x, rt.p.y), mu: rt.p.mu });
+  const sig = JSON.stringify(rows.map((r) => [r.n, r.l, r.st, r.desk, r.z, r.mu && r.mu.t, r.guest, !!r.me]));
+  if (sig === G.peopleSig && ul.children.length) return;
+  G.peopleSig = sig;
+  ul.innerHTML = '';
   for (const r of rows) {
     const li = document.createElement('li');
     const cv = mkCanvas(22, 36);

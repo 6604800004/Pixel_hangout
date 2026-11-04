@@ -16,6 +16,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #2e2235; overflow: hidden; }
+body { position: fixed; inset: 0; width: 100%; touch-action: manipulation; }
 body { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
 input, textarea { user-select: text; -webkit-user-select: text; }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -68,7 +69,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   position: fixed; z-index: 6; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink);
 }
 .panel header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 3px dashed #e6d4c2; }
-.x { width: 30px; height: 30px; border: 0; background: var(--paper2); border-radius: 8px; font-size: 14px; }
+.x { width: 34px; height: 34px; border: 0; background: var(--paper2); border-radius: 8px; font-size: 15px; flex: none; position: relative; touch-action: manipulation; }
+.x::after { content: ''; position: absolute; inset: -8px; }
 .people { top: calc(64px + var(--safe-t)); left: 10px; width: min(300px, calc(100vw - 20px)); max-height: 60dvh; display: flex; flex-direction: column; }
 .people ul { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
 .people li { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; }
