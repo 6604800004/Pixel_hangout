@@ -88,7 +88,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [] };
+  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -117,6 +117,7 @@ function makeWsNet(cfg) {
       if (m.t === 'welcome') {
         retry = 0;
         net.myKey = m.key;
+        if (m.v) { if (net.build && net.build !== m.v) L.update.forEach((f) => f()); net.build = net.build || m.v; }
         if (Number.isFinite(m.now)) net.timeOffset = m.now - Date.now();
         net.iceServers = m.ice || net.iceServers;
         peers.clear();
@@ -174,6 +175,7 @@ function makeWsNet(cfg) {
     onError(cb) { L.error.push(cb); },
     onSys(cb) { L.sys.push(cb); },
     onChatDel(cb) { L.chatdel.push(cb); },
+    onUpdate(cb) { L.update.push(cb); },
     admin(cmd, key, arg, ban) { send({ t: 'admin', cmd, key, arg, ban: ban || 0 }); },
     onWriteDenied() {},
     watch(col, cb) { watchers[col].push(cb); },

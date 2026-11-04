@@ -1681,7 +1681,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [] };
+  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -1710,6 +1710,7 @@ function makeWsNet(cfg) {
       if (m.t === 'welcome') {
         retry = 0;
         net.myKey = m.key;
+        if (m.v) { if (net.build && net.build !== m.v) L.update.forEach((f) => f()); net.build = net.build || m.v; }
         if (Number.isFinite(m.now)) net.timeOffset = m.now - Date.now();
         net.iceServers = m.ice || net.iceServers;
         peers.clear();
@@ -1767,6 +1768,7 @@ function makeWsNet(cfg) {
     onError(cb) { L.error.push(cb); },
     onSys(cb) { L.sys.push(cb); },
     onChatDel(cb) { L.chatdel.push(cb); },
+    onUpdate(cb) { L.update.push(cb); },
     admin(cmd, key, arg, ban) { send({ t: 'admin', cmd, key, arg, ban: ban || 0 }); },
     onWriteDenied() {},
     watch(col, cb) { watchers[col].push(cb); },
@@ -2510,7 +2512,13 @@ function updateOthers(dt) {
     if (!Number.isFinite(p.x)) continue;
     const d = Math.hypot(p.x - rt.x, p.y - rt.y);
     if (d > 120) { rt.x = p.x; rt.y = p.y; }
-    rt.x += (p.x - rt.x) * a; rt.y += (p.y - rt.y) * a;
+    else if (d > 0.01) {
+      // เดินด้วยความเร็วเท่าการเดินจริง (ตามทันเร็วขึ้นถ้าห่างมาก) แทนการกระโดดตามทุกครั้งที่ได้ตำแหน่งใหม่
+      // ตามหลังราวหนึ่งจังหวะอัปเดต แล้วเดินด้วยความเร็วคงที่ = ไม่หยุดๆ เดินๆ ระหว่างรอตำแหน่งใหม่
+      const k = d > 40 ? 2 : d > 16 ? 1.25 : d > 5 ? 1 : 0.9;
+      const step = Math.min(d, SPEED * k * dt);
+      rt.x += ((p.x - rt.x) / d) * step; rt.y += ((p.y - rt.y) / d) * step;
+    }
     rt.walking = !!p.m || d > 1.5;
     rt.dir = ['up', 'down', 'left', 'right'].includes(p.d) ? p.d : 'down';
     if (rt.walking && !p.s) { rt.ft += dt; rt.frame = Math.floor(rt.ft * 8) % 4; } else { rt.frame = 0; rt.ft = 0; }
@@ -2954,11 +2962,13 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// ตำแหน่งย่อยระดับพิกเซลจอ (1/scale) — ตัวละครเดินลื่นไม่กระตุกทีละพิกเซลโลก
+const snap = (v) => Math.round(v * (G.scale || 1)) / (G.scale || 1);
 function drawSprite(c, s, x, y) { c.drawImage(s, Math.round(x - s.width / 2), Math.round(y - s.height + 1)); }
 function drawShadow(c, x, y, w = 12) {
   c.fillStyle = 'rgba(46,34,53,.22)';
-  c.fillRect(Math.round(x - w / 2 + 1), Math.round(y - 1), w - 2, 3);
-  c.fillRect(Math.round(x - w / 2), Math.round(y), w, 1);
+  c.fillRect(snap(x - w / 2 + 1), snap(y - 1), w - 2, 3);
+  c.fillRect(snap(x - w / 2), snap(y), w, 1);
 }
 function drawCharacter(c, ch, t) {
   const look = ch.look;
@@ -2967,7 +2977,7 @@ function drawCharacter(c, ch, t) {
   if (look.pet !== 'none' && ch.pet) { /* สัตว์เลี้ยงวาดแยก */ }
   if (!ch.sit) drawShadow(c, ch.x, ch.y);
   const s = charSprite(look, ch.dir, ch.frame, pose, blink);
-  c.drawImage(s, Math.round(ch.x - 11), Math.round(ch.y - 35));
+  c.drawImage(s, snap(ch.x - 11), snap(ch.y - 35));
 }
 function drawPet(c, ch, t) {
   const pet = ch.pet;
@@ -2975,7 +2985,7 @@ function drawPet(c, ch, t) {
   drawShadow(c, pet.x, pet.y, 8);
   const fly = ch.look.pet === 'fish' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
   const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0);
-  c.drawImage(s, Math.round(pet.x - 8), Math.round(pet.y - 15 - fly));
+  c.drawImage(s, snap(pet.x - 8), snap(pet.y - 15 - fly));
 }
 
 function render(t) {
@@ -2983,8 +2993,10 @@ function render(t) {
   const base = Math.max(2, Math.floor(Math.min(cw / 440, ch / 300)));
   G.scale = clamp(base + G.zoomAdj, 1, 7);
   const scale = G.scale;
-  const bw = Math.ceil(cw / scale), bh = Math.ceil(ch / scale);
-  if (buf.width !== bw || buf.height !== bh) { buf.width = bw; buf.height = bh; }
+  const bw = cw / scale, bh = ch / scale; // ขนาดที่มองเห็นในหน่วยพิกเซลโลก
+  // วาดบัฟเฟอร์ที่ความละเอียดจอ (ไม่ใช่ความละเอียดโลก) เพื่อให้กล้อง/ตัวละครเลื่อนได้ทีละพิกเซลจอ
+  const pw = Math.ceil(cw), ph = Math.ceil(ch);
+  if (buf.width !== pw || buf.height !== ph) { buf.width = pw; buf.height = ph; }
 
   // กล้อง
   const me = G.me;
@@ -2995,7 +3007,8 @@ function render(t) {
   if (G.camManual && Number.isFinite(G.cam.mx)) { tx = G.cam.mx; ty = G.cam.my; }
   else { tx = me.x; ty = me.y - 16; }
   if (!G.cam.ready) { G.cam.cx = tx; G.cam.cy = ty; G.cam.ready = true; }
-  G.cam.cx += (tx - G.cam.cx) * 0.18; G.cam.cy += (ty - G.cam.cy) * 0.18;
+  const ca = 1 - Math.exp(-(G.frameDt || 1 / 60) * 10);
+  G.cam.cx += (tx - G.cam.cx) * ca; G.cam.cy += (ty - G.cam.cy) * ca;
   if (Math.abs(tx - G.cam.cx) < 0.05) G.cam.cx = tx;
   if (Math.abs(ty - G.cam.cy) < 0.05) G.cam.cy = ty;
   // มือถือ: ถ้ามีหน้าต่าง YouTube/แชร์จอบังกลางจอ ให้ตัวละครอยู่กลางพื้นที่ที่เหลือด้านล่าง
@@ -3004,11 +3017,11 @@ function render(t) {
   const popTop = pop && !pop.classList.contains('hidden') ? pop.getBoundingClientRect().top : 0;
   const topOff = popTop ? (isMobile() ? 96 : 0) : (G.dockBottom || 0);
   const botOff = popTop ? ch - popTop : isLand() ? 52 : 86; // แถบเครื่องมือด้านล่าง
-  const camX = Math.round(G.cam.cx - vw / 2), camY = Math.round(G.cam.cy - (topOff + ch - botOff) / 2 / scale);
+  const camX = Math.round((G.cam.cx - vw / 2) * scale) / scale, camY = Math.round((G.cam.cy - (topOff + ch - botOff) / 2 / scale) * scale) / scale;
   G.cam.x = camX; G.cam.y = camY;
 
   const b = bctx;
-  b.setTransform(1, 0, 0, 1, -camX, -camY);
+  b.setTransform(scale, 0, 0, scale, -Math.round(camX * scale), -Math.round(camY * scale));
   b.imageSmoothingEnabled = false;
   b.fillStyle = '#2e2235'; b.fillRect(camX, camY, bw, bh);
   b.drawImage(BG, 0, 0);
@@ -3125,7 +3138,7 @@ function render(t) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = '#2e2235'; ctx.fillRect(0, 0, cw, ch);
-  ctx.drawImage(buf, 0, 0, bw, bh, 0, 0, bw * scale, bh * scale);
+  ctx.drawImage(buf, 0, 0, pw, ph, 0, 0, pw, ph);
   drawOverlay(t, chars, deskInfos, camX, camY, scale);
 }
 
@@ -3776,14 +3789,16 @@ async function join() {
 }
 function showBanner(text) {
   const b = $('#banner');
+  if (G.updateBanner) return;
   b.textContent = text; b.classList.remove('hidden');
-  setTimeout(() => b.classList.add('hidden'), 9000);
+  setTimeout(() => { if (!G.updateBanner) b.classList.add('hidden'); }, 9000);
 }
 
 let lastT = performance.now();
 let actT = 0, selT = 0;
 function frame(ms) {
   const dt = Math.min(0.1, (ms - lastT) / 1000);
+  G.frameDt = dt || 1 / 60;
   lastT = ms;
   const t = ms / 1000;
   if (G.grid) {
@@ -3812,6 +3827,12 @@ function frame(ms) {
     if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); }
     G.pendingAdminKey = null;
     addSys('🛡️ ' + m.message); toast(m.message, 4000);
+  });
+  if (net.onUpdate) net.onUpdate(() => {
+    const b = $('#banner');
+    b.textContent = '🔄 มีอัปเดตใหม่ — แตะตรงนี้เพื่อโหลดใหม่'; b.classList.remove('hidden');
+    b.style.pointerEvents = 'auto'; b.style.cursor = 'pointer'; b.style.zIndex = '30'; b.onclick = () => location.reload();
+    G.updateBanner = true;
   });
   if (net.onChatDel) net.onChatDel((ids) => {
     const list = ids === 'all' ? [...G.messages.values()].filter((x) => !x.sys).map((x) => x.id) : ids;

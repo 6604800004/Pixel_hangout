@@ -16,6 +16,9 @@ const ROOM_PASSWORD = process.env.ROOM_PASSWORD || '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'room.json');
 const PUBLIC = path.join(__dirname, 'public');
+// เวอร์ชันของหน้าเว็บ: ถ้า deploy ใหม่ เครื่องที่เปิดค้างไว้จะรู้และขึ้นปุ่มให้โหลดใหม่
+let BUILD = 'dev';
+try { BUILD = crypto.createHash('sha1').update(fs.readFileSync(path.join(PUBLIC, 'index.html'))).digest('hex').slice(0, 10); } catch {}
 const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
 // แอดมิน: คนที่รู้รหัสนี้ใช้คำสั่งในแชตได้ (admin <รหัส> แล้ว kick all / kick ชื่อ)
@@ -138,7 +141,7 @@ wss.on('connection', (ws) => {
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
       peers.set(key, { ws, uid, p });
       send(ws, {
-        t: 'welcome', key, ice: ICE, roomName: ROOM_NAME, now: Date.now(),
+        t: 'welcome', key, ice: ICE, roomName: ROOM_NAME, now: Date.now(), v: BUILD,
         peers: [...peers].filter(([k]) => k !== key).map(([k, c]) => ({ key: k, uid: c.uid, p: c.p })),
         cols: Object.fromEntries(COLS.map((c) => [c, list(c)])),
       });
