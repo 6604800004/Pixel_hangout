@@ -361,9 +361,19 @@ function renderChat() {
   }
   if (atBottom) box.scrollTop = box.scrollHeight;
 }
+// คำสั่งแอดมินในแชต (ไม่ถูกส่งเป็นข้อความ): admin <รหัส> · kick all · kick ชื่อ
+function chatCommand(text) {
+  if (!G.net || !G.net.admin) return false;
+  let m = text.match(/^\/?admin\s+(\S+)$/i);
+  if (m) { G.pendingAdminKey = m[1]; G.net.admin('login', m[1]); return true; }
+  m = text.match(/^\/?(?:kick|เตะ)\s+(.+)$/i);
+  if (m) { G.net.admin('kick', lsGet('pixel.admin', '') || '', m[1].trim()); return true; }
+  return false;
+}
 function sendChat(text) {
   text = text.trim().slice(0, 200);
   if (!text) return;
+  if (chatCommand(text)) return;
   const ts = Date.now();
   const m = { i: randomId(9), t: text, ts };
   G.mySay = [...G.mySay.slice(-2), m];
@@ -1513,7 +1523,16 @@ function frame(ms) {
   G.net = net;
   const dot = $('#connDot');
   net.onStatus((s) => { dot.className = 'dot' + (s === 'online' ? '' : s === 'solo' ? ' solo' : ' off'); });
-  if (net.onError) net.onError((m) => { toast(m.message || 'เข้าห้องไม่ได้', 4000); G.joined = false; $('#hud').classList.add('hidden'); openCreator(true); });
+  if (net.onSys) net.onSys((m) => {
+    if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
+    if (m.admin === false) lsSet('pixel.admin', null);
+    G.pendingAdminKey = null;
+    addSys('🛡️ ' + m.message); toast(m.message, 4000);
+  });
+  if (net.onError) net.onError((m) => {
+    // โดนเตะ: รีโหลดหน้าเพื่อปิดไมค์/กล้องทั้งหมดทันที แล้วแจ้งเตือนหลังโหลดเสร็จ
+    if (m.kicked && G.joined) { try { sessionStorage.setItem('pixel.kicked', m.message || 'คุณถูกเตะออกจากห้อง'); } catch {} location.reload(); return; }
+    toast(m.message || 'เข้าห้องไม่ได้', 4000); G.joined = false; $('#hud').classList.add('hidden'); openCreator(true); });
   if (net.onWriteDenied) net.onWriteDenied(() => showBanner('คุณมีสิทธิ์ดูอย่างเดียว: ห้อง/โต๊ะจะไม่ถูกบันทึก'));
   if (net.mode === 'ws') {
     try { const cfg = await (await fetch('/config')).json(); net.needPassword = cfg.needPassword; if (cfg.roomName) $('#roomName').textContent = cfg.roomName; document.title = cfg.roomName + ' · Pixel Hangout'; } catch {}
@@ -1564,5 +1583,6 @@ function frame(ms) {
   $('#loading').classList.add('hidden');
   spHandleRedirect();
   openCreator(true);
+  try { const k = sessionStorage.getItem('pixel.kicked'); if (k) { sessionStorage.removeItem('pixel.kicked'); toast('👢 ' + k, 7000); } } catch {}
   requestAnimationFrame(frame);
 })();

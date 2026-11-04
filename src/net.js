@@ -88,7 +88,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [] };
+  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -137,6 +137,8 @@ function makeWsNet(cfg) {
         emitCol(m.col);
       } else if (m.t === 'signal') {
         L.signal.forEach((f) => f(m.from, m.data));
+      } else if (m.t === 'sys') {
+        L.sys.forEach((f) => f(m));
       } else if (m.t === 'error') {
         closedByUser = true;
         L.error.forEach((f) => f(m));
@@ -166,6 +168,8 @@ function makeWsNet(cfg) {
     onStatus(cb) { L.status.push(cb); },
     onWelcome(cb) { L.welcome.push(cb); },
     onError(cb) { L.error.push(cb); },
+    onSys(cb) { L.sys.push(cb); },
+    admin(cmd, key, arg) { send({ t: 'admin', cmd, key, arg }); },
     onWriteDenied() {},
     watch(col, cb) { watchers[col].push(cb); },
     async set(col, id, data) {

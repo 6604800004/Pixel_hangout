@@ -18,6 +18,10 @@ const DATA_FILE = path.join(DATA_DIR, 'room.json');
 const PUBLIC = path.join(__dirname, 'public');
 const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
+// แอดมิน: คนที่รู้รหัสนี้ใช้คำสั่งในแชตได้ (admin <รหัส> แล้ว kick all / kick ชื่อ)
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
+const KICK_BAN_MS = 2 * 60 * 1000;
+const kickedUntil = new Map(); // uid -> เวลาที่กลับเข้าได้
 // กระดานแนบรูป: เก็บไว้ 24 ชม. แล้วลบเอง
 const BOARD_DIR = path.join(DATA_DIR, 'board');
 const BOARD_MAX = Number(process.env.BOARD_MAX) || 20;      // รูปสูงสุดต่อกระดาน
@@ -126,6 +130,8 @@ wss.on('connection', (ws) => {
     if (!key) {
       if (m.t !== 'hello') return;
       if (ROOM_PASSWORD && m.password !== ROOM_PASSWORD) { send(ws, { t: 'error', message: 'รหัสผ่านห้องไม่ถูกต้อง' }); return ws.close(); }
+      const ban = kickedUntil.get(typeof m.uid === 'string' ? m.uid.slice(0, 40) : '');
+      if (ban && ban > Date.now()) { send(ws, { t: 'error', kicked: true, message: `คุณถูกเตะออกจากห้อง — กลับเข้าได้อีกใน ${Math.ceil((ban - Date.now()) / 60000)} นาที` }); return ws.close(); }
       if (peers.size >= MAX_USERS) { send(ws, { t: 'error', message: `ห้องเต็มแล้ว (สูงสุด ${MAX_USERS} คน)` }); return ws.close(); }
       key = 'k' + crypto.randomBytes(6).toString('hex');
       const uid = typeof m.uid === 'string' ? m.uid.slice(0, 40) : key;
@@ -176,6 +182,36 @@ wss.on('connection', (ws) => {
         if (!okId(m.b)) break;
         for (const [id, d] of Object.entries(store.board)) if (d.b === m.b) { removeImage(id); broadcast({ t: 'col', col: 'board', id, doc: null }); }
         save();
+        break;
+      }
+      case 'admin': {
+        // คำสั่งแอดมินจากแชต: ตรวจรหัสทุกครั้ง
+        const ok = ADMIN_KEY && typeof m.key === 'string' && m.key.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(m.key), Buffer.from(ADMIN_KEY));
+        if (!ADMIN_KEY) { send(ws, { t: 'sys', message: 'ยังไม่ได้ตั้งรหัสแอดมิน — ใส่ ADMIN_KEY ใน Render → Environment ก่อน' }); break; }
+        if (!ok) { send(ws, { t: 'sys', admin: false, message: 'ไม่มีสิทธิ์ใช้คำสั่งนี้ (รหัสแอดมินไม่ถูก)' }); break; }
+        if (m.cmd === 'login') { send(ws, { t: 'sys', admin: true, message: 'เป็นแอดมินแล้ว ✅ ใช้ได้: kick all · kick ชื่อ' }); break; }
+        if (m.cmd !== 'kick') break;
+        const arg = String(m.arg || '').trim().toLowerCase();
+        const others = [...peers].filter(([k]) => k !== key);
+        let targets;
+        if (arg === 'all' || arg === 'ทั้งหมด') targets = others;
+        else {
+          const name = ([, c]) => String(c.p.n || '').trim().toLowerCase();
+          targets = others.filter((e) => name(e) === arg);
+          if (!targets.length) targets = others.filter((e) => name(e).includes(arg));
+          if (targets.length > 1 && !others.some((e) => name(e) === arg)) {
+            send(ws, { t: 'sys', message: `ชื่อซ้ำกันหลายคน: ${targets.map(([, c]) => c.p.n).join(', ')} — พิมพ์ชื่อให้เต็ม` }); break;
+          }
+        }
+        if (!arg || !targets.length) { send(ws, { t: 'sys', message: arg ? `ไม่เจอ "${m.arg}" ในห้อง` : 'พิมพ์ kick all หรือ kick ชื่อ' }); break; }
+        for (const [, c] of targets) {
+          kickedUntil.set(c.uid, Date.now() + KICK_BAN_MS);
+          send(c.ws, { t: 'error', kicked: true, message: 'คุณถูกเตะออกจากห้อง — กลับเข้าได้อีกใน 2 นาที' });
+          setTimeout(() => { try { c.ws.close(); } catch {} }, 100);
+        }
+        const names = targets.map(([, c]) => c.p.n || 'ไม่มีชื่อ');
+        send(ws, { t: 'sys', message: `เตะออกแล้ว ${names.length} คน: ${names.join(', ')} (กลับเข้าได้อีกใน 2 นาที)` });
+        console.log(`! kick by ${me.p.n || key}: ${names.join(', ')}`);
         break;
       }
       case 'signal': {
