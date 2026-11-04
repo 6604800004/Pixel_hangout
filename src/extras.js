@@ -34,7 +34,7 @@ function setMic(patch) {
 function updateZones() {
   if (!G.joined) return;
   const dock = $('#dock');
-  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
+  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big') && !c.classList.contains('free')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
   const z = zoneAt(G.me.x, G.me.y);
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
@@ -693,3 +693,56 @@ G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|Tik
 
 // สำหรับทดสอบ: เปิดด้วย #debug
 if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
+
+// ---------- ลากหน้าต่างคลิป/เพลง/แชร์จอ ไปวางตรงไหนก็ได้ (ลากที่แถบชื่อ) ----------
+// แตะแถบชื่อสองครั้ง = กลับที่เดิม · ตำแหน่งจำไว้ในเครื่องนี้
+function makeDraggable(panel, keyName) {
+  const head = panel.querySelector('header');
+  const place = (fx, fy) => {
+    const w = panel.offsetWidth || parseFloat(panel.style.width) || 300, h = panel.offsetHeight || 60;
+    const x = clamp(fx * innerWidth, 4, Math.max(4, innerWidth - w - 4));
+    const y = clamp(fy * innerHeight, 4, Math.max(4, innerHeight - h - 4));
+    panel.style.left = x + 'px'; panel.style.top = y + 'px';
+  };
+  const setFree = (pos) => {
+    if (!pos) { panel.classList.remove('free'); panel.style.left = panel.style.top = panel.style.width = ''; lsSet(keyName, null); return; }
+    if (!panel.classList.contains('free')) { panel.style.width = panel.getBoundingClientRect().width + 'px'; panel.classList.add('free'); }
+    place(pos.fx, pos.fy);
+  };
+  const saved = lsGet(keyName, null);
+  if (saved && Number.isFinite(saved.fx)) {
+    panel.classList.add('free');
+    if (saved.w) panel.style.width = Math.min(saved.w, innerWidth - 8) + 'px';
+    requestAnimationFrame(() => place(saved.fx, saved.fy));
+  }
+  let drag = null;
+  head.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || panel.classList.contains('big')) return;
+    const r = panel.getBoundingClientRect();
+    drag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, moved: false, sx: e.clientX, sy: e.clientY };
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+    if (!drag.moved) { drag.moved = true; panel.style.width = drag.w + 'px'; panel.classList.add('free', 'dragging'); }
+    const fx = (e.clientX - drag.dx) / innerWidth, fy = (e.clientY - drag.dy) / innerHeight;
+    place(fx, fy); drag.last = { fx, fy };
+  });
+  const end = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    panel.classList.remove('dragging');
+    if (drag.moved && drag.last) {
+      const r = panel.getBoundingClientRect();
+      lsSet(keyName, { fx: r.left / innerWidth, fy: r.top / innerHeight, w: Math.round(r.width) });
+    }
+    drag = null;
+  };
+  head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+  head.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) setFree(null); });
+  window.addEventListener('resize', () => { const s2 = lsGet(keyName, null); if (s2 && panel.classList.contains('free')) place(s2.fx, s2.fy); });
+  // ตอนหน้าต่างเพิ่งโผล่ (เริ่มเล่นคลิป) จัดตำแหน่งใหม่ให้พอดีจอ
+  new MutationObserver(() => { const s2 = lsGet(keyName, null); if (s2 && !drag && panel.classList.contains('free') && !panel.classList.contains('hidden')) place(s2.fx, s2.fy); }).observe(panel, { attributes: true, attributeFilter: ['class'] });
+}
+makeDraggable($('#ytPanel'), 'pixel.ytPos');
+makeDraggable($('#scrPanel'), 'pixel.scrPos');

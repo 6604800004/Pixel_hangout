@@ -228,7 +228,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ytbox { position: relative; aspect-ratio: 16 / 9; background: #000; }
 .ytbox iframe, .ytbox #ytPlayer { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 #ytTap { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; }
-.yt.big { position: fixed; left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1100px, 94vw); z-index: 12; }
+.yt.big { position: fixed; left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1100px, 94vw) !important; z-index: 12; }
 .ytbox video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .scrtabs { display: flex; gap: 4px; padding: 0 8px 6px; flex-wrap: wrap; }
 .scrtabs button { border: 0; border-radius: 7px; padding: 3px 8px; font-size: 12px; background: rgba(255,247,236,.15); color: #fff7ec; }
@@ -278,7 +278,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .dock { left: auto; right: 8px; width: min(64vw, 320px); top: calc(104px + var(--safe-t)); bottom: auto; }
   .yt header { font-size: 12px; padding: 4px 6px 4px 8px; }
   .ytbtns button { width: 26px; height: 24px; font-size: 12px; }
-  .yt.big { width: 100vw; border-radius: 0; left: 50%; }
+  .yt.big { width: 100vw !important; border-radius: 0; left: 50%; }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }
   .chip b { font-size: 14px; }
@@ -304,7 +304,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .dock { left: auto; right: calc(8px + env(safe-area-inset-right)); top: calc(52px + var(--safe-t)); bottom: auto; width: min(34vw, 300px); }
   .yt header { font-size: 12px; padding: 3px 6px 3px 8px; }
   .ytbtns button { width: 26px; height: 22px; font-size: 12px; }
-  .yt.big { width: min(100vw, calc(100dvh * 1.6)); }
+  .yt.big { width: min(100vw, calc(100dvh * 1.6)) !important; }
   .people { top: calc(52px + var(--safe-t)); max-height: calc(100dvh - 120px); }
   .card { max-height: calc(100dvh - 16px); padding: 12px 14px; }
   .card.split { height: calc(100dvh - 16px); }
@@ -318,6 +318,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .yt.mini header b::after { content: ' · 🎧 ฟังอย่างเดียว'; opacity: .7; }
 .yt.mini { width: auto; max-width: 100%; }
 .leave-row { padding: 0 12px 12px; display: flex; justify-content: flex-end; }
+
+/* หน้าต่างคลิปที่ลากออกมาวางเอง */
+.yt header { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.yt.free { position: fixed; z-index: 7; margin: 0; }
+.yt.free.big { left: 50% !important; top: 50% !important; }
+.yt.dragging { opacity: .92; box-shadow: 0 10px 24px rgba(0,0,0,.35); }
+.yt.dragging header { cursor: grabbing; }
+.yt.dragging iframe { pointer-events: none; }
 
 </style>
 </head>
@@ -3953,7 +3961,7 @@ function setMic(patch) {
 function updateZones() {
   if (!G.joined) return;
   const dock = $('#dock');
-  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
+  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big') && !c.classList.contains('free')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
   const z = zoneAt(G.me.x, G.me.y);
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
@@ -4612,6 +4620,59 @@ G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|Tik
 
 // สำหรับทดสอบ: เปิดด้วย #debug
 if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
+
+// ---------- ลากหน้าต่างคลิป/เพลง/แชร์จอ ไปวางตรงไหนก็ได้ (ลากที่แถบชื่อ) ----------
+// แตะแถบชื่อสองครั้ง = กลับที่เดิม · ตำแหน่งจำไว้ในเครื่องนี้
+function makeDraggable(panel, keyName) {
+  const head = panel.querySelector('header');
+  const place = (fx, fy) => {
+    const w = panel.offsetWidth || parseFloat(panel.style.width) || 300, h = panel.offsetHeight || 60;
+    const x = clamp(fx * innerWidth, 4, Math.max(4, innerWidth - w - 4));
+    const y = clamp(fy * innerHeight, 4, Math.max(4, innerHeight - h - 4));
+    panel.style.left = x + 'px'; panel.style.top = y + 'px';
+  };
+  const setFree = (pos) => {
+    if (!pos) { panel.classList.remove('free'); panel.style.left = panel.style.top = panel.style.width = ''; lsSet(keyName, null); return; }
+    if (!panel.classList.contains('free')) { panel.style.width = panel.getBoundingClientRect().width + 'px'; panel.classList.add('free'); }
+    place(pos.fx, pos.fy);
+  };
+  const saved = lsGet(keyName, null);
+  if (saved && Number.isFinite(saved.fx)) {
+    panel.classList.add('free');
+    if (saved.w) panel.style.width = Math.min(saved.w, innerWidth - 8) + 'px';
+    requestAnimationFrame(() => place(saved.fx, saved.fy));
+  }
+  let drag = null;
+  head.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || panel.classList.contains('big')) return;
+    const r = panel.getBoundingClientRect();
+    drag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, moved: false, sx: e.clientX, sy: e.clientY };
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+    if (!drag.moved) { drag.moved = true; panel.style.width = drag.w + 'px'; panel.classList.add('free', 'dragging'); }
+    const fx = (e.clientX - drag.dx) / innerWidth, fy = (e.clientY - drag.dy) / innerHeight;
+    place(fx, fy); drag.last = { fx, fy };
+  });
+  const end = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    panel.classList.remove('dragging');
+    if (drag.moved && drag.last) {
+      const r = panel.getBoundingClientRect();
+      lsSet(keyName, { fx: r.left / innerWidth, fy: r.top / innerHeight, w: Math.round(r.width) });
+    }
+    drag = null;
+  };
+  head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+  head.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) setFree(null); });
+  window.addEventListener('resize', () => { const s2 = lsGet(keyName, null); if (s2 && panel.classList.contains('free')) place(s2.fx, s2.fy); });
+  // ตอนหน้าต่างเพิ่งโผล่ (เริ่มเล่นคลิป) จัดตำแหน่งใหม่ให้พอดีจอ
+  new MutationObserver(() => { const s2 = lsGet(keyName, null); if (s2 && !drag && panel.classList.contains('free') && !panel.classList.contains('hidden')) place(s2.fx, s2.fy); }).observe(panel, { attributes: true, attributeFilter: ['class'] });
+}
+makeDraggable($('#ytPanel'), 'pixel.ytPos');
+makeDraggable($('#scrPanel'), 'pixel.scrPos');
 
 })();
 </script>

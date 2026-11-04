@@ -216,7 +216,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ytbox { position: relative; aspect-ratio: 16 / 9; background: #000; }
 .ytbox iframe, .ytbox #ytPlayer { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 #ytTap { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; }
-.yt.big { position: fixed; left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1100px, 94vw); z-index: 12; }
+.yt.big { position: fixed; left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(1100px, 94vw) !important; z-index: 12; }
 .ytbox video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .scrtabs { display: flex; gap: 4px; padding: 0 8px 6px; flex-wrap: wrap; }
 .scrtabs button { border: 0; border-radius: 7px; padding: 3px 8px; font-size: 12px; background: rgba(255,247,236,.15); color: #fff7ec; }
@@ -266,7 +266,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .dock { left: auto; right: 8px; width: min(64vw, 320px); top: calc(104px + var(--safe-t)); bottom: auto; }
   .yt header { font-size: 12px; padding: 4px 6px 4px 8px; }
   .ytbtns button { width: 26px; height: 24px; font-size: 12px; }
-  .yt.big { width: 100vw; border-radius: 0; left: 50%; }
+  .yt.big { width: 100vw !important; border-radius: 0; left: 50%; }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }
   .chip b { font-size: 14px; }
@@ -292,7 +292,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .dock { left: auto; right: calc(8px + env(safe-area-inset-right)); top: calc(52px + var(--safe-t)); bottom: auto; width: min(34vw, 300px); }
   .yt header { font-size: 12px; padding: 3px 6px 3px 8px; }
   .ytbtns button { width: 26px; height: 22px; font-size: 12px; }
-  .yt.big { width: min(100vw, calc(100dvh * 1.6)); }
+  .yt.big { width: min(100vw, calc(100dvh * 1.6)) !important; }
   .people { top: calc(52px + var(--safe-t)); max-height: calc(100dvh - 120px); }
   .card { max-height: calc(100dvh - 16px); padding: 12px 14px; }
   .card.split { height: calc(100dvh - 16px); }
@@ -306,3 +306,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .yt.mini header b::after { content: ' · 🎧 ฟังอย่างเดียว'; opacity: .7; }
 .yt.mini { width: auto; max-width: 100%; }
 .leave-row { padding: 0 12px 12px; display: flex; justify-content: flex-end; }
+
+/* หน้าต่างคลิปที่ลากออกมาวางเอง */
+.yt header { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.yt.free { position: fixed; z-index: 7; margin: 0; }
+.yt.free.big { left: 50% !important; top: 50% !important; }
+.yt.dragging { opacity: .92; box-shadow: 0 10px 24px rgba(0,0,0,.35); }
+.yt.dragging header { cursor: grabbing; }
+.yt.dragging iframe { pointer-events: none; }
