@@ -315,7 +315,7 @@ function onPeers(list) {
         rt.saySeen.add(m.i);
         const fresh = !isNew && !G.messages.has(m.i);
         addMessage({ id: m.i, by: peer.by || p.uid || peer.key, n: p.n, l: p.l, text: m.t.slice(0, 200), ts: Number(m.ts) || Date.now() });
-        if (fresh) { rt.bubble = { text: m.t.slice(0, 200), until: now + 6000, lines: null }; SFX.msg(); }
+        if (fresh) { rt.bubble = { id: m.i, text: m.t.slice(0, 200), until: now + 6000, lines: null }; SFX.msg(); }
       }
     }
   }
@@ -335,8 +335,10 @@ function onPeers(list) {
 }
 
 // ================================================================== แชต ====
+G.chatDeleted = new Set();
+G.isAdmin = !!lsGet('pixel.admin', '');
 function addMessage(m) {
-  if (G.messages.has(m.id)) return;
+  if (G.messages.has(m.id) || G.chatDeleted.has(m.id)) return;
   G.messages.set(m.id, m);
   if (G.messages.size > 150) {
     const oldest = [...G.messages.values()].sort((a, b) => a.ts - b.ts)[0];
@@ -373,6 +375,17 @@ function renderChat() {
     }
     const tx = document.createElement('div'); tx.className = 'text'; tx.textContent = m.text;
     row.append(tx);
+    if (G.isAdmin) {
+      // แอดมิน: แตะ ✕ แล้วแตะ "ลบ" อีกครั้งเพื่อยืนยัน
+      row.classList.add('adm');
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'mdel'; del.textContent = '✕'; del.title = 'ลบข้อความนี้';
+      del.onclick = (e) => {
+        e.stopPropagation();
+        if (!del.classList.contains('arm')) { del.classList.add('arm'); del.textContent = 'ลบ'; setTimeout(() => { del.classList.remove('arm'); del.textContent = '✕'; }, 3000); return; }
+        G.net.admin('delchat', lsGet('pixel.admin', '') || '', m.id);
+      };
+      row.append(del);
+    }
     box.append(row);
     prev = m;
   }
@@ -383,8 +396,17 @@ function chatCommand(text) {
   if (!G.net || !G.net.admin) return false;
   let m = text.match(/^\/?admin\s+(\S+)$/i);
   if (m) { G.pendingAdminKey = m[1]; G.net.admin('login', m[1]); return true; }
-  m = text.match(/^\/?(?:kick|เตะ)\s+(.+)$/i);
-  if (m) { G.net.admin('kick', lsGet('pixel.admin', '') || '', m[1].trim()); return true; }
+  if (/^\/?(clear chat|clearchat|ล้างแช[ทต]|ลบแช[ทต]ทั้งหมด)$/i.test(text)) { G.net.admin('delchat', lsGet('pixel.admin', '') || '', 'all'); return true; }
+  // เวลาห้ามเข้า: 30s / 1m / 2h (หรือ วิ / นาที / ชม.) — ไม่ใส่หน่วย = นาที
+  const UNIT = '(\\d+(?:\\.\\d+)?)\\s*(s|sec|m|min|h|hr|วิ|วินาที|นาที|ชม\\.?|ชั่วโมง)?';
+  const toMs = (n, u = 'm') => Number(n) * (/^(s|sec|วิ|วินาที)$/i.test(u) ? 1000 : /^(h|hr|ชม\.?|ชั่วโมง)$/i.test(u) ? 3600000 : 60000);
+  const key = lsGet('pixel.admin', '') || '';
+  m = text.match(new RegExp('^(.+?)\\s+(?:kick|เตะ)\\s+delay\\s+' + UNIT + '$', 'i'));        // หมี kick delay 1m
+  if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
+  m = text.match(new RegExp('^\\/?(?:kick|เตะ)\\s+(.+?)\\s+delay\\s+' + UNIT + '$', 'i'));    // kick หมี delay 1m
+  if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
+  m = text.match(/^\/?(?:kick|เตะ)\s+(.+)$/i);                                             // kick หมี / kick all
+  if (m) { G.net.admin('kick', key, m[1].trim(), 0); return true; }
   return false;
 }
 function sendChat(text) {
@@ -396,7 +418,7 @@ function sendChat(text) {
   G.mySay = [...G.mySay.slice(-2), m];
   pres({ say: G.mySay });
   addMessage({ id: m.i, by: myBy(), n: G.me.nick, l: G.me.look, text, ts });
-  G.me.bubble = { text, until: performance.now() + 6000, lines: null };
+  G.me.bubble = { id: m.i, text, until: performance.now() + 6000, lines: null };
   if (G.net.hasDb && G.net.canWrite !== false) {
     G.net.set('chat', m.i, { uid: G.net.uid || '', n: G.me.nick, l: G.me.look, text, ts }).then(pruneChat).catch(() => {});
   }
@@ -1543,8 +1565,17 @@ function frame(ms) {
   if (net.onSys) net.onSys((m) => {
     if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
     if (m.admin === false) lsSet('pixel.admin', null);
+    if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); }
     G.pendingAdminKey = null;
     addSys('🛡️ ' + m.message); toast(m.message, 4000);
+  });
+  if (net.onChatDel) net.onChatDel((ids) => {
+    const list = ids === 'all' ? [...G.messages.values()].filter((x) => !x.sys).map((x) => x.id) : ids;
+    for (const id of list) { G.chatDeleted.add(id); G.messages.delete(id); }
+    // ลบบับเบิลเหนือหัวของข้อความที่ถูกลบด้วย
+    for (const ch of [G.me, ...G.others.values()]) if (ch.bubble && (ids === 'all' || list.includes(ch.bubble.id))) ch.bubble = null;
+    G.mySay = G.mySay.filter((x) => ids !== 'all' && !list.includes(x.i));
+    scheduleChatRender();
   });
   if (net.onError) net.onError((m) => {
     // โดนเตะ: รีโหลดหน้าเพื่อปิดไมค์/กล้องทั้งหมดทันที แล้วแจ้งเตือนหลังโหลดเสร็จ
@@ -1600,6 +1631,6 @@ function frame(ms) {
   $('#loading').classList.add('hidden');
   spHandleRedirect();
   openCreator(true);
-  try { const k = sessionStorage.getItem('pixel.kicked'); if (k) { sessionStorage.removeItem('pixel.kicked'); toast('👢 ' + k, 7000); } } catch {}
+  try { const k = sessionStorage.getItem('pixel.kicked'); if (k) { sessionStorage.removeItem('pixel.kicked'); toast('👢 ' + k, 6000); } } catch {}
   requestAnimationFrame(frame);
 })();

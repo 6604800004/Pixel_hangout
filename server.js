@@ -20,7 +20,7 @@ const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
 // แอดมิน: คนที่รู้รหัสนี้ใช้คำสั่งในแชตได้ (admin <รหัส> แล้ว kick all / kick ชื่อ)
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
-const KICK_BAN_MS = 2 * 60 * 1000;
+const fmtWait = (ms) => ms >= 3600000 ? `${Math.ceil(ms / 3600000)} ชม.` : ms >= 60000 ? `${Math.ceil(ms / 60000)} นาที` : `${Math.ceil(ms / 1000)} วินาที`;
 const kickedUntil = new Map(); // uid -> เวลาที่กลับเข้าได้
 // กระดานแนบรูป: เก็บไว้ 24 ชม. แล้วลบเอง
 const BOARD_DIR = path.join(DATA_DIR, 'board');
@@ -131,7 +131,7 @@ wss.on('connection', (ws) => {
       if (m.t !== 'hello') return;
       if (ROOM_PASSWORD && m.password !== ROOM_PASSWORD) { send(ws, { t: 'error', message: 'รหัสผ่านห้องไม่ถูกต้อง' }); return ws.close(); }
       const ban = kickedUntil.get(typeof m.uid === 'string' ? m.uid.slice(0, 40) : '');
-      if (ban && ban > Date.now()) { send(ws, { t: 'error', kicked: true, message: `คุณถูกเตะออกจากห้อง — กลับเข้าได้อีกใน ${Math.ceil((ban - Date.now()) / 60000)} นาที` }); return ws.close(); }
+      if (ban && ban > Date.now()) { send(ws, { t: 'error', kicked: true, message: `คุณถูกเตะออกจากห้อง — กลับเข้าได้อีกใน ${fmtWait(ban - Date.now())}` }); return ws.close(); }
       if (peers.size >= MAX_USERS) { send(ws, { t: 'error', message: `ห้องเต็มแล้ว (สูงสุด ${MAX_USERS} คน)` }); return ws.close(); }
       key = 'k' + crypto.randomBytes(6).toString('hex');
       const uid = typeof m.uid === 'string' ? m.uid.slice(0, 40) : key;
@@ -189,7 +189,23 @@ wss.on('connection', (ws) => {
         const ok = ADMIN_KEY && typeof m.key === 'string' && m.key.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(m.key), Buffer.from(ADMIN_KEY));
         if (!ADMIN_KEY) { send(ws, { t: 'sys', message: 'ยังไม่ได้ตั้งรหัสแอดมิน — ใส่ ADMIN_KEY ใน Render → Environment ก่อน' }); break; }
         if (!ok) { send(ws, { t: 'sys', admin: false, message: 'ไม่มีสิทธิ์ใช้คำสั่งนี้ (รหัสแอดมินไม่ถูก)' }); break; }
-        if (m.cmd === 'login') { send(ws, { t: 'sys', admin: true, message: 'เป็นแอดมินแล้ว ✅ ใช้ได้: kick all · kick ชื่อ' }); break; }
+        if (m.cmd === 'login') { send(ws, { t: 'sys', admin: true, message: 'เป็นแอดมินแล้ว ✅ ใช้ได้: kick all · kick ชื่อ · ชื่อ kick delay 1m · กด ✕ ที่ข้อความเพื่อลบ · clear chat' }); break; }
+        if (m.cmd === 'delchat') {
+          // ลบข้อความแชต: ทีละข้อความ (id) หรือทั้งหมด ('all')
+          const all = m.arg === 'all';
+          const ids = all ? Object.keys(store.chat) : [String(m.arg || '')].filter(okId);
+          for (const id of ids) delete store.chat[id];
+          // ลบออกจาก "ข้อความล่าสุด" ที่ติดอยู่กับสถานะของแต่ละคนด้วย ไม่งั้นคนที่เข้ามาใหม่จะยังเห็น
+          for (const [k, c] of peers) {
+            if (!Array.isArray(c.p.say)) continue;
+            const kept = all ? [] : c.p.say.filter((x) => !(x && ids.includes(x.i)));
+            if (kept.length !== c.p.say.length) { c.p = { ...c.p, say: kept }; broadcast({ t: 'peer', key: k, uid: c.uid, p: c.p }); }
+          }
+          broadcast({ t: 'chat-del', ids: all ? 'all' : ids });
+          if (all) send(ws, { t: 'sys', message: 'ล้างแชตทั้งหมดแล้ว 🧹' });
+          save();
+          break;
+        }
         if (m.cmd !== 'kick') break;
         const arg = String(m.arg || '').trim().toLowerCase();
         const others = [...peers].filter(([k]) => k !== key);
@@ -204,13 +220,15 @@ wss.on('connection', (ws) => {
           }
         }
         if (!arg || !targets.length) { send(ws, { t: 'sys', message: arg ? `ไม่เจอ "${m.arg}" ในห้อง` : 'พิมพ์ kick all หรือ kick ชื่อ' }); break; }
+        // ห้ามกลับเข้า (delay) เฉพาะเมื่อสั่งมา เช่น "หมี kick delay 1m" — ปกติเตะแล้วเข้าใหม่ได้ทันที
+        const banMs = Math.min(24 * 3600000, Math.max(0, Number(m.ban) || 0));
         for (const [, c] of targets) {
-          kickedUntil.set(c.uid, Date.now() + KICK_BAN_MS);
-          send(c.ws, { t: 'error', kicked: true, message: 'คุณถูกเตะออกจากห้อง — กลับเข้าได้อีกใน 2 นาที' });
+          if (banMs) kickedUntil.set(c.uid, Date.now() + banMs); else kickedUntil.delete(c.uid);
+          send(c.ws, { t: 'error', kicked: true, message: banMs ? `คุณถูกเตะออกจากห้อง — กลับเข้าได้อีกใน ${fmtWait(banMs)}` : 'คุณถูกเตะออกจากห้อง' });
           setTimeout(() => { try { c.ws.close(); } catch {} }, 100);
         }
         const names = targets.map(([, c]) => c.p.n || 'ไม่มีชื่อ');
-        send(ws, { t: 'sys', message: `เตะออกแล้ว ${names.length} คน: ${names.join(', ')} (กลับเข้าได้อีกใน 2 นาที)` });
+        send(ws, { t: 'sys', message: `เตะออกแล้ว ${names.length} คน: ${names.join(', ')}` + (banMs ? ` (ห้ามเข้า ${fmtWait(banMs)})` : '') });
         console.log(`! kick by ${me.p.n || key}: ${names.join(', ')}`);
         break;
       }
