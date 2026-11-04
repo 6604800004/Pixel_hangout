@@ -599,6 +599,7 @@ window.addEventListener('keydown', (e) => {
   const mv = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
   if (mv.includes(e.code)) { G.keys.add(e.code); e.preventDefault(); G.camManual = false; return; }
   if (e.key === 'Enter') { e.preventDefault(); setChatOpen(true); $('#chatInput').focus(); }
+  if (e.code === 'KeyR' && !G.me.sit) { e.preventDefault(); turnMe(); return; }
   if (e.code === 'KeyE' || e.code === 'Space') { e.preventDefault(); $('#actions .pbtn')?.click(); }
   if (e.key === 'Escape') { if (G.edit) setEdit(false); closeTrays(); $('#people').classList.add('hidden'); }
   if (G.edit && G.selected && (e.key === 'Delete' || e.key === 'Backspace')) $('[data-sel="delete"]').click();
@@ -609,6 +610,12 @@ window.addEventListener('blur', () => G.keys.clear());
 
 const pointers = new Map();
 let pinch = null, holdTimer = 0;
+const TURN_ORDER = ['down', 'left', 'up', 'right'];
+function turnMe(dir) {
+  const me = G.me;
+  me.dir = dir || TURN_ORDER[(TURN_ORDER.indexOf(me.dir) + 1) % 4];
+  pres({ d: me.dir });
+}
 const toWorld = (sx, sy) => ({ x: sx / G.scale + G.cam.x, y: sy / G.scale + G.cam.y });
 canvas.addEventListener('pointerdown', (e) => {
   if (!G.joined) return;
@@ -626,6 +633,8 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
   for (const h of G.musicHits) if (e.clientX >= h.x0 && e.clientX <= h.x1 && e.clientY >= h.y0 && e.clientY <= h.y1) { window.open(h.u, '_blank', 'noopener'); return; }
+  // แตะตัวละครของตัวเอง (ตอนยืนอยู่) = หันไปทางถัดไป
+  if (!G.me.sit && !(G.me.path && G.me.path.length) && Math.abs(w.x - G.me.x) < 10 && w.y < G.me.y + 3 && w.y > G.me.y - 34) { turnMe(); return; }
   // แตะที่นั่ง/โต๊ะ = เดินไปนั่ง
   let target = null;
   const it = itemAt(w.x, w.y);
@@ -1210,7 +1219,19 @@ function openCreator(first) {
     dice.type = 'button';
     turn.append(dice);
     stage.append(turn);
-    const sticky = el('div', 'stage-wrap'); sticky.append(stage); wrap.append(sticky);
+    // หมุนดูตัวละครเอง (◀ ▶ หรือปัดซ้าย/ขวาบนรูป) — ทิศที่เลือกจะเป็นทิศที่ตัวละครหันตอนเข้าห้อง
+    let manualDir = null;
+    const spin = (k) => { const cur = manualDir || G.me.dir || 'down'; manualDir = TURN_ORDER[(TURN_ORDER.indexOf(cur) + k + 4) % 4]; };
+    const rot = el('div', 'rot');
+    const rl = el('button', 'pbtn sm', '◀'), rr = el('button', 'pbtn sm', '▶'), ra = el('button', 'pbtn sm', '🔄');
+    rl.type = rr.type = ra.type = 'button'; rl.title = 'หันซ้าย'; rr.title = 'หันขวา'; ra.title = 'หมุนอัตโนมัติ';
+    rl.onclick = () => spin(1); rr.onclick = () => spin(-1); ra.onclick = () => (manualDir = null);
+    rot.append(rl, ra, rr);
+    let sx0 = null;
+    cv.addEventListener('pointerdown', (e) => (sx0 = e.clientX));
+    cv.addEventListener('pointerup', (e) => { if (sx0 != null && Math.abs(e.clientX - sx0) > 24) spin(e.clientX < sx0 ? 1 : -1); sx0 = null; });
+    cv.style.touchAction = 'pan-y';
+    const sticky = el('div', 'stage-wrap'); sticky.append(stage, rot); wrap.append(sticky);
     const opts = el('div', 'opts');
     const nameField = el('label', 'field opt');
     nameField.append(el('span', null, 'ชื่อเล่น'));
@@ -1258,9 +1279,10 @@ function openCreator(first) {
       G.me.look = cleanLook(draft);
       lsSet('pixel.look', G.me.look); lsSet('pixel.nick', nick);
       G.net.savePrivate({ look: G.me.look, nick, desk: G.myDeskStyle });
+      if (manualDir && !G.me.sit) G.me.dir = manualDir;
       closeModal();
       if (first) join();
-      else { pres({ n: nick, l: G.me.look }); if (G.myDesk) saveDesk(); }
+      else { pres({ n: nick, l: G.me.look, d: G.me.dir }); if (G.myDesk) saveDesk(); }
     };
     foot.append(ok);
     card.append(foot);
@@ -1269,8 +1291,8 @@ function openCreator(first) {
       : G.net.mode === 'ws' ? 'คุยเสียงและเปิดกล้องได้จากปุ่มมุมขวาบนหลังเข้าห้อง' : (G.net.reason || '')));
     const dirs = ['down', 'right', 'up', 'left'];
     startPreview(cv, (g, t) => {
-      const dir = dirs[Math.floor(t / 1.4) % 4];
-      const frame = Math.floor(t * 6) % 4;
+      const dir = manualDir || dirs[Math.floor(t / 1.4) % 4];
+      const frame = manualDir ? 0 : Math.floor(t * 6) % 4;
       const L = cleanLook(draft);
       g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
       g.drawImage(charSprite(L, dir, frame, 'stand', (t % 3.3) < 0.12), 17, 13);
