@@ -157,7 +157,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .mdel { position: absolute; right: 0; top: 50%; transform: translateY(-50%); min-width: 24px; height: 22px; padding: 0 5px; border: 0; border-radius: 6px;
   background: var(--paper2); color: #b0546a; font-size: 11px; line-height: 1; touch-action: manipulation; }
 .mdel.arm { background: var(--red); color: #fff; font-weight: 600; }
-.sys { text-align: center; font-size: 12px; color: #9a8fa8; }
+.sys { text-align: center; font-size: 12px; color: #9a8fa8; white-space: pre-line; }
+.sys.help { text-align: left; background: #fff; border: 2px dashed #e6d4c2; border-radius: 10px; padding: 8px 10px; color: var(--ink2); line-height: 1.6; }
+#helpBtn { margin-left: auto; margin-right: 6px; padding: 3px 8px; font-size: 12px; box-shadow: 0 2px 0 var(--ink); border-width: 2px; }
 .chat form { display: flex; gap: 6px; padding: 8px; border-top: 3px dashed #e6d4c2; }
 .chat input { flex: 1; min-width: 0; border: 3px solid var(--ink); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 15px; background: #fff; outline: none; }
 .chat input:focus { border-color: var(--pink); }
@@ -395,10 +397,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   </nav>
 
   <aside class="chat" id="chat">
-    <header><b>💌 แชตในห้อง</b><button class="x" id="chatClose">✕</button></header>
+    <header><b>💌 แชตในห้อง</b><button class="pbtn sm" id="helpBtn" title="ดูคำสั่งที่ใช้ได้">❓ คำสั่ง</button><button class="x" id="chatClose">✕</button></header>
     <div class="msgs" id="msgs"></div>
     <form id="chatForm" autocomplete="off">
-      <input id="chatInput" maxlength="200" placeholder="พิมพ์ข้อความ…" enterkeyhint="send" />
+      <input id="chatInput" maxlength="200" placeholder="พิมพ์ข้อความ… (help = ดูคำสั่ง)" enterkeyhint="send" />
       <button class="pbtn pink" type="submit">ส่ง</button>
     </form>
   </aside>
@@ -1702,7 +1704,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [] };
+  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -1752,6 +1754,8 @@ function makeWsNet(cfg) {
         emitCol(m.col);
       } else if (m.t === 'signal') {
         L.signal.forEach((f) => f(m.from, m.data));
+      } else if (m.t === 'poke') {
+        L.poke.forEach((f) => f(m));
       } else if (m.t === 'chat-del') {
         if (m.ids === 'all') cols.chat.clear(); else if (Array.isArray(m.ids)) for (const id of m.ids) cols.chat.delete(id);
         emitCol('chat');
@@ -1790,6 +1794,8 @@ function makeWsNet(cfg) {
     onSys(cb) { L.sys.push(cb); },
     onChatDel(cb) { L.chatdel.push(cb); },
     onUpdate(cb) { L.update.push(cb); },
+    onPoke(cb) { L.poke.push(cb); },
+    poke(name, key) { send({ t: 'poke', name, key }); },
     admin(cmd, key, arg, ban) { send({ t: 'admin', cmd, key, arg, ban: ban || 0 }); },
     onWriteDenied() {},
     watch(col, cb) { watchers[col].push(cb); },
@@ -1965,8 +1971,8 @@ function makeVoice(net, onChange) {
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
     peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
     const play = !!peer.playOk;
-    peer.audioEl.muted = V.deaf || !play;
-    if (play && !V.deaf) peer.audioEl.play().catch(() => {});
+    peer.audioEl.muted = V.deaf || V.bgMute || !play;
+    if (play && !V.deaf && !V.bgMute) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
   V.screenAudience = new Set();
@@ -2215,6 +2221,18 @@ function makeVoice(net, onChange) {
     saveSettings();
     if (!V.cam) return;
     try { setVideoTrack(await getCamTrack()); onChange('media'); } catch { onChange('error', 'สลับกล้องไม่สำเร็จ'); }
+  };
+  // พับจอ/สลับแอป: ปิดเสียงทั้งเข้าและออกชั่วคราว (เมื่อผู้ใช้ไม่ได้เปิด "ได้ยินตอนพับจอ")
+  V.bgMute = false;
+  V.setBgMute = (on) => {
+    V.bgMute = !!on;
+    for (const p of V.peers.values()) apply(p);
+    if (V.audioTrack) V.audioTrack.enabled = V.mic && !V.deaf && !V.bgMute;
+  };
+  // กลับมาที่หน้าเว็บ: iOS อาจหยุดเสียงไว้ สั่งเล่นใหม่
+  V.resumeAudio = () => {
+    if (V.actx && V.actx.state === 'suspended') V.actx.resume().catch(() => {});
+    for (const p of V.peers.values()) if (p.playOk && !V.deaf && !V.bgMute) p.audioEl.play().catch(() => {});
   };
   V.toggleDeaf = () => {
     V.deaf = !V.deaf;
@@ -2635,7 +2653,7 @@ function renderChat() {
   if (!list.length) { const e = document.createElement('div'); e.className = 'sys'; e.textContent = 'ยังไม่มีข้อความ ทักเพื่อนได้เลย 👋'; box.append(e); }
   let prev = null;
   for (const m of list) {
-    if (m.sys) { const e = document.createElement('div'); e.className = 'sys'; e.textContent = m.text; box.append(e); prev = null; continue; }
+    if (m.sys) { const e = document.createElement('div'); e.className = 'sys' + (m.help ? ' help' : ''); e.textContent = m.text; box.append(e); prev = null; continue; }
     const row = document.createElement('div');
     const cont = prev && prev.by === m.by && m.ts - prev.ts < 180000;
     row.className = 'msg' + (cont ? ' cont' : '');
@@ -2665,8 +2683,39 @@ function renderChat() {
   if (atBottom) box.scrollTop = box.scrollHeight;
 }
 // คำสั่งแอดมินในแชต (ไม่ถูกส่งเป็นข้อความ): admin <รหัส> · kick all · kick ชื่อ
+// รายการคำสั่ง: ทุกคนเห็นคำสั่งทั่วไป · แอดมินเห็นคำสั่งแอดมินเพิ่ม
+function showHelp() {
+  const lines = [
+    '📖 คำสั่งที่ทุกคนใช้ได้ (พิมพ์ในแชต ไม่ขึ้นให้คนอื่นเห็น)',
+    '👉 poke ชื่อ — สะกิดเฉพาะคน (หรือ สะกิด ชื่อ / ชื่อ poke / poke all)',
+    '🎧 bg on · bg off — เปิด/ปิด ได้ยินเสียงตอนพับจอหรือสลับแอป',
+    '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
+    '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
+    'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ · คอม: R หัน, E นั่ง, Enter แชต',
+  ];
+  if (G.isAdmin) lines.push(
+    '',
+    '🛡️ คำสั่งแอดมิน (เครื่องนี้เป็นแอดมินอยู่)',
+    '👢 kick ชื่อ · kick all — เตะออก (กลับเข้าได้ทันที)',
+    '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
+    '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
+    '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
+    '🚪 admin off — เลิกเป็นแอดมินในเครื่องนี้',
+  );
+  addMessage({ id: 'sys' + randomId(6), sys: true, help: true, text: lines.join('\n'), ts: Date.now() });
+  if (!G.chatOpen) setChatOpen(true);
+}
 function chatCommand(text) {
-  if (!G.net || !G.net.admin) return false;
+  if (!G.net) return false;
+  if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
+  if (/^\/?admin\s+(off|logout|ออก)$/i.test(text)) { lsSet('pixel.admin', null); G.isAdmin = false; scheduleChatRender(); addSys('เลิกเป็นแอดมินในเครื่องนี้แล้ว'); return true; }
+  // สะกิด: poke ชื่อ / สะกิด ชื่อ / ชื่อ poke
+  let p = text.match(/^\/?(?:poke|สะกิด|สกิด|จิ้ม)\s+(.+)$/i) || text.match(/^(.+?)\s+(?:poke|สะกิด|สกิด)$/i);
+  if (p) { pokeByName(p[1].trim()); return true; }
+  // ได้ยินเสียงตอนพับจอ: bg on/off · พับจอ เปิด/ปิด
+  p = text.match(/^\/?(?:bg|background|พับจอ|เสียงพื้นหลัง|ฟังตอนพับจอ)\s*(on|off|เปิด|ปิด)?$/i);
+  if (p) { const v = (p[1] || '').toLowerCase(); setBgAudio(v ? v === 'on' || v === 'เปิด' : !G.bgAudio); return true; }
+  if (!G.net.admin) return false;
   let m = text.match(/^\/?admin\s+(\S+)$/i);
   if (m) { G.pendingAdminKey = m[1]; G.net.admin('login', m[1]); return true; }
   if (/^\/?(clear chat|clearchat|ล้างแช[ทต]|ลบแช[ทต]ทั้งหมด)$/i.test(text)) { G.net.admin('delchat', lsGet('pixel.admin', '') || '', 'all'); return true; }
@@ -2720,6 +2769,7 @@ $('#chatForm').addEventListener('submit', (e) => {
   if (!isMobile()) $('#chatInput').blur();
 });
 $('#chatClose').onclick = () => setChatOpen(false);
+$('#helpBtn').onclick = () => showHelp();
 
 // ================================================================ โต๊ะ ====
 async function claimDesk(slot) {
@@ -3007,7 +3057,8 @@ function drawCharacter(c, ch, t) {
   if (look.pet !== 'none' && ch.pet) { /* สัตว์เลี้ยงวาดแยก */ }
   if (!ch.sit) drawShadow(c, ch.x, ch.y);
   const s = charSprite(look, ch.dir, ch.frame, pose, blink);
-  c.drawImage(s, snap(ch.x - 11), snap(ch.y - 35));
+  const shake = ch.shakeUntil && performance.now() < ch.shakeUntil ? Math.round(Math.sin(t * 60) * 1.5) : 0; // โดนสะกิด = สั่นดุ๊กดิ๊ก
+  c.drawImage(s, snap(ch.x - 11 + shake), snap(ch.y - 35));
 }
 function drawPet(c, ch, t) {
   const pet = ch.pet;
@@ -3418,7 +3469,9 @@ function renderPeople() {
     if (r.rt) {
       const go = document.createElement('button'); go.className = 'pbtn sm'; go.textContent = '🚶 ไปหา';
       go.onclick = () => { walkTo(r.rt.x + 14, r.rt.y + 4); $('#people').classList.add('hidden'); };
-      li.append(go);
+      const pk = document.createElement('button'); pk.className = 'pbtn sm'; pk.textContent = '👉'; pk.title = 'สะกิด';
+      pk.onclick = () => pokeByName(r.n || '');
+      li.append(pk, go);
     }
     ul.append(li);
   }
@@ -3774,6 +3827,14 @@ function paintVoiceSettings() {
   mr.append(rr); rl.append(rangeLabel); mr.append(rl);
   right.append(mr);
 
+  const bg = el('div', 'opt');
+  bg.append(el('span', null, 'ตอนพับจอ / สลับไปแอปอื่น'));
+  const bgl = el('label', 'chk'); const bgc = el('input'); bgc.type = 'checkbox'; bgc.checked = !!G.bgAudio;
+  bgc.onchange = () => setBgAudio(bgc.checked);
+  bgl.append(bgc, el('span', null, 'ยังได้ยินเสียงเพื่อน/เพลงต่อ (ปิด = พับจอแล้วปิดเสียงและไมค์ชั่วคราว)'));
+  bg.append(bgl, el('p', 'tip', 'พิมพ์ในแชตก็ได้: bg on / bg off · iPhone อาจหยุดคลิป YouTube เองเมื่อล็อกจอ'));
+  right.append(bg);
+
   const opt = el('div', 'opt');
   opt.append(el('span', null, 'คุณภาพเสียง'));
   const chk = (label, key) => {
@@ -3828,6 +3889,7 @@ async function join() {
   $('#statusIcon').textContent = G.me.st || '💬';
   buildPalette(); buildTrays();
   if (net.mode === 'ws') { setupVoice(); net.start(); }
+  if (net.mode === 'ws' && G.bgAudio) keepAlive(true); // ต้องเริ่มจากการกดปุ่ม (iOS)
   G.net.setPresence(fullPresence());
   G.presLast = performance.now();
   G.zone = zoneAt(G.me.x, G.me.y);
@@ -3877,7 +3939,7 @@ function frame(ms) {
     if (m.admin === false) lsSet('pixel.admin', null);
     if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); }
     G.pendingAdminKey = null;
-    addSys('🛡️ ' + m.message); toast(m.message, 4000);
+    addSys((m.kind === 'info' ? '' : '🛡️ ') + m.message); toast(m.message, 4000);
   });
   if (net.onUpdate) net.onUpdate(() => {
     const b = $('#banner');
@@ -3885,6 +3947,7 @@ function frame(ms) {
     b.style.pointerEvents = 'auto'; b.style.cursor = 'pointer'; b.style.zIndex = '30'; b.onclick = () => location.reload();
     G.updateBanner = true;
   });
+  if (net.onPoke) net.onPoke(pokeReceived);
   if (net.onChatDel) net.onChatDel((ids) => {
     const list = ids === 'all' ? [...G.messages.values()].filter((x) => !x.sys).map((x) => x.id) : ids;
     for (const id of list) { G.chatDeleted.add(id); G.messages.delete(id); }
@@ -4701,6 +4764,74 @@ function makeDraggable(panel, keyName) {
 }
 makeDraggable($('#ytPanel'), 'pixel.ytPos');
 makeDraggable($('#scrPanel'), 'pixel.scrPos');
+
+// ---------- ได้ยินเสียงตอนพับจอ / สลับแอป (เปิด-ปิดได้) ----------
+// เปิด: พยายามให้เสียงคุยและเพลงเล่นต่อ (Media Session + เสียงเงียบค้างไว้ให้ระบบรู้ว่ากำลังเล่นเสียง)
+// ปิด: พับจอแล้วปิดเสียงเพื่อน + ปิดไมค์ชั่วคราว + หยุดคลิปในเครื่องเรา กลับมาแล้วเปิดคืนให้เอง
+G.bgAudio = lsGet('pixel.bg', true) !== false;
+let keepAliveEl = null;
+function silentWav() {
+  const sr = 8000, n = sr, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function keepAlive(on) {
+  try {
+    if (on) {
+      if (!keepAliveEl) { keepAliveEl = new Audio(silentWav()); keepAliveEl.loop = true; keepAliveEl.setAttribute('playsinline', ''); keepAliveEl.volume = 0.01; }
+      keepAliveEl.play().catch(() => {});
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: $('#roomName').textContent || 'Pixel Hangout', artist: `${ZONES[G.zone || 'hall'].icon} ${ZONES[G.zone || 'hall'].name}`, album: 'Pixel Hangout' });
+        navigator.mediaSession.playbackState = 'playing';
+        try { navigator.mediaSession.setActionHandler('pause', () => setBgAudio(false)); navigator.mediaSession.setActionHandler('play', () => setBgAudio(true)); } catch {}
+      }
+    } else {
+      if (keepAliveEl) keepAliveEl.pause();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+    }
+  } catch {}
+}
+function setBgAudio(on, quiet) {
+  G.bgAudio = !!on; lsSet('pixel.bg', G.bgAudio);
+  keepAlive(G.bgAudio && G.joined);
+  if (!quiet) { const t = G.bgAudio ? '🎧 เปิดแล้ว: พับจอ/สลับแอปยังได้ยินเสียงต่อ' : '🔕 ปิดแล้ว: พับจอแล้วจะปิดเสียงและไมค์ชั่วคราว'; addSys(t); toast(t, 3500); }
+  if (G.voicePanelOpen) paintVoiceSettings();
+}
+document.addEventListener('visibilitychange', () => {
+  if (!G.joined) return;
+  if (document.hidden) {
+    if (G.bgAudio) { keepAlive(true); return; }
+    if (G.voice) G.voice.setBgMute(true);
+    if (YT.ready && YT.player) { try { YT.suppressUntil = Date.now() + 4000; YT.player.pauseVideo(); } catch {} }
+    G.bgPaused = true;
+  } else {
+    if (G.voice) { G.voice.setBgMute(false); G.voice.resumeAudio(); }
+    if (G.bgPaused) { G.bgPaused = false; syncScreens(); }
+  }
+});
+
+// ---------- สะกิด (poke) เฉพาะคน ----------
+function pokeReceived(m) {
+  const who = m.from || 'เพื่อน';
+  toast(`👉 ${who} สะกิดคุณ!`, 4000);
+  addSys(`👉 ${who} สะกิดคุณ`);
+  SFX.pop(); setTimeout(() => SFX.pop(), 180); setTimeout(() => SFX.join(), 380);
+  try { navigator.vibrate && navigator.vibrate([120, 80, 120]); } catch {}
+  G.emotes.push({ key: 'me', e: '👉', start: performance.now(), dx: 0 });
+  G.me.shakeUntil = performance.now() + 700;
+  if (document.hidden) {
+    const t0 = document.title; let n = 0;
+    const iv = setInterval(() => { document.title = n++ % 2 ? t0 : `👉 ${who} สะกิดคุณ`; if (!document.hidden || n > 20) { clearInterval(iv); document.title = t0; } }, 800);
+    try { if (window.Notification && Notification.permission === 'granted') new Notification(`👉 ${who} สะกิดคุณ`, { body: $('#roomName').textContent || 'Pixel Hangout', tag: 'poke' }); } catch {}
+  }
+}
+function pokeByName(name) {
+  if (!G.net.poke) { toast('สะกิดใช้ได้ในเวอร์ชันเซิร์ฟเวอร์ (onrender.com)'); return; }
+  G.net.poke(name);
+  try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {}); } catch {}
+}
 
 })();
 </script>

@@ -141,7 +141,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .mdel { position: absolute; right: 0; top: 50%; transform: translateY(-50%); min-width: 24px; height: 22px; padding: 0 5px; border: 0; border-radius: 6px;
   background: var(--paper2); color: #b0546a; font-size: 11px; line-height: 1; touch-action: manipulation; }
 .mdel.arm { background: var(--red); color: #fff; font-weight: 600; }
-.sys { text-align: center; font-size: 12px; color: #9a8fa8; }
+.sys { text-align: center; font-size: 12px; color: #9a8fa8; white-space: pre-line; }
+.sys.help { text-align: left; background: #fff; border: 2px dashed #e6d4c2; border-radius: 10px; padding: 8px 10px; color: var(--ink2); line-height: 1.6; }
+#helpBtn { margin-left: auto; margin-right: 6px; padding: 3px 8px; font-size: 12px; box-shadow: 0 2px 0 var(--ink); border-width: 2px; }
 .chat form { display: flex; gap: 6px; padding: 8px; border-top: 3px dashed #e6d4c2; }
 .chat input { flex: 1; min-width: 0; border: 3px solid var(--ink); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 15px; background: #fff; outline: none; }
 .chat input:focus { border-color: var(--pink); }

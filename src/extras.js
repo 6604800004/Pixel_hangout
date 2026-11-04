@@ -746,3 +746,71 @@ function makeDraggable(panel, keyName) {
 }
 makeDraggable($('#ytPanel'), 'pixel.ytPos');
 makeDraggable($('#scrPanel'), 'pixel.scrPos');
+
+// ---------- ได้ยินเสียงตอนพับจอ / สลับแอป (เปิด-ปิดได้) ----------
+// เปิด: พยายามให้เสียงคุยและเพลงเล่นต่อ (Media Session + เสียงเงียบค้างไว้ให้ระบบรู้ว่ากำลังเล่นเสียง)
+// ปิด: พับจอแล้วปิดเสียงเพื่อน + ปิดไมค์ชั่วคราว + หยุดคลิปในเครื่องเรา กลับมาแล้วเปิดคืนให้เอง
+G.bgAudio = lsGet('pixel.bg', true) !== false;
+let keepAliveEl = null;
+function silentWav() {
+  const sr = 8000, n = sr, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function keepAlive(on) {
+  try {
+    if (on) {
+      if (!keepAliveEl) { keepAliveEl = new Audio(silentWav()); keepAliveEl.loop = true; keepAliveEl.setAttribute('playsinline', ''); keepAliveEl.volume = 0.01; }
+      keepAliveEl.play().catch(() => {});
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: $('#roomName').textContent || 'Pixel Hangout', artist: `${ZONES[G.zone || 'hall'].icon} ${ZONES[G.zone || 'hall'].name}`, album: 'Pixel Hangout' });
+        navigator.mediaSession.playbackState = 'playing';
+        try { navigator.mediaSession.setActionHandler('pause', () => setBgAudio(false)); navigator.mediaSession.setActionHandler('play', () => setBgAudio(true)); } catch {}
+      }
+    } else {
+      if (keepAliveEl) keepAliveEl.pause();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+    }
+  } catch {}
+}
+function setBgAudio(on, quiet) {
+  G.bgAudio = !!on; lsSet('pixel.bg', G.bgAudio);
+  keepAlive(G.bgAudio && G.joined);
+  if (!quiet) { const t = G.bgAudio ? '🎧 เปิดแล้ว: พับจอ/สลับแอปยังได้ยินเสียงต่อ' : '🔕 ปิดแล้ว: พับจอแล้วจะปิดเสียงและไมค์ชั่วคราว'; addSys(t); toast(t, 3500); }
+  if (G.voicePanelOpen) paintVoiceSettings();
+}
+document.addEventListener('visibilitychange', () => {
+  if (!G.joined) return;
+  if (document.hidden) {
+    if (G.bgAudio) { keepAlive(true); return; }
+    if (G.voice) G.voice.setBgMute(true);
+    if (YT.ready && YT.player) { try { YT.suppressUntil = Date.now() + 4000; YT.player.pauseVideo(); } catch {} }
+    G.bgPaused = true;
+  } else {
+    if (G.voice) { G.voice.setBgMute(false); G.voice.resumeAudio(); }
+    if (G.bgPaused) { G.bgPaused = false; syncScreens(); }
+  }
+});
+
+// ---------- สะกิด (poke) เฉพาะคน ----------
+function pokeReceived(m) {
+  const who = m.from || 'เพื่อน';
+  toast(`👉 ${who} สะกิดคุณ!`, 4000);
+  addSys(`👉 ${who} สะกิดคุณ`);
+  SFX.pop(); setTimeout(() => SFX.pop(), 180); setTimeout(() => SFX.join(), 380);
+  try { navigator.vibrate && navigator.vibrate([120, 80, 120]); } catch {}
+  G.emotes.push({ key: 'me', e: '👉', start: performance.now(), dx: 0 });
+  G.me.shakeUntil = performance.now() + 700;
+  if (document.hidden) {
+    const t0 = document.title; let n = 0;
+    const iv = setInterval(() => { document.title = n++ % 2 ? t0 : `👉 ${who} สะกิดคุณ`; if (!document.hidden || n > 20) { clearInterval(iv); document.title = t0; } }, 800);
+    try { if (window.Notification && Notification.permission === 'granted') new Notification(`👉 ${who} สะกิดคุณ`, { body: $('#roomName').textContent || 'Pixel Hangout', tag: 'poke' }); } catch {}
+  }
+}
+function pokeByName(name) {
+  if (!G.net.poke) { toast('สะกิดใช้ได้ในเวอร์ชันเซิร์ฟเวอร์ (onrender.com)'); return; }
+  G.net.poke(name);
+  try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {}); } catch {}
+}

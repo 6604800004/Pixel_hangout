@@ -81,8 +81,8 @@ function makeVoice(net, onChange) {
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
     peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
     const play = !!peer.playOk;
-    peer.audioEl.muted = V.deaf || !play;
-    if (play && !V.deaf) peer.audioEl.play().catch(() => {});
+    peer.audioEl.muted = V.deaf || V.bgMute || !play;
+    if (play && !V.deaf && !V.bgMute) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
   V.screenAudience = new Set();
@@ -331,6 +331,18 @@ function makeVoice(net, onChange) {
     saveSettings();
     if (!V.cam) return;
     try { setVideoTrack(await getCamTrack()); onChange('media'); } catch { onChange('error', 'สลับกล้องไม่สำเร็จ'); }
+  };
+  // พับจอ/สลับแอป: ปิดเสียงทั้งเข้าและออกชั่วคราว (เมื่อผู้ใช้ไม่ได้เปิด "ได้ยินตอนพับจอ")
+  V.bgMute = false;
+  V.setBgMute = (on) => {
+    V.bgMute = !!on;
+    for (const p of V.peers.values()) apply(p);
+    if (V.audioTrack) V.audioTrack.enabled = V.mic && !V.deaf && !V.bgMute;
+  };
+  // กลับมาที่หน้าเว็บ: iOS อาจหยุดเสียงไว้ สั่งเล่นใหม่
+  V.resumeAudio = () => {
+    if (V.actx && V.actx.state === 'suspended') V.actx.resume().catch(() => {});
+    for (const p of V.peers.values()) if (p.playOk && !V.deaf && !V.bgMute) p.audioEl.play().catch(() => {});
   };
   V.toggleDeaf = () => {
     V.deaf = !V.deaf;

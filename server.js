@@ -192,7 +192,7 @@ wss.on('connection', (ws) => {
         const ok = ADMIN_KEY && typeof m.key === 'string' && m.key.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(m.key), Buffer.from(ADMIN_KEY));
         if (!ADMIN_KEY) { send(ws, { t: 'sys', message: 'ยังไม่ได้ตั้งรหัสแอดมิน — ใส่ ADMIN_KEY ใน Render → Environment ก่อน' }); break; }
         if (!ok) { send(ws, { t: 'sys', admin: false, message: 'ไม่มีสิทธิ์ใช้คำสั่งนี้ (รหัสแอดมินไม่ถูก)' }); break; }
-        if (m.cmd === 'login') { send(ws, { t: 'sys', admin: true, message: 'เป็นแอดมินแล้ว ✅ ใช้ได้: kick all · kick ชื่อ · ชื่อ kick delay 1m · กด ✕ ที่ข้อความเพื่อลบ · clear chat' }); break; }
+        if (m.cmd === 'login') { send(ws, { t: 'sys', admin: true, message: 'เป็นแอดมินแล้ว ✅ พิมพ์ help เพื่อดูคำสั่งแอดมิน' }); break; }
         if (m.cmd === 'delchat') {
           // ลบข้อความแชต: ทีละข้อความ (id) หรือทั้งหมด ('all')
           const all = m.arg === 'all';
@@ -233,6 +233,22 @@ wss.on('connection', (ws) => {
         const names = targets.map(([, c]) => c.p.n || 'ไม่มีชื่อ');
         send(ws, { t: 'sys', message: `เตะออกแล้ว ${names.length} คน: ${names.join(', ')}` + (banMs ? ` (ห้ามเข้า ${fmtWait(banMs)})` : '') });
         console.log(`! kick by ${me.p.n || key}: ${names.join(', ')}`);
+        break;
+      }
+      case 'poke': {
+        // สะกิดเฉพาะคน (ใครก็ใช้ได้) — จำกัด 1 ครั้งต่อ 2 วินาที
+        if (Date.now() - (me.lastPoke || 0) < 2000) { send(ws, { t: 'sys', kind: 'info', message: 'ใจเย็นๆ สะกิดถี่เกินไป 😅' }); break; }
+        me.lastPoke = Date.now();
+        const arg = String(m.name || '').trim().toLowerCase();
+        const others = [...peers].filter(([k]) => k !== key);
+        if (!arg) { send(ws, { t: 'sys', kind: 'info', message: 'พิมพ์ poke ตามด้วยชื่อ เช่น poke หมี' }); break; }
+        const name = ([, c]) => String(c.p.n || '').trim().toLowerCase();
+        let targets = arg === 'all' || arg === 'ทั้งหมด' ? others : others.filter((e) => name(e) === arg);
+        if (!targets.length) targets = others.filter((e) => name(e).includes(arg));
+        if (!targets.length) { send(ws, { t: 'sys', kind: 'info', message: `ไม่เจอ "${m.name}" ในห้อง` }); break; }
+        if (targets.length > 1 && arg !== 'all' && arg !== 'ทั้งหมด') { send(ws, { t: 'sys', kind: 'info', message: `ชื่อคล้ายกันหลายคน: ${targets.map(([, c]) => c.p.n).join(', ')} — พิมพ์ชื่อให้เต็ม` }); break; }
+        for (const [, c] of targets) send(c.ws, { t: 'poke', from: String(me.p.n || 'เพื่อน').slice(0, 16), fromKey: key });
+        send(ws, { t: 'sys', kind: 'info', message: `👉 สะกิด ${targets.map(([, c]) => c.p.n || 'เพื่อน').join(', ')} แล้ว` });
         break;
       }
       case 'signal': {

@@ -368,7 +368,7 @@ function renderChat() {
   if (!list.length) { const e = document.createElement('div'); e.className = 'sys'; e.textContent = 'ยังไม่มีข้อความ ทักเพื่อนได้เลย 👋'; box.append(e); }
   let prev = null;
   for (const m of list) {
-    if (m.sys) { const e = document.createElement('div'); e.className = 'sys'; e.textContent = m.text; box.append(e); prev = null; continue; }
+    if (m.sys) { const e = document.createElement('div'); e.className = 'sys' + (m.help ? ' help' : ''); e.textContent = m.text; box.append(e); prev = null; continue; }
     const row = document.createElement('div');
     const cont = prev && prev.by === m.by && m.ts - prev.ts < 180000;
     row.className = 'msg' + (cont ? ' cont' : '');
@@ -398,8 +398,39 @@ function renderChat() {
   if (atBottom) box.scrollTop = box.scrollHeight;
 }
 // คำสั่งแอดมินในแชต (ไม่ถูกส่งเป็นข้อความ): admin <รหัส> · kick all · kick ชื่อ
+// รายการคำสั่ง: ทุกคนเห็นคำสั่งทั่วไป · แอดมินเห็นคำสั่งแอดมินเพิ่ม
+function showHelp() {
+  const lines = [
+    '📖 คำสั่งที่ทุกคนใช้ได้ (พิมพ์ในแชต ไม่ขึ้นให้คนอื่นเห็น)',
+    '👉 poke ชื่อ — สะกิดเฉพาะคน (หรือ สะกิด ชื่อ / ชื่อ poke / poke all)',
+    '🎧 bg on · bg off — เปิด/ปิด ได้ยินเสียงตอนพับจอหรือสลับแอป',
+    '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
+    '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
+    'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ · คอม: R หัน, E นั่ง, Enter แชต',
+  ];
+  if (G.isAdmin) lines.push(
+    '',
+    '🛡️ คำสั่งแอดมิน (เครื่องนี้เป็นแอดมินอยู่)',
+    '👢 kick ชื่อ · kick all — เตะออก (กลับเข้าได้ทันที)',
+    '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
+    '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
+    '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
+    '🚪 admin off — เลิกเป็นแอดมินในเครื่องนี้',
+  );
+  addMessage({ id: 'sys' + randomId(6), sys: true, help: true, text: lines.join('\n'), ts: Date.now() });
+  if (!G.chatOpen) setChatOpen(true);
+}
 function chatCommand(text) {
-  if (!G.net || !G.net.admin) return false;
+  if (!G.net) return false;
+  if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
+  if (/^\/?admin\s+(off|logout|ออก)$/i.test(text)) { lsSet('pixel.admin', null); G.isAdmin = false; scheduleChatRender(); addSys('เลิกเป็นแอดมินในเครื่องนี้แล้ว'); return true; }
+  // สะกิด: poke ชื่อ / สะกิด ชื่อ / ชื่อ poke
+  let p = text.match(/^\/?(?:poke|สะกิด|สกิด|จิ้ม)\s+(.+)$/i) || text.match(/^(.+?)\s+(?:poke|สะกิด|สกิด)$/i);
+  if (p) { pokeByName(p[1].trim()); return true; }
+  // ได้ยินเสียงตอนพับจอ: bg on/off · พับจอ เปิด/ปิด
+  p = text.match(/^\/?(?:bg|background|พับจอ|เสียงพื้นหลัง|ฟังตอนพับจอ)\s*(on|off|เปิด|ปิด)?$/i);
+  if (p) { const v = (p[1] || '').toLowerCase(); setBgAudio(v ? v === 'on' || v === 'เปิด' : !G.bgAudio); return true; }
+  if (!G.net.admin) return false;
   let m = text.match(/^\/?admin\s+(\S+)$/i);
   if (m) { G.pendingAdminKey = m[1]; G.net.admin('login', m[1]); return true; }
   if (/^\/?(clear chat|clearchat|ล้างแช[ทต]|ลบแช[ทต]ทั้งหมด)$/i.test(text)) { G.net.admin('delchat', lsGet('pixel.admin', '') || '', 'all'); return true; }
@@ -453,6 +484,7 @@ $('#chatForm').addEventListener('submit', (e) => {
   if (!isMobile()) $('#chatInput').blur();
 });
 $('#chatClose').onclick = () => setChatOpen(false);
+$('#helpBtn').onclick = () => showHelp();
 
 // ================================================================ โต๊ะ ====
 async function claimDesk(slot) {
@@ -740,7 +772,8 @@ function drawCharacter(c, ch, t) {
   if (look.pet !== 'none' && ch.pet) { /* สัตว์เลี้ยงวาดแยก */ }
   if (!ch.sit) drawShadow(c, ch.x, ch.y);
   const s = charSprite(look, ch.dir, ch.frame, pose, blink);
-  c.drawImage(s, snap(ch.x - 11), snap(ch.y - 35));
+  const shake = ch.shakeUntil && performance.now() < ch.shakeUntil ? Math.round(Math.sin(t * 60) * 1.5) : 0; // โดนสะกิด = สั่นดุ๊กดิ๊ก
+  c.drawImage(s, snap(ch.x - 11 + shake), snap(ch.y - 35));
 }
 function drawPet(c, ch, t) {
   const pet = ch.pet;
@@ -1151,7 +1184,9 @@ function renderPeople() {
     if (r.rt) {
       const go = document.createElement('button'); go.className = 'pbtn sm'; go.textContent = '🚶 ไปหา';
       go.onclick = () => { walkTo(r.rt.x + 14, r.rt.y + 4); $('#people').classList.add('hidden'); };
-      li.append(go);
+      const pk = document.createElement('button'); pk.className = 'pbtn sm'; pk.textContent = '👉'; pk.title = 'สะกิด';
+      pk.onclick = () => pokeByName(r.n || '');
+      li.append(pk, go);
     }
     ul.append(li);
   }
@@ -1507,6 +1542,14 @@ function paintVoiceSettings() {
   mr.append(rr); rl.append(rangeLabel); mr.append(rl);
   right.append(mr);
 
+  const bg = el('div', 'opt');
+  bg.append(el('span', null, 'ตอนพับจอ / สลับไปแอปอื่น'));
+  const bgl = el('label', 'chk'); const bgc = el('input'); bgc.type = 'checkbox'; bgc.checked = !!G.bgAudio;
+  bgc.onchange = () => setBgAudio(bgc.checked);
+  bgl.append(bgc, el('span', null, 'ยังได้ยินเสียงเพื่อน/เพลงต่อ (ปิด = พับจอแล้วปิดเสียงและไมค์ชั่วคราว)'));
+  bg.append(bgl, el('p', 'tip', 'พิมพ์ในแชตก็ได้: bg on / bg off · iPhone อาจหยุดคลิป YouTube เองเมื่อล็อกจอ'));
+  right.append(bg);
+
   const opt = el('div', 'opt');
   opt.append(el('span', null, 'คุณภาพเสียง'));
   const chk = (label, key) => {
@@ -1561,6 +1604,7 @@ async function join() {
   $('#statusIcon').textContent = G.me.st || '💬';
   buildPalette(); buildTrays();
   if (net.mode === 'ws') { setupVoice(); net.start(); }
+  if (net.mode === 'ws' && G.bgAudio) keepAlive(true); // ต้องเริ่มจากการกดปุ่ม (iOS)
   G.net.setPresence(fullPresence());
   G.presLast = performance.now();
   G.zone = zoneAt(G.me.x, G.me.y);
@@ -1610,7 +1654,7 @@ function frame(ms) {
     if (m.admin === false) lsSet('pixel.admin', null);
     if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); }
     G.pendingAdminKey = null;
-    addSys('🛡️ ' + m.message); toast(m.message, 4000);
+    addSys((m.kind === 'info' ? '' : '🛡️ ') + m.message); toast(m.message, 4000);
   });
   if (net.onUpdate) net.onUpdate(() => {
     const b = $('#banner');
@@ -1618,6 +1662,7 @@ function frame(ms) {
     b.style.pointerEvents = 'auto'; b.style.cursor = 'pointer'; b.style.zIndex = '30'; b.onclick = () => location.reload();
     G.updateBanner = true;
   });
+  if (net.onPoke) net.onPoke(pokeReceived);
   if (net.onChatDel) net.onChatDel((ids) => {
     const list = ids === 'all' ? [...G.messages.values()].filter((x) => !x.sys).map((x) => x.id) : ids;
     for (const id of list) { G.chatDeleted.add(id); G.messages.delete(id); }

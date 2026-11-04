@@ -88,7 +88,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [] };
+  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -138,6 +138,8 @@ function makeWsNet(cfg) {
         emitCol(m.col);
       } else if (m.t === 'signal') {
         L.signal.forEach((f) => f(m.from, m.data));
+      } else if (m.t === 'poke') {
+        L.poke.forEach((f) => f(m));
       } else if (m.t === 'chat-del') {
         if (m.ids === 'all') cols.chat.clear(); else if (Array.isArray(m.ids)) for (const id of m.ids) cols.chat.delete(id);
         emitCol('chat');
@@ -176,6 +178,8 @@ function makeWsNet(cfg) {
     onSys(cb) { L.sys.push(cb); },
     onChatDel(cb) { L.chatdel.push(cb); },
     onUpdate(cb) { L.update.push(cb); },
+    onPoke(cb) { L.poke.push(cb); },
+    poke(name, key) { send({ t: 'poke', name, key }); },
     admin(cmd, key, arg, ban) { send({ t: 'admin', cmd, key, arg, ban: ban || 0 }); },
     onWriteDenied() {},
     watch(col, cb) { watchers[col].push(cb); },
