@@ -680,8 +680,11 @@ function render(t) {
   if (Math.abs(tx - G.cam.cx) < 0.05) G.cam.cx = tx;
   if (Math.abs(ty - G.cam.cy) < 0.05) G.cam.cy = ty;
   // มือถือ: ถ้ามีหน้าต่าง YouTube/แชร์จอบังกลางจอ ให้ตัวละครอยู่กลางพื้นที่ที่เหลือด้านล่าง
-  const topOff = G.dockBottom || 0;
-  const botOff = 86; // แถบเครื่องมือด้านล่าง
+  // ระหว่างปรับรัศมีไมค์: ซ่อนหน้าต่างวิดีโอ แล้วให้ตัวละคร+วงอยู่กลางพื้นที่เหนือแผง
+  const pop = document.getElementById('micPop');
+  const popTop = pop && !pop.classList.contains('hidden') ? pop.getBoundingClientRect().top : 0;
+  const topOff = popTop ? (isMobile() ? 96 : 0) : (G.dockBottom || 0);
+  const botOff = popTop ? ch - popTop : 86; // แถบเครื่องมือด้านล่าง
   const camX = Math.round(G.cam.cx - vw / 2), camY = Math.round(G.cam.cy - (topOff + ch - botOff) / 2 / scale);
   G.cam.x = camX; G.cam.y = camY;
 
@@ -1445,6 +1448,7 @@ async function join() {
   setTimeout(spPoll, 1500);
   if (net.mode === 'claude' && net.canWrite === false) showBanner('คุณมีสิทธิ์ดูอย่างเดียว: เดิน แชต อีโมตได้ แต่ห้อง/โต๊ะจะไม่ถูกบันทึก');
   if (net.mode === 'solo') showBanner(net.reason);
+  if (net.mode === 'ws' && G.inAppBrowser) showBanner('กำลังเปิดในแอปแชต — ไมค์/กล้องอาจใช้ไม่ได้ ให้กด ⋯ แล้วเลือก "เปิดใน Safari/Chrome"');
   setTimeout(() => toast(isMobile() ? 'แตะพื้นเพื่อเดิน · แตะโซฟา/โต๊ะเพื่อไปนั่ง' : 'เดินด้วยลูกศร/WASD หรือคลิกพื้น · E = นั่ง · Enter = แชต'), 500);
   SFX.join();
 }

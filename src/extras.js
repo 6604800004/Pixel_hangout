@@ -74,7 +74,8 @@ function drawHearingRange(b, t) {
     if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== 'hall' || !G.voice.speaking(rt.key)) continue;
     ring(b, rt.x, rt.y, peerRange(rt.p), peerRingColor(rt.p), 0.35, t);
   }
-  if (G.voice.mic || G.voicePanelOpen) ring(b, G.me.x, G.me.y, G.micSet.r, MIC_COLORS[G.micSet.c], G.voicePanelOpen ? 0.95 : 0.7, t);
+  const editing = G.voicePanelOpen || !$('#micPop').classList.contains('hidden');
+  if (G.voice.mic || editing) ring(b, G.me.x, G.me.y, G.micSet.r, MIC_COLORS[G.micSet.c], editing ? 0.95 : 0.7, t);
 }
 
 // วาดป้ายชื่อห้องที่ประตู (บนจอ)
@@ -640,6 +641,37 @@ $('#scrStop').onclick = () => G.voice && G.voice.stopScreen();
 $('#scrBig').onclick = () => $('#scrPanel').classList.toggle('big');
 $('#scrHide').onclick = () => { if (SHARE.sel) SHARE.hidden.add(SHARE.sel); syncShare(); toast('ซ่อนจอที่แชร์แล้ว จะขึ้นใหม่เมื่อเขาเริ่มแชร์ครั้งถัดไป'); };
 $('#scrVideo').ondblclick = () => $('#scrPanel').classList.toggle('big');
+
+// ---------- แผงรัศมีไมค์แบบเล็ก (แตะป้ายห้อง) — เห็นวงรอบตัวละครระหว่างปรับ ----------
+function micRangeName(r) { return r <= 90 ? 'กระซิบ' : r <= 150 ? 'ปกติ' : r <= 210 ? 'ดัง' : 'ตะโกน'; }
+function paintMicPop() {
+  const body = $('#micPopBody');
+  body.innerHTML = '';
+  if (!G.voice) { body.append(el('p', 'tip', 'รัศมีไมค์ใช้ได้ในเวอร์ชันที่มีเสียง (onrender.com)')); return; }
+  const row = el('div', 'row');
+  MIC_COLORS.forEach((c, i) => {
+    const b = el('button', 'sw' + (G.micSet.c === i ? ' sel' : '')); b.type = 'button'; b.style.background = c;
+    b.onclick = () => { setMic({ c: i }); paintMicPop(); };
+    row.append(b);
+  });
+  const lab = el('p', 'tip', '');
+  const paint = () => (lab.textContent = `ระยะ: ${micRangeName(G.micSet.r)} (${G.micSet.r}) — ${G.zone === 'hall' ? 'ใช้อยู่ตอนนี้' : 'มีผลเฉพาะในห้องรวม'}`);
+  const r = el('input'); r.type = 'range'; r.min = String(MIC_R_MIN); r.max = String(MIC_R_MAX); r.step = '5'; r.value = String(G.micSet.r);
+  r.style.accentColor = MIC_COLORS[G.micSet.c];
+  r.oninput = () => { setMic({ r: Number(r.value) }); paint(); };
+  paint();
+  body.append(row, r, lab, el('p', 'tip', 'เสียงคุณไปถึงเฉพาะคนในวงนี้ · ห้องประชุมและสวนได้ยินทั้งห้องเสมอ'));
+}
+function setMicPop(open) {
+  $('#micPop').classList.toggle('hidden', !open);
+  document.body.classList.toggle('micpop-open', open);
+  if (open) paintMicPop();
+}
+$('#zoneChip').onclick = () => setMicPop($('#micPop').classList.contains('hidden'));
+$('#micPopClose').onclick = () => setMicPop(false);
+
+// ---------- เปิดในแอปแชต (Messenger/LINE/IG) มักใช้ไมค์/กล้องไม่ได้ ----------
+G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|TikTok/i.test(navigator.userAgent);
 
 // สำหรับทดสอบ: เปิดด้วย #debug
 if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT };

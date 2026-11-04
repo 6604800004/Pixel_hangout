@@ -215,6 +215,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .scrtabs button { border: 0; border-radius: 7px; padding: 3px 8px; font-size: 12px; background: rgba(255,247,236,.15); color: #fff7ec; }
 .scrtabs button.sel { background: var(--pink); color: #fff; }
 
+.chip.zone { cursor: pointer; }
+.micpop { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); bottom: calc(100px + var(--safe-b)); width: min(320px, calc(100vw - 20px)); }
+.micpop-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.micpop-body .row { gap: 5px; }
+.micpop-body .sw { width: 26px; height: 26px; }
+.micpop-body input[type=range] { width: 100%; }
+.micpop-body .tip { margin: 0; }
+@media (max-width: 760px) { .micpop-open .dock { visibility: hidden; } .micpop-body .tip + .tip { display: none; } }
+
 /* ---------- ตั้งค่าเสียง/กล้อง ---------- */
 .vset { display: grid; grid-template-columns: 250px 1fr; gap: 18px; }
 .cam-prev { position: relative; aspect-ratio: 4 / 3; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #3a3150; display: grid; place-items: center; color: #fff7ec; font-size: 13px; }
@@ -247,7 +256,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .chip b { display: none; }
   .top-right { gap: 4px; max-width: 60vw; }
   .bgrid { grid-template-columns: repeat(2, 1fr); }
-  .dock { left: 8px; right: 8px; width: auto; top: calc(104px + var(--safe-t)); bottom: auto; }
+  .dock { left: auto; right: 8px; width: min(64vw, 320px); top: calc(104px + var(--safe-t)); bottom: auto; }
+  .yt header { font-size: 12px; padding: 4px 6px 4px 8px; }
+  .ytbtns button { width: 26px; height: 24px; font-size: 12px; }
   .yt.big { width: 100vw; border-radius: 0; left: 50%; }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }

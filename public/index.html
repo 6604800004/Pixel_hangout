@@ -231,6 +231,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .scrtabs button { border: 0; border-radius: 7px; padding: 3px 8px; font-size: 12px; background: rgba(255,247,236,.15); color: #fff7ec; }
 .scrtabs button.sel { background: var(--pink); color: #fff; }
 
+.chip.zone { cursor: pointer; }
+.micpop { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); bottom: calc(100px + var(--safe-b)); width: min(320px, calc(100vw - 20px)); }
+.micpop-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.micpop-body .row { gap: 5px; }
+.micpop-body .sw { width: 26px; height: 26px; }
+.micpop-body input[type=range] { width: 100%; }
+.micpop-body .tip { margin: 0; }
+@media (max-width: 760px) { .micpop-open .dock { visibility: hidden; } .micpop-body .tip + .tip { display: none; } }
+
 /* ---------- ตั้งค่าเสียง/กล้อง ---------- */
 .vset { display: grid; grid-template-columns: 250px 1fr; gap: 18px; }
 .cam-prev { position: relative; aspect-ratio: 4 / 3; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #3a3150; display: grid; place-items: center; color: #fff7ec; font-size: 13px; }
@@ -263,7 +272,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .chip b { display: none; }
   .top-right { gap: 4px; max-width: 60vw; }
   .bgrid { grid-template-columns: repeat(2, 1fr); }
-  .dock { left: 8px; right: 8px; width: auto; top: calc(104px + var(--safe-t)); bottom: auto; }
+  .dock { left: auto; right: 8px; width: min(64vw, 320px); top: calc(104px + var(--safe-t)); bottom: auto; }
+  .yt header { font-size: 12px; padding: 4px 6px 4px 8px; }
+  .ytbtns button { width: 26px; height: 24px; font-size: 12px; }
   .yt.big { width: 100vw; border-radius: 0; left: 50%; }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }
@@ -285,7 +296,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
         <b id="roomName">Pixel Hangout</b>
         <span class="count"><span>👥</span><span id="onlineCount">1</span></span>
       </button>
-      <div class="chip zone" id="zoneChip">🏠 ห้องรวม</div>
+      <button class="chip zone" id="zoneChip" title="ตั้งรัศมีไมค์">🏠 ห้องรวม</button>
     </div>
     <div class="top-right">
       <button class="pbtn" id="callBtn" title="ห้องคุยเสียง">🎧 <span class="lbl">ห้องเสียง</span></button>
@@ -343,7 +354,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <div class="loading" id="loading"><div class="spinner"></div><p>กำลังเปิดห้อง…</p></div>
 <div class="modal hidden" id="modal"><div class="card" id="card"></div></div>
-<div class="dock" id="dock">
+  <section class="panel micpop hidden" id="micPop">
+        <header><b>⭕ รัศมีไมค์</b><button class="x" id="micPopClose">✕</button></header>
+        <div class="micpop-body" id="micPopBody"></div>
+      </section>
+  <div class="dock" id="dock">
 <section class="yt hidden" id="scrPanel">
   <header>
     <b id="scrTitle">🖥️ แชร์จอ</b>
@@ -2696,8 +2711,11 @@ function render(t) {
   if (Math.abs(tx - G.cam.cx) < 0.05) G.cam.cx = tx;
   if (Math.abs(ty - G.cam.cy) < 0.05) G.cam.cy = ty;
   // มือถือ: ถ้ามีหน้าต่าง YouTube/แชร์จอบังกลางจอ ให้ตัวละครอยู่กลางพื้นที่ที่เหลือด้านล่าง
-  const topOff = G.dockBottom || 0;
-  const botOff = 86; // แถบเครื่องมือด้านล่าง
+  // ระหว่างปรับรัศมีไมค์: ซ่อนหน้าต่างวิดีโอ แล้วให้ตัวละคร+วงอยู่กลางพื้นที่เหนือแผง
+  const pop = document.getElementById('micPop');
+  const popTop = pop && !pop.classList.contains('hidden') ? pop.getBoundingClientRect().top : 0;
+  const topOff = popTop ? (isMobile() ? 96 : 0) : (G.dockBottom || 0);
+  const botOff = popTop ? ch - popTop : 86; // แถบเครื่องมือด้านล่าง
   const camX = Math.round(G.cam.cx - vw / 2), camY = Math.round(G.cam.cy - (topOff + ch - botOff) / 2 / scale);
   G.cam.x = camX; G.cam.y = camY;
 
@@ -3461,6 +3479,7 @@ async function join() {
   setTimeout(spPoll, 1500);
   if (net.mode === 'claude' && net.canWrite === false) showBanner('คุณมีสิทธิ์ดูอย่างเดียว: เดิน แชต อีโมตได้ แต่ห้อง/โต๊ะจะไม่ถูกบันทึก');
   if (net.mode === 'solo') showBanner(net.reason);
+  if (net.mode === 'ws' && G.inAppBrowser) showBanner('กำลังเปิดในแอปแชต — ไมค์/กล้องอาจใช้ไม่ได้ ให้กด ⋯ แล้วเลือก "เปิดใน Safari/Chrome"');
   setTimeout(() => toast(isMobile() ? 'แตะพื้นเพื่อเดิน · แตะโซฟา/โต๊ะเพื่อไปนั่ง' : 'เดินด้วยลูกศร/WASD หรือคลิกพื้น · E = นั่ง · Enter = แชต'), 500);
   SFX.join();
 }
@@ -3627,7 +3646,8 @@ function drawHearingRange(b, t) {
     if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== 'hall' || !G.voice.speaking(rt.key)) continue;
     ring(b, rt.x, rt.y, peerRange(rt.p), peerRingColor(rt.p), 0.35, t);
   }
-  if (G.voice.mic || G.voicePanelOpen) ring(b, G.me.x, G.me.y, G.micSet.r, MIC_COLORS[G.micSet.c], G.voicePanelOpen ? 0.95 : 0.7, t);
+  const editing = G.voicePanelOpen || !$('#micPop').classList.contains('hidden');
+  if (G.voice.mic || editing) ring(b, G.me.x, G.me.y, G.micSet.r, MIC_COLORS[G.micSet.c], editing ? 0.95 : 0.7, t);
 }
 
 // วาดป้ายชื่อห้องที่ประตู (บนจอ)
@@ -4193,6 +4213,37 @@ $('#scrStop').onclick = () => G.voice && G.voice.stopScreen();
 $('#scrBig').onclick = () => $('#scrPanel').classList.toggle('big');
 $('#scrHide').onclick = () => { if (SHARE.sel) SHARE.hidden.add(SHARE.sel); syncShare(); toast('ซ่อนจอที่แชร์แล้ว จะขึ้นใหม่เมื่อเขาเริ่มแชร์ครั้งถัดไป'); };
 $('#scrVideo').ondblclick = () => $('#scrPanel').classList.toggle('big');
+
+// ---------- แผงรัศมีไมค์แบบเล็ก (แตะป้ายห้อง) — เห็นวงรอบตัวละครระหว่างปรับ ----------
+function micRangeName(r) { return r <= 90 ? 'กระซิบ' : r <= 150 ? 'ปกติ' : r <= 210 ? 'ดัง' : 'ตะโกน'; }
+function paintMicPop() {
+  const body = $('#micPopBody');
+  body.innerHTML = '';
+  if (!G.voice) { body.append(el('p', 'tip', 'รัศมีไมค์ใช้ได้ในเวอร์ชันที่มีเสียง (onrender.com)')); return; }
+  const row = el('div', 'row');
+  MIC_COLORS.forEach((c, i) => {
+    const b = el('button', 'sw' + (G.micSet.c === i ? ' sel' : '')); b.type = 'button'; b.style.background = c;
+    b.onclick = () => { setMic({ c: i }); paintMicPop(); };
+    row.append(b);
+  });
+  const lab = el('p', 'tip', '');
+  const paint = () => (lab.textContent = `ระยะ: ${micRangeName(G.micSet.r)} (${G.micSet.r}) — ${G.zone === 'hall' ? 'ใช้อยู่ตอนนี้' : 'มีผลเฉพาะในห้องรวม'}`);
+  const r = el('input'); r.type = 'range'; r.min = String(MIC_R_MIN); r.max = String(MIC_R_MAX); r.step = '5'; r.value = String(G.micSet.r);
+  r.style.accentColor = MIC_COLORS[G.micSet.c];
+  r.oninput = () => { setMic({ r: Number(r.value) }); paint(); };
+  paint();
+  body.append(row, r, lab, el('p', 'tip', 'เสียงคุณไปถึงเฉพาะคนในวงนี้ · ห้องประชุมและสวนได้ยินทั้งห้องเสมอ'));
+}
+function setMicPop(open) {
+  $('#micPop').classList.toggle('hidden', !open);
+  document.body.classList.toggle('micpop-open', open);
+  if (open) paintMicPop();
+}
+$('#zoneChip').onclick = () => setMicPop($('#micPop').classList.contains('hidden'));
+$('#micPopClose').onclick = () => setMicPop(false);
+
+// ---------- เปิดในแอปแชต (Messenger/LINE/IG) มักใช้ไมค์/กล้องไม่ได้ ----------
+G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|TikTok/i.test(navigator.userAgent);
 
 // สำหรับทดสอบ: เปิดด้วย #debug
 if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT };
