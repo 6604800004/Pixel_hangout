@@ -4,7 +4,7 @@
 //   ws     : เปิดจากเซิร์ฟเวอร์ Node ของเราเอง (มีเสียง/กล้อง)
 //   solo   : เล่นคนเดียว (เช่นตอนยังไม่ได้ล็อกอิน)
 // ============================================================================
-const COLS = ['furniture', 'desks', 'chat', 'settings'];
+const COLS = ['furniture', 'desks', 'chat', 'settings', 'board'];
 
 function randomId(n = 10) {
   const a = 'abcdefghijkmnpqrstuvwxyz23456789';
@@ -175,6 +175,20 @@ function makeWsNet(cfg) {
     async loadPrivate() { return lsGet('pixel.private', null); },
     async savePrivate(o) { lsSet('pixel.private', o); },
     signal(to, data) { send({ t: 'signal', to, data }); },
+    // กระดานแนบรูป (มีเฉพาะเวอร์ชันเซิร์ฟเวอร์)
+    board: true, boardMax: cfg.boardMax || 20, boardTtl: cfg.boardTtl || 86400000, spotifyClientId: cfg.spotifyClientId || '',
+    async uploadBoard(boardId, blob, meta) {
+      const r = await fetch(`/api/board/${encodeURIComponent(boardId)}`, {
+        method: 'POST', body: blob,
+        headers: { 'Content-Type': blob.type, 'X-Name': encodeURIComponent(meta.n || ''), 'X-W': String(meta.w || 0), 'X-H': String(meta.h || 0), 'X-Room-Password': net.password || '' },
+      });
+      if (!r.ok) { let e = {}; try { e = await r.json(); } catch {} const err = new Error(e.error || 'upload'); err.code = e.error; throw err; }
+      const j = await r.json();
+      cols.board.set(j.id, { ...j.doc, id: j.id }); emitCol('board');
+      return j;
+    },
+    clearBoard(b) { for (const [id, d] of cols.board) if (d.b === b) cols.board.delete(id); emitCol('board'); send({ t: 'board-clear', b }); },
+    boardUrl(id, doc) { return `/board/${id}.${(doc && doc.ext) || 'jpg'}`; },
     onSignal(cb) { L.signal.push(cb); },
     resolveNames: null,
   };
@@ -183,7 +197,8 @@ function makeWsNet(cfg) {
 
 // --------------------------------------------------------------- Solo ----
 function makeSoloNet(reason) {
-  const store = lsGet('pixel.solo', { furniture: [], desks: [], chat: [], settings: [] });
+  const store = lsGet('pixel.solo', {});
+  for (const c of COLS) if (!Array.isArray(store[c])) store[c] = [];
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
   let peerCb = null, me = {};
   const emit = (col) => {

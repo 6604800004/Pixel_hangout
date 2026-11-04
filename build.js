@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const src = (f) => fs.readFileSync(path.join(__dirname, 'src', f), 'utf8');
 
-const js = ['sprites.js', 'world.js', 'net.js', 'voice.js', 'main.js'].map(src).join('\n\n');
+const js = ['sprites.js', 'world.js', 'net.js', 'voice.js', 'main.js', 'extras.js'].map(src).join('\n\n');
 const page = src('index.html')
   .replace('/*CSS*/', () => src('style.css'))
   .replace('/*JS*/', () => `(() => {\n'use strict';\n${js}\n})();`);

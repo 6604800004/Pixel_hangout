@@ -194,6 +194,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- โซน / กระดาน ---------- */
+.top-left { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.chip.zone { font-size: 13px; padding: 3px 10px; box-shadow: 0 2px 0 var(--ink); border-width: 2px; background: var(--paper2); }
+.bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.btile { position: relative; border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 3px 0 var(--ink); }
+.btile img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; cursor: zoom-in; background: #eee; }
+.btile .bmeta { display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px; font-size: 12px; }
+.btile .bmeta b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btile .bmeta small { color: var(--ink2); white-space: nowrap; }
+.btile .x { position: absolute; top: 6px; right: 6px; background: rgba(255,247,236,.9); }
+.focus img { max-width: 94vw; max-height: 88dvh; border: 4px solid #fff7ec; border-radius: 12px; background: #fff; }
+
 /* ---------- ตั้งค่าเสียง/กล้อง ---------- */
 .vset { display: grid; grid-template-columns: 250px 1fr; gap: 18px; }
 .cam-prev { position: relative; aspect-ratio: 4 / 3; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #3a3150; display: grid; place-items: center; color: #fff7ec; font-size: 13px; }
@@ -220,6 +232,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .stage { max-width: 220px; margin: 0 auto; width: 100%; }
   .card { padding: 14px; }
   .pbtn .lbl { display: none; }
+  .chip b { display: none; }
+  .top-right { gap: 4px; max-width: 60vw; }
+  .bgrid { grid-template-columns: repeat(2, 1fr); }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }
   .chip b { font-size: 14px; }
@@ -234,11 +249,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <div id="hud" class="hidden">
   <header class="topbar">
-    <button class="chip" id="roomChip" aria-label="ใครอยู่บ้าง">
-      <span class="dot" id="connDot"></span>
-      <b id="roomName">Pixel Hangout</b>
-      <span class="count"><span>👥</span><span id="onlineCount">1</span></span>
-    </button>
+    <div class="top-left">
+      <button class="chip" id="roomChip" aria-label="ใครอยู่บ้าง">
+        <span class="dot" id="connDot"></span>
+        <b id="roomName">Pixel Hangout</b>
+        <span class="count"><span>👥</span><span id="onlineCount">1</span></span>
+      </button>
+      <div class="chip zone" id="zoneChip">🏠 ห้องรวม</div>
+    </div>
     <div class="top-right">
       <button class="pbtn" id="callBtn" title="ห้องคุยเสียง">🎧 <span class="lbl">ห้องเสียง</span></button>
       <button class="pbtn sq hidden" id="micBtn" title="ไมค์">🎙️</button>
@@ -312,8 +330,11 @@ const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก']];
 const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย']];
-const DEFAULT_LOOK = { skin: 1, hair: 'short', hc: 0, top: 'hoodie', tc: 5, bc: 8, acc: 'none', pet: 'none' };
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า']];
+// สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
+const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9'];
+const SEXES = [['m', 'ชาย'], ['f', 'หญิง']];
+const DEFAULT_LOOK = { sex: 'm', skin: 1, hair: 'short', hc: 0, top: 'hoodie', tc: 5, bc: 8, acc: 'none', pet: 'none', pc: 0 };
 
 function cleanLook(l) {
   const o = { ...DEFAULT_LOOK };
@@ -327,6 +348,8 @@ function cleanLook(l) {
   if (TOPS.some((h) => h[0] === l.top)) o.top = l.top;
   if (ACCS.some((h) => h[0] === l.acc)) o.acc = l.acc;
   if (PETS.some((h) => h[0] === l.pet)) o.pet = l.pet;
+  if (l.sex === 'f' || l.sex === 'm') o.sex = l.sex;
+  if (inRange(l.pc, PET_COLORS.length)) o.pc = l.pc;
   return o;
 }
 
@@ -397,7 +420,7 @@ function painter(g, ox = 0, oy = 0) {
 // ============================================================================
 const CHAR_W = 22, CHAR_H = 36;
 function charSprite(look, dir, frame, pose, blink) {
-  const key = `c|${look.skin}|${look.hair}|${look.hc}|${look.top}|${look.tc}|${look.bc}|${look.acc}|${dir}|${frame}|${pose}|${blink ? 1 : 0}`;
+  const key = `c|${look.sex}|${look.skin}|${look.hair}|${look.hc}|${look.top}|${look.tc}|${look.bc}|${look.acc}|${dir}|${frame}|${pose}|${blink ? 1 : 0}`;
   return cached(key, () => {
     const flip = dir === 'right';
     const d = flip ? 'left' : dir;
@@ -468,11 +491,14 @@ function charSprite(look, dir, frame, pose, blink) {
       if (blink) { U(7, 13, 2, 1, EYE); U(13, 13, 2, 1, EYE); }
       else { U(7, 12, 2, 2, EYE); U(13, 12, 2, 2, EYE); U(7, 12, 1, 1, '#ffffff'); U(13, 12, 1, 1, '#ffffff'); }
       U(5, 14, 2, 1, '#ff9fb0'); U(15, 14, 2, 1, '#ff9fb0');
-      U(10, 15, 2, 1, '#c0605a');
+      if (look.sex === 'f') { U(6, 12, 1, 1, EYE); U(15, 12, 1, 1, EYE); U(10, 15, 2, 1, '#e0607a'); }
+      else { U(7, 11, 2, 1, hcD); U(13, 11, 2, 1, hcD); U(10, 15, 2, 1, '#c0605a'); }
     } else if (side) {
       if (blink) U(5, 13, 2, 1, EYE);
       else { U(5, 12, 2, 2, EYE); U(5, 12, 1, 1, '#ffffff'); }
-      U(4, 14, 2, 1, '#ff9fb0'); U(6, 15, 1, 1, '#c0605a');
+      U(4, 14, 2, 1, '#ff9fb0');
+      if (look.sex === 'f') { U(4, 12, 1, 1, EYE); U(6, 15, 1, 1, '#e0607a'); }
+      else { U(5, 11, 2, 1, hcD); U(6, 15, 1, 1, '#c0605a'); }
     }
 
     // ---------- ผม ----------
@@ -546,15 +572,16 @@ function charSprite(look, dir, frame, pose, blink) {
 // ============================================================================
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
-function petSprite(kind, frame, faceRight) {
-  return cached(`p|${kind}|${frame}|${faceRight ? 1 : 0}`, () => {
-    const c = mkCanvas(14, 14);
+function petSprite(kind, frame, faceRight, pc = 0) {
+  return cached(`p|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
+    const c = mkCanvas(16, 16);
     const g = c.getContext('2d');
-    const P = painter(g, 1, 0);
+    const P = painter(g, 1, 1);
     const EYE = '#2e2235';
     const step = frame % 2;
+    const pick = (natural) => PET_COLORS[pc] || natural;
     if (kind === 'cat' || kind === 'dog') {
-      const col = kind === 'cat' ? '#f2a65a' : '#c08552';
+      const col = pick(kind === 'cat' ? '#f2a65a' : '#c08552');
       const dk = shade(col, -0.25);
       P(4, 6, 7, 4, col); P(1, 3, 5, 5, col);
       if (kind === 'cat') { P(1, 2, 1, 1, col); P(4, 2, 1, 1, col); P(10, 3 + step, 1, 3, col); P(11, 3 + step, 1, 1, col); P(6, 6, 1, 4, dk); P(8, 6, 1, 4, dk); }
@@ -562,18 +589,44 @@ function petSprite(kind, frame, faceRight) {
       P(2, 5, 1, 1, EYE); P(1, 6, 1, 1, kind === 'cat' ? '#ff8fab' : EYE);
       P(4, 10, 1, 2 - step, dk); P(9, 10, 1, 1 + step, dk); P(6, 10, 1, 1 + step, col); P(8, 10, 1, 2 - step, col);
     } else if (kind === 'chick') {
+      const col = pick('#ffe07a');
       const y = step;
-      P(3, 4 + y, 7, 6, '#ffe07a'); P(4, 3 + y, 5, 1, '#ffe07a'); P(5, 2 + y, 2, 1, '#ffe07a');
-      P(8, 6 + y, 2, 2, '#f5c84a'); P(4, 5 + y, 1, 1, EYE); P(2, 6 + y, 1, 1, '#ff9a3c');
+      P(3, 4 + y, 7, 6, col); P(4, 3 + y, 5, 1, col); P(5, 2 + y, 2, 1, col);
+      P(8, 6 + y, 2, 2, shade(col, -0.12)); P(4, 5 + y, 1, 1, EYE); P(2, 6 + y, 1, 1, '#ff9a3c');
       P(5, 10, 1, 2, '#ff9a3c'); P(7, 10, 1, 2, '#ff9a3c');
     } else if (kind === 'slime') {
-      if (step) { P(2, 7, 9, 5, '#7ee0a0'); P(3, 6, 7, 1, '#7ee0a0'); }
-      else { P(3, 5, 7, 7, '#7ee0a0'); P(4, 4, 5, 1, '#7ee0a0'); }
-      P(4, step ? 8 : 7, 1, 2, EYE); P(7, step ? 8 : 7, 1, 2, EYE); P(4, step ? 7 : 5, 2, 1, '#c8f7d8'); P(3, 11, 7, 1, '#52b87a');
+      const col = pick('#7ee0a0');
+      if (step) { P(2, 7, 9, 5, col); P(3, 6, 7, 1, col); }
+      else { P(3, 5, 7, 7, col); P(4, 4, 5, 1, col); }
+      P(4, step ? 8 : 7, 1, 2, EYE); P(7, step ? 8 : 7, 1, 2, EYE); P(4, step ? 7 : 5, 2, 1, shade(col, 0.5)); P(3, 11, 7, 1, shade(col, -0.25));
     } else if (kind === 'bunny') {
-      P(4, 6, 6, 5, '#ffffff'); P(2, 4, 4, 4, '#ffffff'); P(2, 0, 1, 4, '#ffffff'); P(4, 0 + step, 1, 4, '#ffffff');
-      P(2, 1, 1, 2, '#ffc0d0'); P(3, 5, 1, 1, EYE); P(2, 6, 1, 1, '#ff8fab'); P(9, 7, 2, 2, '#f4efe6');
-      P(4, 11, 2, 1, '#e8e2ea'); P(8, 11, 2, 1, '#e8e2ea');
+      const col = pick('#ffffff');
+      P(4, 6, 6, 5, col); P(2, 4, 4, 4, col); P(2, 0, 1, 4, col); P(4, 0 + step, 1, 4, col);
+      P(2, 1, 1, 2, '#ffc0d0'); P(3, 5, 1, 1, EYE); P(2, 6, 1, 1, '#ff8fab'); P(9, 7, 2, 2, shade(col, -0.06));
+      P(4, 11, 2, 1, shade(col, -0.1)); P(8, 11, 2, 1, shade(col, -0.1));
+    } else if (kind === 'fish') {
+      // ปลาลอยตัวในฟองน้ำ ว่ายตามเจ้าของ
+      const col = pick('#ff9a3c');
+      const y = step ? 1 : 0;
+      P(1, 3, 11, 9, 'rgba(160,220,255,.35)'); P(2, 2, 9, 1, 'rgba(160,220,255,.35)'); P(2, 12, 9, 1, 'rgba(160,220,255,.35)');
+      P(3, 5 + y, 6, 4, col); P(4, 4 + y, 4, 1, col); P(4, 9 + y, 4, 1, col);
+      P(9, 5 + y - step, 2, 2, shade(col, -0.2)); P(9, 8 + y + step, 2, 2, shade(col, -0.2)); P(10, 6 + y, 1, 2, shade(col, -0.2));
+      P(4, 6 + y, 1, 1, EYE); P(6, 5 + y, 1, 4, shade(col, 0.35)); P(2, 3, 1, 1, '#ffffff');
+    } else if (kind === 'dino') {
+      const col = pick('#7ed37a');
+      const dk = shade(col, -0.28);
+      P(1, 2, 6, 5, col); P(0, 4, 2, 3, col); P(5, 6, 6, 5, col); P(10, 7, 3, 2, col); P(12, 8, 1, 1, col);
+      P(5, 9, 5, 2, '#f6e7b8'); P(2, 3, 1, 1, EYE); P(1, 6, 3, 1, '#ffffff');
+      for (const [x, y2] of [[4, 1], [6, 5], [8, 5], [10, 6]]) P(x, y2, 1, 1, dk);
+      P(4, 8, 2, 1, dk);
+      P(6, 11, 2, 1 + step, dk); P(9, 11, 2, 2 - step, dk);
+    } else if (kind === 'panda') {
+      const patch = pick('#2e2235');
+      P(2, 3, 7, 6, '#ffffff'); P(5, 7, 7, 4, '#ffffff');
+      P(2, 2, 2, 2, patch); P(7, 2, 2, 2, patch);
+      P(3, 5, 2, 2, patch); P(6, 5, 2, 2, patch); P(4, 5, 1, 1, '#ffffff'); P(7, 5, 1, 1, '#ffffff');
+      P(5, 7, 1, 1, '#2e2235'); P(5, 8, 7, 2, patch);
+      P(5, 11, 2, 1 + step, patch); P(9, 11, 2, 2 - step, patch);
     }
     addOutline(c);
     return faceRight ? mirror(c) : c;
@@ -740,10 +793,80 @@ const FURN = {
     ctx.fillStyle = '#ffe07a'; ctx.fillRect(sx + x2, sy + 9, 3, 2);
     ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(sx + 8, sy + 10 - (Math.floor(t * 3) % 8), 1, 1);
   } },
-  whiteboard: { label: 'ไวท์บอร์ด', emo: '📋', w: 36, h: 30, solid: true, foot: 5, draw(P) {
+  whiteboard: { label: 'กระดาน', emo: '📋', w: 36, h: 30, solid: true, foot: 5, board: true, draw(P) {
     P(0, 0, 36, 22, '#c8ccd8'); P(1, 1, 34, 20, '#ffffff'); P(4, 4, 12, 1, '#7d9cf0'); P(4, 7, 18, 1, '#9aa0b8'); P(4, 10, 14, 1, '#9aa0b8');
     P(24, 4, 8, 8, '#ffe07a'); P(25, 13, 7, 5, '#ff8fab'); P(5, 14, 6, 4, '#8fd694'); P(14, 15, 6, 1, '#e8505b');
     P(4, 22, 2, 8, '#5a5f7a'); P(30, 22, 2, 8, '#5a5f7a'); P(0, 21, 36, 1, '#9aa0b8');
+  } },
+  // ---------------- ห้องประชุม ----------------
+  confTable: { label: 'โต๊ะประชุม', emo: '🗂️', w: 104, h: 34, solid: true, foot: 22, draw(P) {
+    P(0, 0, 104, 22, WOOD.l); P(2, 1, 100, 1, '#f2c896'); P(0, 22, 104, 6, WOOD.m); P(0, 27, 104, 1, WOOD.d);
+    P(3, 28, 4, 6, WOOD.d); P(97, 28, 4, 6, WOOD.d); P(50, 28, 4, 6, WOOD.d);
+    P(10, 5, 14, 9, '#9aa0b8'); P(11, 6, 12, 6, '#7ec8ff'); P(10, 14, 14, 2, '#c8ccd8');
+    P(76, 6, 12, 9, '#f4f1e8'); P(77, 8, 9, 1, '#9aa0b8'); P(77, 10, 7, 1, '#9aa0b8');
+    P(40, 6, 3, 8, '#8fd0f0'); P(40, 5, 3, 1, '#4aa3df'); P(60, 7, 3, 8, '#8fd0f0'); P(60, 6, 3, 1, '#4aa3df');
+    P(48, 9, 8, 5, '#ff8fab'); P(50, 7, 4, 2, '#8fd694');
+  } },
+  meetChair: { label: 'เก้าอี้ประชุม', emo: '🪑', w: 16, h: 20, solid: false, facing: true, variants: 6,
+    seats: (f) => [{ dx: 0, dy: f ? -4 : -6, dir: f ? 'up' : 'down', over: true }],
+    draw(P, v, f) {
+      const [m, d, l] = COLORWAYS[v % 6];
+      if (f) { P(1, 0, 14, 9, m); P(2, 1, 12, 1, l); P(0, 8, 16, 4, d); P(1, 8, 14, 1, m); }
+      else { P(1, 0, 14, 8, d); P(2, 1, 12, 1, m); P(0, 7, 16, 5, m); P(1, 7, 14, 1, l); }
+      P(7, 12, 2, 3, '#5a5f7a'); P(2, 15, 12, 1, '#5a5f7a'); P(1, 16, 2, 2, '#2f3245'); P(13, 16, 2, 2, '#2f3245'); P(7, 16, 2, 2, '#2f3245');
+    } },
+  bigScreen: { label: 'จอนำเสนอ', emo: '🖥️', w: 66, h: 42, solid: true, foot: 6, draw(P) {
+    P(0, 0, 66, 34, '#2f3245'); P(2, 2, 62, 30, '#1d1f2e'); P(30, 34, 6, 5, '#5a5f7a'); P(20, 39, 26, 3, '#43475e');
+  },
+  anim(ctx, sx, sy, t) {
+    const slide = Math.floor(t / 4) % 3;
+    ctx.fillStyle = '#fff7ec'; ctx.fillRect(sx + 3, sy + 3, 60, 28);
+    ctx.fillStyle = '#5a4f78'; ctx.fillRect(sx + 7, sy + 6, 26, 2);
+    if (slide === 0) {
+      const hs = [8, 13, 10, 17, 20];
+      hs.forEach((h, i) => { ctx.fillStyle = ['#ff8fab', '#7d9cf0', '#8fd694', '#ffb86b', '#b48cf0'][i]; ctx.fillRect(sx + 10 + i * 9, sy + 28 - h, 6, h); });
+    } else if (slide === 1) {
+      ctx.fillStyle = '#9aa0b8'; for (let i = 0; i < 4; i++) ctx.fillRect(sx + 9, sy + 12 + i * 4, 30 - i * 5, 2);
+      ctx.fillStyle = '#ffe07a'; ctx.fillRect(sx + 44, sy + 11, 14, 14); ctx.fillStyle = '#ff8fab'; ctx.fillRect(sx + 48, sy + 15, 6, 6);
+    } else {
+      ctx.fillStyle = '#7ec8ff'; ctx.fillRect(sx + 16, sy + 12, 34, 14); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 22, sy + 17, 22, 3);
+    }
+  } },
+  // ---------------- สวน ----------------
+  tree: { label: 'ต้นไม้ใหญ่', emo: '🌳', w: 44, h: 60, solid: true, foot: 8, fw: 12, variants: 3, draw(P, v) {
+    const [G, GL, GD] = [['#3fa37a', '#8fd694', '#2d7a5a'], ['#e8a0c0', '#ffd6e6', '#c27896'], ['#e0954a', '#ffd08a', '#b06a30']][v % 3];
+    P(18, 36, 8, 22, WOOD.d); P(19, 36, 2, 20, WOOD.m); P(14, 56, 16, 4, WOOD.dd);
+    P(8, 4, 28, 30, G); P(4, 10, 36, 20, G); P(12, 0, 20, 4, G); P(2, 16, 40, 10, G); P(10, 30, 24, 8, G);
+    for (const [x, y] of [[12, 6], [24, 4], [8, 16], [30, 12], [18, 18], [34, 22], [12, 26], [26, 28]]) { P(x, y, 5, 4, GL); P(x + 1, y + 4, 4, 1, GD); }
+    P(4, 26, 36, 4, GD);
+    if (v === 0) for (const [x, y] of [[16, 12], [30, 20], [10, 22]]) P(x, y, 2, 2, '#ff6b6b');
+  } },
+  bench: { label: 'ม้านั่ง', emo: '🪵', w: 42, h: 22, solid: true, foot: 8, seats: () => [{ dx: -10, dy: -5, dir: 'down', over: true }, { dx: 10, dy: -5, dir: 'down', over: true }], draw(P) {
+    P(0, 0, 42, 4, WOOD.m); P(0, 5, 42, 4, WOOD.m); P(0, 0, 42, 1, WOOD.l); P(0, 5, 42, 1, WOOD.l);
+    P(0, 11, 42, 5, WOOD.l); P(0, 15, 42, 1, WOOD.d);
+    P(3, 0, 3, 22, '#5a5f7a'); P(36, 0, 3, 22, '#5a5f7a');
+  } },
+  flowerBed: { label: 'แปลงดอกไม้', emo: '🌷', w: 38, h: 18, solid: true, foot: 10, variants: 3, draw(P, v) {
+    P(0, 8, 38, 10, WOOD.m); P(0, 8, 38, 2, WOOD.l); P(2, 6, 34, 4, '#6b4430');
+    const cols = [['#ff6b8a', '#ffe07a', '#ff8fab'], ['#7d9cf0', '#b48cf0', '#ffffff'], ['#ffb86b', '#e8505b', '#ffe07a']][v % 3];
+    for (let i = 0; i < 7; i++) {
+      const x = 3 + i * 5, h = 3 + (i % 3);
+      P(x + 1, 7 - h, 1, h, '#3fa37a'); P(x, 4 - h, 3, 3, cols[i % 3]); P(x + 1, 5 - h, 1, 1, '#ffe07a');
+    }
+  } },
+  pond: { label: 'บ่อน้ำ', emo: '🐟', w: 62, h: 34, floor: true, solid: true, foot: 30, draw(P) {
+    P(6, 0, 50, 34, '#9aa0b8'); P(2, 4, 58, 26, '#9aa0b8'); P(0, 8, 62, 18, '#9aa0b8');
+    P(8, 2, 46, 30, '#5ab4e0'); P(4, 6, 54, 22, '#5ab4e0'); P(2, 10, 58, 14, '#5ab4e0');
+    P(10, 4, 20, 2, '#a8ddf5'); P(6, 8, 6, 2, '#a8ddf5');
+    P(44, 20, 8, 5, '#3fa37a'); P(46, 19, 4, 1, '#8fd694'); P(47, 21, 2, 2, '#ff8fab');
+    for (const [x, y] of [[4, 2], [56, 4], [58, 26], [2, 28], [30, 32]]) P(x, y, 4, 3, '#c8ccd8');
+  },
+  anim(ctx, sx, sy, t) {
+    const fx = 14 + Math.floor((Math.sin(t * 0.8) + 1) * 14), fy = 13 + Math.floor(Math.sin(t * 1.3) * 3);
+    ctx.fillStyle = '#ff9a3c'; ctx.fillRect(sx + fx, sy + fy, 5, 2); ctx.fillRect(sx + fx + (Math.cos(t * 0.8) > 0 ? -1 : 5), sy + fy - 1, 1, 4);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 30 - fx / 3, sy + 22, 4, 2); ctx.fillRect(sx + 28 - fx / 3, sy + 23, 1, 1);
+    const r = Math.floor(t * 2) % 6;
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(sx + 34 - r, sy + 8, 2 + r * 2, 1);
   } },
 };
 
@@ -853,7 +976,19 @@ const STATUSES = [['', 'ไม่มี'], ['💻', 'ทำงาน'], ['🎧',
 // ============================================================================
 // world.js — แผนที่ห้อง พื้น ผนัง หน้าต่างตามเวลาจริง การชน และการหาเส้นทาง
 // ============================================================================
-const W = 512, H = 352, WALL = 58;
+const W = 512, H = 600, WALL = 58;
+// ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
+const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
+const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
+const ZONES = {
+  hall: { id: 'hall', name: 'ห้องรวม', icon: '🏠' },
+  meet: { id: 'meet', name: 'ห้องประชุม', icon: '🔒' },
+  garden: { id: 'garden', name: 'สวน', icon: '🌿' },
+};
+function zoneAt(x, y) {
+  if (y < LOWER_Y + 16) return 'hall';
+  return x < DIVIDER_X + 3 ? 'meet' : 'garden';
+}
 const WORK_X = 256;
 const KITCHEN = { x: 4, y: 262, w: 132, h: 86 };
 const DESK_SLOTS = [
@@ -871,7 +1006,19 @@ const DEFAULT_LAYOUT = [
   { t: 'plant', v: 2, x: 270, y: 78 }, { t: 'rug', v: 1, x: 384, y: 308 }, { t: 'roundTable', x: 384, y: 306 },
   { t: 'armchair', x: 352, y: 312, v: 1 }, { t: 'armchair', x: 416, y: 312, v: 4 }, { t: 'plant', v: 0, x: 496, y: 342 },
   { t: 'plant', v: 1, x: 236, y: 342 },
+  // ---- ห้องประชุม ----
+  { t: 'bigScreen', x: 150, y: 404 }, { t: 'whiteboard', x: 44, y: 410 }, { t: 'plant', v: 0, x: 272, y: 404 },
+  { t: 'meetChair', x: 112, y: 456, v: 0, f: 0 }, { t: 'meetChair', x: 150, y: 456, v: 1, f: 0 }, { t: 'meetChair', x: 188, y: 456, v: 2, f: 0 },
+  { t: 'confTable', x: 150, y: 486 },
+  { t: 'meetChair', x: 112, y: 506, v: 3, f: 1 }, { t: 'meetChair', x: 150, y: 506, v: 4, f: 1 }, { t: 'meetChair', x: 188, y: 506, v: 5, f: 1 },
+  { t: 'plant', v: 1, x: 20, y: 590 }, { t: 'plant', v: 3, x: 282, y: 590 },
+  // ---- สวน ----
+  { t: 'flowerBed', v: 0, x: 336, y: 404 }, { t: 'tree', v: 0, x: 348, y: 470 }, { t: 'tree', v: 1, x: 482, y: 446 },
+  { t: 'pond', x: 430, y: 530 }, { t: 'bench', x: 350, y: 572 }, { t: 'flowerBed', v: 2, x: 486, y: 590 },
+  { t: 'flowerBed', v: 1, x: 486, y: 486 }, { t: 'beanbag', v: 4, x: 400, y: 590 }, { t: 'floorLamp', x: 318, y: 540 },
 ];
+const LAYOUT_VERSION = 2;
+const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 
 // ---------- ท้องฟ้าตามเวลาจริงของคนดู ----------
 function skyAt(date) {
@@ -884,6 +1031,8 @@ function skyAt(date) {
 }
 
 const WINDOWS = [{ x: 74, y: 10, w: 38, h: 30 }, { x: 302, y: 10, w: 38, h: 30 }, { x: 382, y: 10, w: 38, h: 30 }];
+// หน้าต่างในห้องประชุม (บนผนังด้านหน้าห้อง)
+const LOWER_WINDOWS = [{ x: 256, y: 360, w: 26, h: 16 }];
 const CLOCK = { x: 238, y: 26 };
 
 function buildBackground() {
@@ -894,7 +1043,7 @@ function buildBackground() {
   const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
   // ---- พื้นไม้ (โซนนั่งเล่น) ----
   const planks = ['#d9a374', '#d29b6b', '#dcaa7c'];
-  for (let y = WALL, row = 0; y < H; y += 8, row++) {
+  for (let y = WALL, row = 0; y < LOWER_Y; y += 8, row++) {
     let x = -((row * 23) % 40);
     while (x < WORK_X) {
       const len = 30 + Math.floor(rnd() * 26);
@@ -907,14 +1056,14 @@ function buildBackground() {
     P(0, y + 7, WORK_X, 1, '#bd8759');
   }
   // ---- พรมปูพื้น (โซนทำงาน) ----
-  for (let y = WALL; y < H; y += 16) {
+  for (let y = WALL; y < LOWER_Y; y += 16) {
     for (let x = WORK_X; x < W; x += 16) {
       const alt = ((x - WORK_X) / 16 + (y - WALL) / 16) % 2 === 0;
       P(x, y, 16, 16, alt ? '#a9bdd4' : '#b4c7dc');
       P(x + 3, y + 3, 1, 1, '#9cb0c8'); P(x + 11, y + 9, 1, 1, '#9cb0c8'); P(x + 7, y + 13, 1, 1, '#c2d3e6');
     }
   }
-  P(WORK_X - 2, WALL, 3, H - WALL, '#8a6a52');
+  P(WORK_X - 2, WALL, 3, LOWER_Y - WALL, '#8a6a52');
   // ---- กระเบื้องครัว ----
   for (let y = KITCHEN.y; y < KITCHEN.y + KITCHEN.h; y += 10) {
     for (let x = KITCHEN.x; x < KITCHEN.x + KITCHEN.w; x += 10) {
@@ -956,6 +1105,56 @@ function buildBackground() {
     if (d <= 81) P(cx + x, cy + y, 1, 1, d > 64 ? '#9a6438' : '#fff6e8');
   }
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; P(Math.round(cx + Math.sin(a) * 6), Math.round(cy - Math.cos(a) * 6), 1, 1, '#c8b49a'); }
+  // ---- ชั้นล่าง: ห้องประชุม (พรมม่วง) ----
+  for (let y = LOWER_Y; y < H; y += 12) for (let x = 0; x < DIVIDER_X + 3; x += 12) {
+    P(x, y, 12, 12, ((x / 12 + y / 12) | 0) % 2 ? '#cbb8dc' : '#c3afd6');
+    P(x + 5, y + 5, 2, 2, '#b8a2cc');
+  }
+  // ---- ชั้นล่าง: สวน (หญ้า + ทางเดินหิน) ----
+  for (let y = LOWER_Y; y < H; y += 4) for (let x = DIVIDER_X + 3; x < W; x += 4) {
+    const r = rnd();
+    P(x, y, 4, 4, r < 0.5 ? '#92d07c' : r < 0.85 ? '#88c773' : '#9cd886');
+    if (r > 0.96) P(x + 1, y + 1, 1, 2, '#6fb25e');
+    if (r > 0.993) { P(x, y, 2, 2, ['#ffffff', '#ffe07a', '#ff8fab'][Math.floor(rnd() * 3)]); }
+  }
+  for (let i = 0; i < 9; i++) {
+    const sx = 400 + Math.round(Math.sin(i * 0.9) * 8), sy = LOWER_FLOOR + 4 + i * 13;
+    P(sx, sy, 14, 8, '#c8ccd8'); P(sx + 1, sy + 1, 12, 2, '#e2e5ee'); P(sx, sy + 7, 14, 1, '#9aa0b8');
+  }
+  // ---- ผนังกั้น: หน้าผนังห้องประชุม / รั้วต้นไม้ของสวน ----
+  const doorAt = (x) => DOORS.some((d) => x >= d.x && x < d.x + d.w);
+  for (let x = 0; x < W; x++) {
+    if (doorAt(x)) continue;
+    const garden = x >= DIVIDER_X + 3;
+    // หน้าผนัง
+    if (!garden) {
+      P(x, LOWER_Y + 6, 1, LOWER_FLOOR - LOWER_Y - 6, (x % 10) < 4 ? '#e2cfee' : '#eadbf4');
+      P(x, LOWER_FLOOR - 6, 1, 6, x % 16 === 8 ? '#8f7aa8' : '#a892c0');
+      P(x, LOWER_FLOOR - 7, 1, 1, '#c6b2da');
+    } else {
+      const k = (x * 7) % 11;
+      P(x, LOWER_Y + 6, 1, LOWER_FLOOR - LOWER_Y - 6, k < 5 ? '#4f9a5c' : '#5fae68');
+      if (k === 2) P(x, LOWER_Y + 10 + (x % 9), 1, 2, '#8fd694');
+      if (k === 7 && x % 3 === 0) P(x, LOWER_Y + 14 + (x % 7), 1, 1, '#ff8fab');
+      P(x, LOWER_FLOOR - 3, 1, 3, '#3f7d4a');
+    }
+    // สันผนัง
+    P(x, LOWER_Y, 1, 6, garden ? '#3f7d4a' : '#5a4560');
+    P(x, LOWER_Y, 1, 1, garden ? '#5fae68' : '#7a6380');
+  }
+  // ช่องประตู: พื้นต่อเนื่อง + วงกบ + พรมเช็ดเท้า
+  for (const d of DOORS) {
+    const garden = d.zone === 'garden';
+    for (let y = LOWER_Y; y < LOWER_FLOOR; y += 4) for (let x = d.x; x < d.x + d.w; x += 4) P(x, y, 4, 4, garden ? '#92d07c' : (((x + y) / 4) | 0) % 2 ? '#cbb8dc' : '#c3afd6');
+    P(d.x - 2, LOWER_Y, 2, LOWER_FLOOR - LOWER_Y, '#fff6e8'); P(d.x + d.w, LOWER_Y, 2, LOWER_FLOOR - LOWER_Y, '#fff6e8');
+    P(d.x - 3, LOWER_Y, 1, LOWER_FLOOR - LOWER_Y, '#c8bba8'); P(d.x + d.w + 2, LOWER_Y, 1, LOWER_FLOOR - LOWER_Y, '#c8bba8');
+    P(d.x + 3, LOWER_Y - 9, d.w - 6, 7, garden ? '#8fd694' : '#ff8fab'); P(d.x + 4, LOWER_Y - 8, d.w - 8, 5, garden ? '#a9e6ae' : '#ffc2d2');
+  }
+  // ผนังกั้นห้องประชุม | สวน
+  P(DIVIDER_X, LOWER_Y, 6, H - LOWER_Y, '#5a4560'); P(DIVIDER_X, LOWER_Y, 1, H - LOWER_Y, '#7a6380'); P(DIVIDER_X + 5, LOWER_Y, 1, H - LOWER_Y, '#3a2c3f');
+  // ป้ายห้องประชุม
+  P(28, LOWER_Y + 9, 40, 11, '#3a3150'); P(30, LOWER_Y + 11, 36, 7, '#5a4f78');
+  for (let i = 0; i < 6; i++) P(33 + i * 5, LOWER_Y + 13, 3, 3, '#ffe07a');
   // ---- ขอบห้อง ----
   P(0, 0, 3, H, '#3a2c3f'); P(W - 3, 0, 3, H, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f');
   return c;
@@ -981,6 +1180,13 @@ function drawLiveWall(ctx, now, t) {
     }
     ctx.fillStyle = '#fff6e8'; ctx.fillRect(w.x + w.w / 2 - 1, w.y, 2, w.h); ctx.fillRect(w.x, w.y + w.h / 2 - 1, w.w, 2);
   }
+  for (const w of LOWER_WINDOWS) {
+    ctx.fillStyle = '#fff6e8'; ctx.fillRect(w.x - 2, w.y - 2, w.w + 4, w.h + 4);
+    const gr = ctx.createLinearGradient(0, w.y, 0, w.y + w.h);
+    gr.addColorStop(0, sky.top); gr.addColorStop(1, sky.bot);
+    ctx.fillStyle = gr; ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.fillStyle = '#fff6e8'; ctx.fillRect(w.x + w.w / 2 - 1, w.y, 2, w.h);
+  }
   // เข็มนาฬิกา
   const hrs = (now.getHours() % 12) + now.getMinutes() / 60;
   const hand = (a, len, col) => {
@@ -999,10 +1205,15 @@ function solidRects(furniture) {
   for (const it of furniture) {
     const d = FURN[it.t];
     if (!d || !d.solid) continue;
-    const fw = d.w - 2;
+    const fw = d.fw || d.w - 2;
     list.push({ x: it.x - fw / 2, y: it.y - d.foot, w: fw, h: d.foot });
   }
   for (const s of DESK_SLOTS) list.push({ x: s.x - 19, y: s.y - 14, w: 38, h: 14 });
+  // ผนังชั้นล่าง (เว้นช่องประตู)
+  let x0 = 0;
+  for (const d of [...DOORS].sort((a, b) => a.x - b.x)) { list.push({ x: x0, y: LOWER_Y - 2, w: d.x - x0, h: LOWER_FLOOR - LOWER_Y + 2 }); x0 = d.x + d.w; }
+  list.push({ x: x0, y: LOWER_Y - 2, w: W - x0, h: LOWER_FLOOR - LOWER_Y + 2 });
+  list.push({ x: DIVIDER_X - 1, y: LOWER_Y - 2, w: 8, h: H - LOWER_Y + 2 });
   return list;
 }
 function hitsRects(rects, x, y) {
@@ -1059,7 +1270,7 @@ function findPath(grid, sx, sy, tx, ty) {
   const hfn = (i) => { const dx = Math.abs((i % GW) - gx), dy = Math.abs(((i / GW) | 0) - gyy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
   gScore[s] = 0; push(s, hfn(s));
   let iter = 0;
-  while (heap.length && iter++ < 20000) {
+  while (heap.length && iter++ < 60000) {
     const [, cur] = pop();
     if (cur === goal) break;
     if (closed[cur]) continue;
@@ -1098,9 +1309,9 @@ function allSeats(furniture) {
   for (const it of furniture) {
     const d = FURN[it.t];
     if (!d || !d.seats) continue;
-    d.seats(it.f || 0).forEach((s, i) => seats.push({ id: `${it.id}:${i}`, x: it.x + s.dx, y: it.y + s.dy, dir: s.dir, kind: 'furn' }));
+    d.seats(it.f || 0).forEach((s, i) => seats.push({ id: `${it.id}:${i}`, x: it.x + s.dx, y: it.y + s.dy, dir: s.dir, kind: 'furn', over: !!s.over, itemY: it.y }));
   }
-  for (const s of DESK_SLOTS) seats.push({ id: `desk:${s.id}`, x: s.x, y: s.y + CHAIR_DY - 3, dir: 'up', kind: 'desk', slot: s.id });
+  for (const s of DESK_SLOTS) seats.push({ id: `desk:${s.id}`, x: s.x, y: s.y + CHAIR_DY - 3, dir: 'up', kind: 'desk', slot: s.id, over: true, itemY: s.y + CHAIR_DY });
   return seats;
 }
 
@@ -1111,7 +1322,7 @@ function allSeats(furniture) {
 //   ws     : เปิดจากเซิร์ฟเวอร์ Node ของเราเอง (มีเสียง/กล้อง)
 //   solo   : เล่นคนเดียว (เช่นตอนยังไม่ได้ล็อกอิน)
 // ============================================================================
-const COLS = ['furniture', 'desks', 'chat', 'settings'];
+const COLS = ['furniture', 'desks', 'chat', 'settings', 'board'];
 
 function randomId(n = 10) {
   const a = 'abcdefghijkmnpqrstuvwxyz23456789';
@@ -1282,6 +1493,20 @@ function makeWsNet(cfg) {
     async loadPrivate() { return lsGet('pixel.private', null); },
     async savePrivate(o) { lsSet('pixel.private', o); },
     signal(to, data) { send({ t: 'signal', to, data }); },
+    // กระดานแนบรูป (มีเฉพาะเวอร์ชันเซิร์ฟเวอร์)
+    board: true, boardMax: cfg.boardMax || 20, boardTtl: cfg.boardTtl || 86400000, spotifyClientId: cfg.spotifyClientId || '',
+    async uploadBoard(boardId, blob, meta) {
+      const r = await fetch(`/api/board/${encodeURIComponent(boardId)}`, {
+        method: 'POST', body: blob,
+        headers: { 'Content-Type': blob.type, 'X-Name': encodeURIComponent(meta.n || ''), 'X-W': String(meta.w || 0), 'X-H': String(meta.h || 0), 'X-Room-Password': net.password || '' },
+      });
+      if (!r.ok) { let e = {}; try { e = await r.json(); } catch {} const err = new Error(e.error || 'upload'); err.code = e.error; throw err; }
+      const j = await r.json();
+      cols.board.set(j.id, { ...j.doc, id: j.id }); emitCol('board');
+      return j;
+    },
+    clearBoard(b) { for (const [id, d] of cols.board) if (d.b === b) cols.board.delete(id); emitCol('board'); send({ t: 'board-clear', b }); },
+    boardUrl(id, doc) { return `/board/${id}.${(doc && doc.ext) || 'jpg'}`; },
     onSignal(cb) { L.signal.push(cb); },
     resolveNames: null,
   };
@@ -1290,7 +1515,8 @@ function makeWsNet(cfg) {
 
 // --------------------------------------------------------------- Solo ----
 function makeSoloNet(reason) {
-  const store = lsGet('pixel.solo', { furniture: [], desks: [], chat: [], settings: [] });
+  const store = lsGet('pixel.solo', {});
+  for (const c of COLS) if (!Array.isArray(store[c])) store[c] = [];
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
   let peerCb = null, me = {};
   const emit = (col) => {
@@ -1389,12 +1615,13 @@ function makeVoice(net, onChange) {
   };
   V.speaking = (key) => {
     if (key === net.myKey) return V.mic && !V.deaf && (V.meters.get('me')?.hold || 0) > 0;
-    return (V.meters.get(key)?.hold || 0) > 0;
+    const p = V.peers.get(key);
+    return !!(p && p.allowed) && (V.meters.get(key)?.hold || 0) > 0;
   };
   V.videoFor = (key) => {
     if (key === net.myKey) return V.cam && V.videoTrack ? V.selfVideo : null;
     const p = V.peers.get(key);
-    return p && p.hasVideo ? p.videoEl : null;
+    return p && p.hasVideo && p.allowed ? p.videoEl : null;
   };
 
   function tuneOpus(sdp) {
@@ -1421,10 +1648,22 @@ function makeVoice(net, onChange) {
       } catch {}
     }
   }
+  // ส่งเสียง/ภาพให้เฉพาะคนที่อยู่โซนเดียวกัน (คนละโซน = ไม่ส่งและไม่เล่นเสียง)
   function apply(peer) {
-    peer.audioTx?.sender.replaceTrack(V.audioTrack || null).catch(() => {});
-    peer.videoTx?.sender.replaceTrack(V.cam ? V.videoTrack : null).catch(() => {});
+    const ok = !!peer.allowed;
+    peer.audioTx?.sender.replaceTrack(ok ? V.audioTrack || null : null).catch(() => {});
+    peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
+    peer.audioEl.muted = V.deaf || !ok;
+    if (ok && !V.deaf) peer.audioEl.play().catch(() => {});
   }
+  V.audience = new Set();
+  V.setAudience = (keys) => {
+    V.audience = keys;
+    for (const p of V.peers.values()) {
+      const ok = keys.has(p.key);
+      if (ok !== p.allowed) { p.allowed = ok; apply(p); }
+    }
+  };
   function create(key, initiator) {
     close(key);
     const pc = new RTCPeerConnection({ iceServers: net.iceServers, bundlePolicy: 'max-bundle' });
@@ -1434,7 +1673,7 @@ function makeVoice(net, onChange) {
     videoEl.autoplay = true; videoEl.muted = true; videoEl.playsInline = true; videoEl.setAttribute('playsinline', '');
     sink.append(audioEl, videoEl);
     if (V.settings && V.settings.spkId && audioEl.setSinkId) audioEl.setSinkId(V.settings.spkId).catch(() => {});
-    const peer = { key, pc, initiator, audioEl, videoEl, audioTx: null, videoTx: null, hasVideo: false, state: 'new' };
+    const peer = { key, pc, initiator, audioEl, videoEl, audioTx: null, videoTx: null, hasVideo: false, state: 'new', allowed: V.audience.has(key) };
     V.peers.set(key, peer);
     pc.onicecandidate = (e) => e.candidate && net.signal(key, { candidate: e.candidate });
     pc.ontrack = (e) => {
@@ -1541,7 +1780,7 @@ function makeVoice(net, onChange) {
     V.meterTrack = t ? t.clone() : null;          // สำเนาที่เปิดไว้เสมอ ใช้วัดระดับเสียง/ฟังตัวเอง
     if (V.meterTrack) V.meterTrack.enabled = true;
     if (t) t.enabled = V.mic && !V.deaf;
-    for (const p of V.peers.values()) p.audioTx?.sender.replaceTrack(t || null).catch(() => {});
+    for (const p of V.peers.values()) apply(p);
     if (old && old !== t) old.stop();
     meter('me', V.meterTrack);
     updateMonitor();
@@ -1620,7 +1859,7 @@ function makeVoice(net, onChange) {
     V.videoTrack = t;
     V.selfVideo.srcObject = t ? new MediaStream([t]) : null;
     if (t) V.selfVideo.play().catch(() => {});
-    for (const p of V.peers.values()) { p.videoTx?.sender.replaceTrack(V.cam ? t : null).catch(() => {}); if (t) tune(p); }
+    for (const p of V.peers.values()) { apply(p); if (t) tune(p); }
     if (old && old !== t) old.stop();
   }
   V.toggleCam = async () => {
@@ -1644,8 +1883,8 @@ function makeVoice(net, onChange) {
   };
   V.toggleDeaf = () => {
     V.deaf = !V.deaf;
-    for (const p of V.peers.values()) { p.audioEl.muted = V.deaf; if (!V.deaf) p.audioEl.play().catch(() => {}); }
     if (V.deaf && V.mic) V.mic = false;
+    for (const p of V.peers.values()) apply(p);
     if (V.audioTrack) V.audioTrack.enabled = V.mic && !V.deaf;
     if (V.mon) V.mon.gain.gain.value = V.deaf ? 0 : V.settings.monVol;
     onChange('media');
@@ -1689,7 +1928,8 @@ const G = {
   zoomAdj: 0, scale: 2, cam: { x: 0, y: 0, ready: false }, view: { cw: 1, ch: 1, dpr: 1 },
   myDesk: null, myDeskStyle: cleanDesk(lsGet('pixel.desk', DEFAULT_DESK)),
   emotes: [], unread: 0, chatOpen: !isMobile(),
-  presPending: {}, presLast: 0, actionSig: '', lastActions: 0, bubbleHits: [],
+  presPending: {}, presLast: 0, actionSig: '', lastActions: 0, bubbleHits: [], musicHits: [],
+  zone: 'hall', boardDocs: [], boardOpen: null, layoutV: 1, settingsLoaded: false, music: { sp: null, manual: lsGet('pixel.music', null) },
 };
 G.me.pet = { x: G.me.x + 10, y: G.me.y, face: false, ft: 0 };
 
@@ -1752,6 +1992,7 @@ function fullPresence() {
     n: me.nick, l: me.look, x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 0, s: me.sit || '', st: me.st,
     say: G.mySay, em: null, dk: G.myDesk ? { slot: G.myDesk, style: G.myDeskStyle } : null, dr: null,
     uid: G.net.uid || null, mic: G.voice && G.voice.mic ? 1 : 0, cam: G.voice && G.voice.cam ? 1 : 0,
+    mu: currentMusic() ? { ...currentMusic() } : null,
   };
 }
 
@@ -1773,6 +2014,7 @@ function rebuildWorld() {
   G.rects = solidRects(G.furniture);
   G.grid = buildGrid(G.rects);
   G.seats = allSeats(G.furniture);
+  G.seatById = new Map(G.seats.map((x) => [x.id, x]));
 }
 
 function deskInfo(slot) {
@@ -1798,6 +2040,7 @@ function sitOn(seat) {
 }
 function walkTo(x, y, seat) {
   standUp();
+  G.me.pendingBoard = null;
   const path = findPath(G.grid, G.me.x, G.me.y, x, y);
   if (!path) { toast('ไปตรงนั้นไม่ได้'); return; }
   G.me.path = path;
@@ -1834,6 +2077,7 @@ function updateMe(dt) {
       me.x = t.x; me.y = t.y; me.path.shift();
       if (!me.path.length) {
         me.path = null;
+        if (me.pendingBoard) { const bd = G.furniture.find((f) => f.id === me.pendingBoard); me.pendingBoard = null; if (bd) openBoard(bd); }
         if (me.pendingSeat) {
           const seat = me.pendingSeat;
           if (Math.hypot(seat.x - me.x, seat.y - me.y) < 26 && !seatTaken(seat.id)) sitOn(seat);
@@ -2192,9 +2436,15 @@ canvas.addEventListener('pointerdown', (e) => {
     updateSelBar();
     return;
   }
+  for (const h of G.musicHits) if (e.clientX >= h.x0 && e.clientX <= h.x1 && e.clientY >= h.y0 && e.clientY <= h.y1) { window.open(h.u, '_blank', 'noopener'); return; }
   // แตะที่นั่ง/โต๊ะ = เดินไปนั่ง
   let target = null;
   const it = itemAt(w.x, w.y);
+  if (it && FURN[it.t].board) {
+    if (Math.abs(G.me.x - it.x) < 24 && G.me.y > it.y - 4 && G.me.y < it.y + 24) openBoard(it);
+    else { walkTo(it.x, it.y + 12); G.me.pendingBoard = it.id; }
+    return;
+  }
   if (it && FURN[it.t].seats) {
     const seats = G.seats.filter((s) => s.id.startsWith(it.id + ':') && !seatTaken(s.id));
     if (seats.length) target = seats.sort((a, b) => Math.hypot(a.x - w.x, a.y - w.y) - Math.hypot(b.x - w.x, b.y - w.y))[0];
@@ -2290,8 +2540,9 @@ function drawPet(c, ch, t) {
   const pet = ch.pet;
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
   drawShadow(c, pet.x, pet.y, 8);
-  const s = petSprite(ch.look.pet, frame, pet.face);
-  c.drawImage(s, Math.round(pet.x - 7), Math.round(pet.y - 13));
+  const fly = ch.look.pet === 'fish' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
+  const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0);
+  c.drawImage(s, Math.round(pet.x - 8), Math.round(pet.y - 15 - fly));
 }
 
 function render(t) {
@@ -2357,7 +2608,8 @@ function render(t) {
   const chars = [me, ...[...G.others.values()].filter((r) => Number.isFinite(r.p.x))];
   for (const c of chars) {
     if (c !== me) c.sit = c.p.s || null;
-    list.push({ y: c.sit && c.sit.startsWith('desk:') ? c.y + 3.5 : c.y + 0.2, kind: 'char', c });
+    const seat = c.sit && G.seatById && G.seatById.get(c.sit);
+    list.push({ y: seat && seat.over ? seat.itemY + 0.5 : c.y + 0.2, kind: 'char', c });
     if (c.look.pet !== 'none') list.push({ y: c.pet.y, kind: 'pet', c });
   }
   list.sort((a, b2) => a.y - b2.y);
@@ -2367,6 +2619,7 @@ function render(t) {
       const spr = furnSprite(o.it.t, o.it.v || 0, o.it.f || 0);
       drawSprite(b, spr, o.it.x, o.it.y);
       if (d.anim) d.anim(b, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1, t, o.it);
+      if (d.board) drawBoardThumbs(b, o.it, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1);
     } else if (o.kind === 'desk') {
       const info = deskInfos.get(o.s.id);
       drawSprite(b, deskSprite(info ? info.style : { c: 2, s: 'none', items: [] }), o.s.x, o.s.y);
@@ -2441,6 +2694,8 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
   const now = performance.now();
   const S = (x, y) => [(x - camX) * scale, (y - camY) * scale];
   G.bubbleHits = [];
+  G.musicHits = [];
+  drawDoorLabels(c, camX, camY, scale);
   // ป้ายชื่อโต๊ะ
   c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const s of DESK_SLOTS) {
@@ -2463,6 +2718,8 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const [sx, sy0] = S(ch.x, ch.y);
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
     let top = sy0 - (ch.sit ? 33 : 35) * scale;
+    const away = ch !== G.me && zoneAt(ch.x, ch.y) !== G.zone;
+    c.globalAlpha = away && G.voice ? 0.5 : 1;
     const key = ch === G.me ? G.net.myKey : ch.key;
     const speaking = G.voice && G.voice.speaking(key);
     // วิดีโอ (เวอร์ชันมีเสียง)
@@ -2493,6 +2750,19 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     rrect(c, sx - w / 2, ly, w, 18, 6); c.fill();
     c.fillStyle = '#ffffff'; c.fillText(label, sx, ly + 9.5);
     top = ly;
+    // เพลงที่กำลังฟัง
+    const mu = ch === G.me ? currentMusic() : (p.mu && typeof p.mu.t === 'string' ? p.mu : null);
+    if (mu) {
+      const lab = '🎵 ' + musicLabel(mu);
+      c.font = '500 11px Mitr, sans-serif';
+      const mw = c.measureText(lab).width + 12, my = top - 17;
+      c.fillStyle = mu.s === 'sp' ? '#1db954' : '#5a4f78';
+      rrect(c, sx - mw / 2, my, mw, 15, 5); c.fill();
+      c.fillStyle = '#ffffff'; c.fillText(lab, sx, my + 8);
+      const u = safeSpotifyUrl(mu.u);
+      if (u) G.musicHits.push({ x0: sx - mw / 2, y0: my, x1: sx + mw / 2, y1: my + 15, u });
+      top = my;
+    }
     // บับเบิลแชต
     const bub = ch === G.me ? G.me.bubble : ch.bubble;
     if (bub && bub.until > now) {
@@ -2515,6 +2785,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       top = by;
     } else if (bub) { if (ch === G.me) G.me.bubble = null; else ch.bubble = null; }
     ch._top = top;
+    c.globalAlpha = 1;
   }
   // อีโมต
   G.emotes = G.emotes.filter((e) => now - e.start < 2200);
@@ -2537,6 +2808,10 @@ function updateActions() {
   const me = G.me;
   const acts = [];
   let hint = '';
+  if (!G.edit && !me.sit && !me.path) {
+    const bd = G.furniture.find((it) => FURN[it.t].board && Math.abs(me.x - it.x) < 24 && me.y > it.y - 4 && me.y < it.y + 24);
+    if (bd) acts.push(['🖼️ เปิดกระดาน', 'board:' + bd.id]);
+  }
   if (!G.edit) {
     if (me.sit) {
       acts.push(['ลุกขึ้น', 'stand']);
@@ -2570,6 +2845,7 @@ function updateActions() {
       if (act === 'stand') standUp();
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
+      else if (act.startsWith('board:')) { const it = G.furniture.find((f) => f.id === act.slice(6)); if (it) openBoard(it); }
       else if (act.startsWith('sit:')) { const s = G.seats.find((x) => x.id === act.slice(4)); if (s) sitOn(s); }
       G.actionSig = '';
     };
@@ -2598,6 +2874,11 @@ function buildTrays() {
     et.append(b);
   }
   const st = $('#statusTray'); st.innerHTML = '';
+  const mb = document.createElement('button'); mb.className = 'st';
+  const mi = document.createElement('i'); mi.textContent = '🎵';
+  const ms = document.createElement('span'); ms.textContent = 'เพลงที่ฟัง';
+  mb.append(mi, ms); mb.onclick = () => { $('#statusTray').classList.add('hidden'); closeTrays(); openMusic(); };
+  st.append(mb);
   for (const [e, label] of STATUSES) {
     const b = document.createElement('button'); b.className = 'st' + (G.me.st === e ? ' sel' : '');
     const i = document.createElement('i'); i.textContent = e || '➖';
@@ -2623,8 +2904,8 @@ $$('[data-close]').forEach((b) => (b.onclick = () => $('#' + b.dataset.close).cl
 function renderPeople() {
   const ul = $('#peopleList');
   ul.innerHTML = '';
-  const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk }];
-  for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest });
+  const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk, z: zoneAt(G.me.x, G.me.y), mu: currentMusic() }];
+  for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest, z: zoneAt(rt.p.x, rt.p.y), mu: rt.p.mu });
   for (const r of rows) {
     const li = document.createElement('li');
     const cv = mkCanvas(22, 36);
@@ -2633,7 +2914,7 @@ function renderPeople() {
     const b = document.createElement('b'); b.textContent = (r.n || 'เพื่อน') + (r.me ? ' (คุณ)' : '');
     const sm = document.createElement('small');
     const stl = STATUSES.find((s) => s[0] === r.st);
-    sm.textContent = [stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ') || 'เดินเล่นอยู่';
+    sm.textContent = [`${ZONES[r.z].icon} ${ZONES[r.z].name}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
     who.append(b, sm);
     li.append(cv, who);
     if (r.rt) {
@@ -2656,7 +2937,7 @@ function openModal(build) {
   build(card);
   $('#modal').classList.remove('hidden');
 }
-function closeModal() { $('#modal').classList.add('hidden'); G.previewLoop = null; }
+function closeModal() { $('#modal').classList.add('hidden'); G.previewLoop = null; G.voicePanelOpen = false; G.boardOpen = null; G.musicOpen = false; }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function optRow(label, items, isSel, onPick, kind = 'chip') {
   const o = el('div', 'opt');
@@ -2720,6 +3001,7 @@ function openCreator(first) {
       pw.append(pi); opts.append(pw);
     }
     const sections = () => [
+      optRow('เพศ', SEXES, (it) => draft.sex === it[0], (it) => (draft.sex = it[0])),
       optRow('สีผิว', SKINS, (_, i) => draft.skin === i, (_, i) => (draft.skin = i), 'sw'),
       optRow('ทรงผม', HAIR_STYLES, (it) => draft.hair === it[0], (it) => (draft.hair = it[0])),
       optRow('สีผม', HAIR_COLORS, (_, i) => draft.hc === i, (_, i) => (draft.hc = i), 'sw'),
@@ -2728,6 +3010,7 @@ function openCreator(first) {
       optRow('สีกางเกง / เอี๊ยม', CLOTH_COLORS, (_, i) => draft.bc === i, (_, i) => (draft.bc = i), 'sw'),
       optRow('เครื่องประดับ', ACCS, (it) => draft.acc === it[0], (it) => (draft.acc = it[0])),
       optRow('สัตว์เลี้ยงคู่ใจ', PETS, (it) => draft.pet === it[0], (it) => (draft.pet = it[0])),
+      optRow('สีสัตว์เลี้ยง (ช่องแรก = สีธรรมชาติ)', PET_COLORS.map((c) => c || 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'), (_, i) => (draft.pc || 0) === i, (_, i) => (draft.pc = i), 'sw'),
     ];
     const secBox = el('div', 'opts');
     const paintSections = () => { secBox.innerHTML = ''; sections().forEach((s) => secBox.append(s)); };
@@ -2737,7 +3020,7 @@ function openCreator(first) {
     card.append(wrap);
     dice.onclick = () => {
       const r = (a) => Math.floor(Math.random() * a.length);
-      Object.assign(draft, { skin: r(SKINS), hair: HAIR_STYLES[r(HAIR_STYLES)][0], hc: r(HAIR_COLORS), top: TOPS[r(TOPS)][0], tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: ACCS[r(ACCS)][0], pet: PETS[r(PETS)][0] });
+      Object.assign(draft, { pc: r(PET_COLORS), skin: r(SKINS), hair: HAIR_STYLES[r(HAIR_STYLES)][0], hc: r(HAIR_COLORS), top: TOPS[r(TOPS)][0], tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: ACCS[r(ACCS)][0], pet: PETS[r(PETS)][0] });
       paintSections(); SFX.pop();
     };
     const foot = el('div', 'foot');
@@ -2766,7 +3049,7 @@ function openCreator(first) {
       const L = cleanLook(draft);
       g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
       g.drawImage(charSprite(L, dir, frame, 'stand', (t % 3.3) < 0.12), 17, 13);
-      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); g.drawImage(petSprite(L.pet, Math.floor(t * 4) % 2, false), 36, 36); }
+      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); g.drawImage(petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc), 35, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 35); }
     });
     if (!nick) setTimeout(() => nameInput.focus(), 50);
   });
@@ -2999,7 +3282,7 @@ async function join() {
   $('#hud').classList.remove('hidden');
   setChatOpen(G.chatOpen);
   const pos = lsGet('pixel.pos', null);
-  if (pos && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
+  if (pos && pos.y < H && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
   else { G.me.x = 230 + Math.random() * 40; G.me.y = 318; }
   G.me.pet.x = G.me.x + 12; G.me.pet.y = G.me.y;
   G.me.st = lsGet('pixel.status', '');
@@ -3008,6 +3291,8 @@ async function join() {
   if (net.mode === 'ws') { setupVoice(); net.start(); }
   G.net.setPresence(fullPresence());
   G.presLast = performance.now();
+  G.zone = zoneAt(G.me.x, G.me.y);
+  setTimeout(spPoll, 1500);
   if (net.mode === 'claude' && net.canWrite === false) showBanner('คุณมีสิทธิ์ดูอย่างเดียว: เดิน แชต อีโมตได้ แต่ห้อง/โต๊ะจะไม่ถูกบันทึก');
   if (net.mode === 'solo') showBanner(net.reason);
   setTimeout(() => toast(isMobile() ? 'แตะพื้นเพื่อเดิน · แตะโซฟา/โต๊ะเพื่อไปนั่ง' : 'เดินด้วยลูกศร/WASD หรือคลิกพื้น · E = นั่ง · Enter = แชต'), 500);
@@ -3032,7 +3317,7 @@ function frame(ms) {
       updateOthers(dt);
       if (G.voice) G.voice.tick(dt);
       flushPres(ms);
-      if ((actT += dt) > 0.15) { actT = 0; updateActions(); }
+      if ((actT += dt) > 0.15) { actT = 0; updateActions(); updateZones(); }
       if (G.edit && (selT += dt) > 0.05) { selT = 0; updateSelBar(); }
     }
     render(t);
@@ -3051,7 +3336,7 @@ function frame(ms) {
     try { const cfg = await (await fetch('/config')).json(); net.needPassword = cfg.needPassword; if (cfg.roomName) $('#roomName').textContent = cfg.roomName; document.title = cfg.roomName + ' · Pixel Hangout'; } catch {}
   }
   rebuildWorld();
-  net.watch('furniture', (docs) => { G.furnDocs = docs; if (!G.drag) rebuildWorld(); });
+  net.watch('furniture', (docs) => { G.furnDocs = docs; if (!G.drag) rebuildWorld(); maybeMigrateLayout(); });
   net.watch('desks', (docs) => {
     G.desks = new Map(docs.map((d) => [d.id, d]));
     // กลับมาแล้วจำโต๊ะตัวเองได้
@@ -3072,6 +3357,14 @@ function frame(ms) {
     const s = docs.find((d) => d.id === 'room');
     G.settings = s ? { call: typeof s.call === 'string' ? s.call : '' } : {};
     $('#callBtn').classList.toggle('on', !!G.settings.call);
+    const lv = docs.find((d) => d.id === 'layout');
+    G.layoutV = lv && Number(lv.v) || 1;
+    G.settingsLoaded = true;
+    maybeMigrateLayout();
+  });
+  net.watch('board', (docs) => {
+    G.boardDocs = docs.filter((d) => d && typeof d.b === 'string');
+    if (G.boardOpen) paintBoard();
   });
   net.onPeers(onPeers);
   // ข้อมูลส่วนตัว (จำตัวละครข้ามเครื่อง)
@@ -3082,9 +3375,352 @@ function frame(ms) {
     if (priv.desk) G.myDeskStyle = cleanDesk(priv.desk);
   } else G.me.nick = net.profileName || lsGet('pixel.nick', '');
   $('#loading').classList.add('hidden');
+  spHandleRedirect();
   openCreator(true);
   requestAnimationFrame(frame);
 })();
+
+
+// ============================================================================
+// extras.js — โซนห้อง/ไมค์แยกโซน, กระดานแนบรูป, เพลงที่กำลังฟัง (Spotify), อัปเดตแผนผังห้อง
+// ============================================================================
+
+// ---------------------------------------------------------------- โซน ----
+function othersInZone(z) {
+  const keys = new Set();
+  for (const rt of G.others.values()) if (Number.isFinite(rt.p.x) && zoneAt(rt.p.x, rt.p.y) === z) keys.add(rt.key);
+  return keys;
+}
+function updateZones() {
+  if (!G.joined) return;
+  const z = zoneAt(G.me.x, G.me.y);
+  const same = othersInZone(z);
+  if (z !== G.zone) {
+    G.zone = z;
+    const Z = ZONES[z];
+    toast(`${Z.icon} ${Z.name}` + (G.voice ? ' — ได้ยินเสียงเฉพาะคนในห้องนี้' : ''));
+  }
+  const chip = $('#zoneChip');
+  const label = `${ZONES[z].icon} ${ZONES[z].name} · ${same.size + 1}`;
+  if (chip.textContent !== label) chip.textContent = label;
+  if (G.voice) G.voice.setAudience(same);
+}
+
+// วาดป้ายชื่อห้องที่ประตู (บนจอ)
+function drawDoorLabels(c, camX, camY, scale) {
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '500 11px Mitr, sans-serif';
+  for (const d of DOORS) {
+    const Z = ZONES[d.zone];
+    const sx = (d.x + d.w / 2 - camX) * scale, sy = (LOWER_Y - 16 - camY) * scale;
+    const label = `${Z.icon} ${Z.name}`;
+    const w = c.measureText(label).width + 14;
+    c.fillStyle = 'rgba(46,34,53,.82)';
+    rrect(c, sx - w / 2, sy - 9, w, 18, 6); c.fill();
+    c.fillStyle = '#fff7ec'; c.fillText(label, sx, sy + 0.5);
+  }
+}
+
+// ------------------------------------------------------------ กระดาน ----
+const boardImgs = new Map();
+function boardImg(doc) {
+  let e = boardImgs.get(doc.id);
+  if (!e) {
+    const img = new Image();
+    e = { img, ready: false };
+    img.onload = () => (e.ready = true);
+    img.src = G.net.boardUrl(doc.id, doc);
+    boardImgs.set(doc.id, e);
+  }
+  return e;
+}
+function docsForBoard(id) {
+  return G.boardDocs.filter((d) => d.b === id).sort((a, b) => b.ts - a.ts);
+}
+function drawBoardThumbs(c, it, sx, sy) {
+  if (!G.net || !G.net.board) return;
+  const docs = docsForBoard(it.id);
+  if (!docs.length) return;
+  const prev = c.imageSmoothingEnabled;
+  c.imageSmoothingEnabled = true;
+  docs.slice(0, 6).forEach((d, i) => {
+    const x = sx + 2 + (i % 3) * 11, y = sy + 2 + Math.floor(i / 3) * 9;
+    c.fillStyle = '#ffffff'; c.fillRect(x - 1, y - 1, 12, 10);
+    const e = boardImg(d);
+    if (e.ready) {
+      const iw = e.img.naturalWidth, ih = e.img.naturalHeight, k = Math.max(10 / iw, 8 / ih);
+      const cw = 10 / k, ch = 8 / k;
+      c.drawImage(e.img, (iw - cw) / 2, (ih - ch) / 2, cw, ch, x, y, 10, 8);
+    } else { c.fillStyle = '#c8ccd8'; c.fillRect(x, y, 10, 8); }
+    c.fillStyle = '#e8505b'; c.fillRect(x + 4, y - 2, 2, 2);
+  });
+  c.imageSmoothingEnabled = prev;
+}
+function hoursLeft(d) {
+  const ms = (G.net.boardTtl || 86400000) - (Date.now() - d.ts);
+  if (ms <= 0) return 'กำลังลบ';
+  const h = Math.floor(ms / 3600000);
+  return h >= 1 ? `เหลือ ${h} ชม.` : `เหลือ ${Math.max(1, Math.round(ms / 60000))} นาที`;
+}
+function openBoard(it) {
+  if (!G.net.board) { toast('การแนบรูปบนกระดานใช้ได้ในเวอร์ชันเซิร์ฟเวอร์ (onrender.com)'); return; }
+  G.boardOpen = it.id;
+  G.boardClearArm = false;
+  openModal(() => {});
+  paintBoard();
+}
+function paintBoard() {
+  const id = G.boardOpen;
+  if (!id) return;
+  const docs = docsForBoard(id);
+  const max = G.net.boardMax || 20;
+  const card = $('#card');
+  card.innerHTML = '';
+  card.append(el('h2', null, '📋 กระดาน'));
+  card.append(el('p', 'sub', `แนบรูปแล้ว ${docs.length}/${max} รูป · ทุกคนในห้องเห็น · รูปจะถูกลบอัตโนมัติภายใน 24 ชั่วโมง`));
+  const grid = el('div', 'bgrid');
+  if (!docs.length) grid.append(el('p', 'tip', 'กระดานยังว่างอยู่ — กด 📎 แนบรูป เพื่อปักรูปแรก'));
+  for (const d of docs) {
+    const tile = el('div', 'btile');
+    const img = el('img');
+    img.src = G.net.boardUrl(d.id, d); img.alt = ''; img.loading = 'lazy';
+    img.onclick = () => openImage(img.src);
+    const meta = el('div', 'bmeta');
+    meta.append(el('b', null, d.n || 'เพื่อน'), el('small', null, hoursLeft(d)));
+    const del = el('button', 'x', '🗑️');
+    del.title = 'เอารูปนี้ออก';
+    del.onclick = async () => { try { await G.net.del('board', d.id); } catch {} };
+    tile.append(img, meta, del);
+    grid.append(tile);
+  }
+  card.append(grid);
+  const status = el('p', 'tip'); status.id = 'boardStatus';
+  card.append(status);
+  const foot = el('div', 'foot');
+  const input = el('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.hidden = true;
+  input.onchange = () => uploadImages([...input.files], id);
+  const clear = el('button', 'pbtn danger', G.boardClearArm ? 'กดอีกครั้งเพื่อลบทั้งหมด' : '🧹 เคลียร์กระดาน');
+  clear.disabled = !docs.length;
+  clear.onclick = () => {
+    if (!G.boardClearArm) { G.boardClearArm = true; paintBoard(); setTimeout(() => { G.boardClearArm = false; if (G.boardOpen) paintBoard(); }, 4000); return; }
+    G.boardClearArm = false; G.net.clearBoard(id); toast('เคลียร์กระดานแล้ว'); SFX.pop();
+  };
+  const close = el('button', 'pbtn', 'ปิด'); close.onclick = closeModal;
+  const add = el('button', 'pbtn pink', '📎 แนบรูป');
+  add.disabled = docs.length >= max;
+  add.onclick = () => input.click();
+  foot.append(input, clear, close, add);
+  card.append(foot);
+}
+async function compressImage(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file); }
+  catch {
+    bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+  }
+  const w0 = bmp.width, h0 = bmp.height, k = Math.min(1, 1600 / Math.max(w0, h0));
+  const w = Math.round(w0 * k), h = Math.round(h0 * k);
+  const c = mkCanvas(w, h);
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+  g.drawImage(bmp, 0, 0, w, h);
+  const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.85));
+  return { blob, w, h };
+}
+async function uploadImages(files, boardId) {
+  const status = () => $('#boardStatus');
+  const room = (G.net.boardMax || 20) - docsForBoard(boardId).length;
+  const list = files.filter((f) => /^image\//.test(f.type)).slice(0, Math.max(0, room));
+  if (files.length > list.length) toast(`กระดานรับได้อีก ${Math.max(0, room)} รูป`);
+  let done = 0;
+  for (const f of list) {
+    if (status()) status().textContent = `กำลังอัปโหลด ${done + 1}/${list.length}…`;
+    try {
+      const { blob, w, h } = await compressImage(f);
+      await G.net.uploadBoard(boardId, blob, { n: G.me.nick, w, h });
+      done++;
+    } catch (e) {
+      toast(e && e.code === 'full' ? 'กระดานเต็มแล้ว' : 'อัปโหลดรูปไม่สำเร็จ');
+      break;
+    }
+  }
+  if (status()) status().textContent = done ? `ปักรูปแล้ว ${done} รูป 📌` : '';
+  if (done) { SFX.pop(); addSys(`${G.me.nick} ปักรูป ${done} รูปบนกระดาน`); }
+}
+function openImage(src) {
+  const f = $('#focus');
+  $('#focusVideo').classList.add('hidden');
+  let img = $('#focusImg');
+  if (!img) { img = el('img'); img.id = 'focusImg'; f.append(img); }
+  img.src = src; img.classList.remove('hidden');
+  f.classList.remove('hidden');
+}
+$('#focus').addEventListener('click', () => { const img = $('#focusImg'); if (img) { img.classList.add('hidden'); img.removeAttribute('src'); } $('#focusVideo').classList.remove('hidden'); });
+
+// ----------------------------------------------------- อัปเดตแผนผังห้อง ----
+let layoutMigrated = false;
+function maybeMigrateLayout() {
+  if (layoutMigrated || !G.furnDocs || !G.settingsLoaded || G.net.canWrite === false || !G.net.hasDb) return;
+  if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
+  layoutMigrated = true;
+  (async () => {
+    for (let i = LAYOUT_V2_FROM; i < DEFAULT_LAYOUT.length; i++) {
+      const id = 'def' + i;
+      if (G.furnDocs.some((d) => d.id === id)) continue;
+      const d = DEFAULT_LAYOUT[i];
+      try { await G.net.set('furniture', id, { t: d.t, x: d.x, y: d.y, v: d.v || 0, f: d.f || 0 }); } catch { return; }
+    }
+    try { await G.net.set('settings', 'layout', { v: LAYOUT_VERSION }); } catch {}
+  })();
+}
+
+// ---------------------------------------------------------------- เพลง ----
+function currentMusic() { return G.music.sp || G.music.manual || null; }
+function pushMusic() {
+  const m = currentMusic();
+  pres({ mu: m ? { t: m.t.slice(0, 60), a: (m.a || '').slice(0, 60), u: m.u || '', s: m.s } : null });
+  if (G.musicOpen) paintMusic();
+}
+function musicLabel(m) {
+  if (!m || typeof m.t !== 'string') return '';
+  const s = m.a ? `${m.t} – ${m.a}` : m.t;
+  return Array.from(s).length > 28 ? Array.from(s).slice(0, 27).join('') + '…' : s;
+}
+function safeSpotifyUrl(u) {
+  return typeof u === 'string' && /^https:\/\/open\.spotify\.com\/[\w/?=&.-]+$/.test(u) ? u : '';
+}
+function openMusic() {
+  G.musicOpen = true;
+  openModal(() => {});
+  paintMusic();
+}
+function paintMusic() {
+  const card = $('#card');
+  card.innerHTML = '';
+  card.append(el('h2', null, '🎵 กำลังฟังเพลงอะไรอยู่'));
+  card.append(el('p', 'sub', 'เพลงจะขึ้นเหนือหัวตัวละคร เพื่อนกดที่ชื่อเพลงเพื่อเปิดใน Spotify ได้'));
+  const now = currentMusic();
+  if (now) {
+    const box = el('div', 'mon');
+    box.append(el('b', null, `${now.s === 'sp' ? '🟢 Spotify' : '✍️ พิมพ์เอง'} · ${musicLabel(now)}`));
+    card.append(box);
+  }
+  // ---- Spotify ----
+  const sp = el('div', 'opt'); sp.style.marginTop = '14px';
+  sp.append(el('span', null, 'เชื่อม Spotify (อัปเดตเองอัตโนมัติ)'));
+  const cid = G.net.spotifyClientId;
+  if (!cid) {
+    sp.append(el('p', 'tip', 'เจ้าของห้องยังไม่ได้ตั้งค่า Spotify — ใส่ SPOTIFY_CLIENT_ID ใน Render (ดูวิธีใน README) ระหว่างนี้พิมพ์ชื่อเพลงเองด้านล่างได้'));
+  } else if (lsGet('pixel.spotify', null)) {
+    const row = el('div', 'vbtns');
+    row.append(el('span', 'tip', G.music.sp ? 'เชื่อมแล้ว ✅' : 'เชื่อมแล้ว ✅ (ตอนนี้ยังไม่ได้เปิดเพลง)'));
+    const off = el('button', 'pbtn sm', 'เลิกเชื่อม');
+    off.onclick = () => { lsSet('pixel.spotify', null); G.music.sp = null; pushMusic(); };
+    row.append(off); sp.append(row);
+  } else {
+    const b = el('button', 'pbtn', '🟢 เชื่อม Spotify');
+    b.style.background = '#1db954'; b.style.color = '#fff';
+    b.onclick = () => spLogin();
+    sp.append(b);
+    sp.append(el('p', 'tip', 'ต้องเป็นบัญชี Spotify ที่เจ้าของห้องเพิ่มไว้ใน Spotify Developer Dashboard แล้ว'));
+  }
+  card.append(sp);
+  // ---- พิมพ์เอง ----
+  const man = el('label', 'field opt'); man.style.marginTop = '14px';
+  man.append(el('span', null, 'หรือพิมพ์เอง / วางลิงก์เพลง Spotify'));
+  const inp = el('input'); inp.maxLength = 90; inp.placeholder = 'เช่น ทางของฝุ่น – Atom ชนกันต์';
+  const cur = G.music.manual;
+  inp.value = cur ? (cur.u && !cur.a && cur.t === 'เพลงจาก Spotify' ? cur.u : musicLabel(cur).replace(/…$/, '')) : '';
+  man.append(inp); card.append(man);
+  const foot = el('div', 'foot');
+  const clear = el('button', 'pbtn', 'ล้าง');
+  clear.onclick = () => { G.music.manual = null; lsSet('pixel.music', null); pushMusic(); };
+  const close = el('button', 'pbtn', 'ปิด'); close.onclick = closeModal;
+  const save = el('button', 'pbtn pink', 'บันทึก');
+  save.onclick = async () => {
+    const v = inp.value.trim();
+    if (!v) { clear.click(); return; }
+    const url = safeSpotifyUrl(v.split('?')[0]);
+    let m;
+    if (url) {
+      m = { t: 'เพลงจาก Spotify', a: '', u: url, s: 'm' };
+      try {
+        const r = await fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(url));
+        if (r.ok) { const j = await r.json(); if (j.title) m.t = String(j.title).slice(0, 60); }
+      } catch {}
+    } else {
+      const [t, a] = v.split(/\s+[–-]\s+/);
+      m = { t: (t || v).slice(0, 60), a: (a || '').slice(0, 60), u: '', s: 'm' };
+    }
+    G.music.manual = m; lsSet('pixel.music', m); pushMusic(); toast('ตั้งเพลงแล้ว 🎵');
+  };
+  foot.append(clear, close, save); card.append(foot);
+}
+
+// ---------- Spotify (PKCE: ไม่ต้องมี client secret) ----------
+const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const spRedirect = () => location.origin + '/';
+async function spLogin() {
+  const bytes = crypto.getRandomValues(new Uint8Array(48));
+  const verifier = b64url(bytes);
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  const state = randomId(16);
+  lsSet('pixel.spv', { verifier, state });
+  const q = new URLSearchParams({
+    response_type: 'code', client_id: G.net.spotifyClientId, scope: 'user-read-currently-playing user-read-playback-state',
+    redirect_uri: spRedirect(), code_challenge_method: 'S256', code_challenge: challenge, state,
+  });
+  location.href = 'https://accounts.spotify.com/authorize?' + q;
+}
+async function spToken(params) {
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: G.net.spotifyClientId, ...params }),
+  });
+  if (!r.ok) throw new Error('token ' + r.status);
+  const j = await r.json();
+  const old = lsGet('pixel.spotify', {}) || {};
+  const tok = { at: j.access_token, rt: j.refresh_token || old.rt, exp: Date.now() + (j.expires_in || 3600) * 1000 };
+  lsSet('pixel.spotify', tok);
+  return tok;
+}
+async function spHandleRedirect() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('code') && !q.has('error')) return;
+  const saved = lsGet('pixel.spv', null);
+  history.replaceState(null, '', location.pathname);
+  if (q.get('error') || !saved || saved.state !== q.get('state') || !G.net.spotifyClientId) { toast('เชื่อม Spotify ไม่สำเร็จ'); return; }
+  try {
+    await spToken({ grant_type: 'authorization_code', code: q.get('code'), redirect_uri: spRedirect(), code_verifier: saved.verifier });
+    lsSet('pixel.spv', null);
+    toast('เชื่อม Spotify แล้ว 🎵', 3500);
+  } catch { toast('เชื่อม Spotify ไม่สำเร็จ (บัญชีอาจยังไม่ได้ถูกเพิ่มใน Spotify Dashboard)', 5000); }
+}
+let spBackoff = 0;
+async function spPoll() {
+  if (!G.net.spotifyClientId || !G.joined) return;
+  let tok = lsGet('pixel.spotify', null);
+  if (!tok || !tok.at) return;
+  if (spBackoff > Date.now()) return;
+  try {
+    if (tok.exp < Date.now() + 30000 && tok.rt) tok = await spToken({ grant_type: 'refresh_token', refresh_token: tok.rt });
+    let r = await fetch('https://api.spotify.com/v1/me/player/currently-playing', { headers: { Authorization: 'Bearer ' + tok.at } });
+    if (r.status === 401 && tok.rt) { tok = await spToken({ grant_type: 'refresh_token', refresh_token: tok.rt }); r = await fetch('https://api.spotify.com/v1/me/player/currently-playing', { headers: { Authorization: 'Bearer ' + tok.at } }); }
+    if (r.status === 429) { spBackoff = Date.now() + 120000; return; }
+    let m = null;
+    if (r.status === 200) {
+      const j = await r.json();
+      const item = j && j.item;
+      if (item && j.is_playing) m = { t: String(item.name || '').slice(0, 60), a: (item.artists || []).map((x) => x.name).join(', ').slice(0, 60) || (item.show && item.show.name) || '', u: safeSpotifyUrl(item.external_urls && item.external_urls.spotify), s: 'sp' };
+    }
+    const prev = JSON.stringify(G.music.sp), next = JSON.stringify(m);
+    if (prev !== next) { G.music.sp = m; pushMusic(); }
+  } catch { spBackoff = Date.now() + 60000; }
+}
+setInterval(spPoll, 20000);
+
+// สำหรับทดสอบ: เปิดด้วย #debug
+if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt };
 
 })();
 </script>

@@ -1,7 +1,19 @@
 // ============================================================================
 // world.js — แผนที่ห้อง พื้น ผนัง หน้าต่างตามเวลาจริง การชน และการหาเส้นทาง
 // ============================================================================
-const W = 512, H = 352, WALL = 58;
+const W = 512, H = 600, WALL = 58;
+// ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
+const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
+const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
+const ZONES = {
+  hall: { id: 'hall', name: 'ห้องรวม', icon: '🏠' },
+  meet: { id: 'meet', name: 'ห้องประชุม', icon: '🔒' },
+  garden: { id: 'garden', name: 'สวน', icon: '🌿' },
+};
+function zoneAt(x, y) {
+  if (y < LOWER_Y + 16) return 'hall';
+  return x < DIVIDER_X + 3 ? 'meet' : 'garden';
+}
 const WORK_X = 256;
 const KITCHEN = { x: 4, y: 262, w: 132, h: 86 };
 const DESK_SLOTS = [
@@ -19,7 +31,19 @@ const DEFAULT_LAYOUT = [
   { t: 'plant', v: 2, x: 270, y: 78 }, { t: 'rug', v: 1, x: 384, y: 308 }, { t: 'roundTable', x: 384, y: 306 },
   { t: 'armchair', x: 352, y: 312, v: 1 }, { t: 'armchair', x: 416, y: 312, v: 4 }, { t: 'plant', v: 0, x: 496, y: 342 },
   { t: 'plant', v: 1, x: 236, y: 342 },
+  // ---- ห้องประชุม ----
+  { t: 'bigScreen', x: 150, y: 404 }, { t: 'whiteboard', x: 44, y: 410 }, { t: 'plant', v: 0, x: 272, y: 404 },
+  { t: 'meetChair', x: 112, y: 456, v: 0, f: 0 }, { t: 'meetChair', x: 150, y: 456, v: 1, f: 0 }, { t: 'meetChair', x: 188, y: 456, v: 2, f: 0 },
+  { t: 'confTable', x: 150, y: 486 },
+  { t: 'meetChair', x: 112, y: 506, v: 3, f: 1 }, { t: 'meetChair', x: 150, y: 506, v: 4, f: 1 }, { t: 'meetChair', x: 188, y: 506, v: 5, f: 1 },
+  { t: 'plant', v: 1, x: 20, y: 590 }, { t: 'plant', v: 3, x: 282, y: 590 },
+  // ---- สวน ----
+  { t: 'flowerBed', v: 0, x: 336, y: 404 }, { t: 'tree', v: 0, x: 348, y: 470 }, { t: 'tree', v: 1, x: 482, y: 446 },
+  { t: 'pond', x: 430, y: 530 }, { t: 'bench', x: 350, y: 572 }, { t: 'flowerBed', v: 2, x: 486, y: 590 },
+  { t: 'flowerBed', v: 1, x: 486, y: 486 }, { t: 'beanbag', v: 4, x: 400, y: 590 }, { t: 'floorLamp', x: 318, y: 540 },
 ];
+const LAYOUT_VERSION = 2;
+const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 
 // ---------- ท้องฟ้าตามเวลาจริงของคนดู ----------
 function skyAt(date) {
@@ -32,6 +56,8 @@ function skyAt(date) {
 }
 
 const WINDOWS = [{ x: 74, y: 10, w: 38, h: 30 }, { x: 302, y: 10, w: 38, h: 30 }, { x: 382, y: 10, w: 38, h: 30 }];
+// หน้าต่างในห้องประชุม (บนผนังด้านหน้าห้อง)
+const LOWER_WINDOWS = [{ x: 256, y: 360, w: 26, h: 16 }];
 const CLOCK = { x: 238, y: 26 };
 
 function buildBackground() {
@@ -42,7 +68,7 @@ function buildBackground() {
   const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
   // ---- พื้นไม้ (โซนนั่งเล่น) ----
   const planks = ['#d9a374', '#d29b6b', '#dcaa7c'];
-  for (let y = WALL, row = 0; y < H; y += 8, row++) {
+  for (let y = WALL, row = 0; y < LOWER_Y; y += 8, row++) {
     let x = -((row * 23) % 40);
     while (x < WORK_X) {
       const len = 30 + Math.floor(rnd() * 26);
@@ -55,14 +81,14 @@ function buildBackground() {
     P(0, y + 7, WORK_X, 1, '#bd8759');
   }
   // ---- พรมปูพื้น (โซนทำงาน) ----
-  for (let y = WALL; y < H; y += 16) {
+  for (let y = WALL; y < LOWER_Y; y += 16) {
     for (let x = WORK_X; x < W; x += 16) {
       const alt = ((x - WORK_X) / 16 + (y - WALL) / 16) % 2 === 0;
       P(x, y, 16, 16, alt ? '#a9bdd4' : '#b4c7dc');
       P(x + 3, y + 3, 1, 1, '#9cb0c8'); P(x + 11, y + 9, 1, 1, '#9cb0c8'); P(x + 7, y + 13, 1, 1, '#c2d3e6');
     }
   }
-  P(WORK_X - 2, WALL, 3, H - WALL, '#8a6a52');
+  P(WORK_X - 2, WALL, 3, LOWER_Y - WALL, '#8a6a52');
   // ---- กระเบื้องครัว ----
   for (let y = KITCHEN.y; y < KITCHEN.y + KITCHEN.h; y += 10) {
     for (let x = KITCHEN.x; x < KITCHEN.x + KITCHEN.w; x += 10) {
@@ -104,6 +130,56 @@ function buildBackground() {
     if (d <= 81) P(cx + x, cy + y, 1, 1, d > 64 ? '#9a6438' : '#fff6e8');
   }
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; P(Math.round(cx + Math.sin(a) * 6), Math.round(cy - Math.cos(a) * 6), 1, 1, '#c8b49a'); }
+  // ---- ชั้นล่าง: ห้องประชุม (พรมม่วง) ----
+  for (let y = LOWER_Y; y < H; y += 12) for (let x = 0; x < DIVIDER_X + 3; x += 12) {
+    P(x, y, 12, 12, ((x / 12 + y / 12) | 0) % 2 ? '#cbb8dc' : '#c3afd6');
+    P(x + 5, y + 5, 2, 2, '#b8a2cc');
+  }
+  // ---- ชั้นล่าง: สวน (หญ้า + ทางเดินหิน) ----
+  for (let y = LOWER_Y; y < H; y += 4) for (let x = DIVIDER_X + 3; x < W; x += 4) {
+    const r = rnd();
+    P(x, y, 4, 4, r < 0.5 ? '#92d07c' : r < 0.85 ? '#88c773' : '#9cd886');
+    if (r > 0.96) P(x + 1, y + 1, 1, 2, '#6fb25e');
+    if (r > 0.993) { P(x, y, 2, 2, ['#ffffff', '#ffe07a', '#ff8fab'][Math.floor(rnd() * 3)]); }
+  }
+  for (let i = 0; i < 9; i++) {
+    const sx = 400 + Math.round(Math.sin(i * 0.9) * 8), sy = LOWER_FLOOR + 4 + i * 13;
+    P(sx, sy, 14, 8, '#c8ccd8'); P(sx + 1, sy + 1, 12, 2, '#e2e5ee'); P(sx, sy + 7, 14, 1, '#9aa0b8');
+  }
+  // ---- ผนังกั้น: หน้าผนังห้องประชุม / รั้วต้นไม้ของสวน ----
+  const doorAt = (x) => DOORS.some((d) => x >= d.x && x < d.x + d.w);
+  for (let x = 0; x < W; x++) {
+    if (doorAt(x)) continue;
+    const garden = x >= DIVIDER_X + 3;
+    // หน้าผนัง
+    if (!garden) {
+      P(x, LOWER_Y + 6, 1, LOWER_FLOOR - LOWER_Y - 6, (x % 10) < 4 ? '#e2cfee' : '#eadbf4');
+      P(x, LOWER_FLOOR - 6, 1, 6, x % 16 === 8 ? '#8f7aa8' : '#a892c0');
+      P(x, LOWER_FLOOR - 7, 1, 1, '#c6b2da');
+    } else {
+      const k = (x * 7) % 11;
+      P(x, LOWER_Y + 6, 1, LOWER_FLOOR - LOWER_Y - 6, k < 5 ? '#4f9a5c' : '#5fae68');
+      if (k === 2) P(x, LOWER_Y + 10 + (x % 9), 1, 2, '#8fd694');
+      if (k === 7 && x % 3 === 0) P(x, LOWER_Y + 14 + (x % 7), 1, 1, '#ff8fab');
+      P(x, LOWER_FLOOR - 3, 1, 3, '#3f7d4a');
+    }
+    // สันผนัง
+    P(x, LOWER_Y, 1, 6, garden ? '#3f7d4a' : '#5a4560');
+    P(x, LOWER_Y, 1, 1, garden ? '#5fae68' : '#7a6380');
+  }
+  // ช่องประตู: พื้นต่อเนื่อง + วงกบ + พรมเช็ดเท้า
+  for (const d of DOORS) {
+    const garden = d.zone === 'garden';
+    for (let y = LOWER_Y; y < LOWER_FLOOR; y += 4) for (let x = d.x; x < d.x + d.w; x += 4) P(x, y, 4, 4, garden ? '#92d07c' : (((x + y) / 4) | 0) % 2 ? '#cbb8dc' : '#c3afd6');
+    P(d.x - 2, LOWER_Y, 2, LOWER_FLOOR - LOWER_Y, '#fff6e8'); P(d.x + d.w, LOWER_Y, 2, LOWER_FLOOR - LOWER_Y, '#fff6e8');
+    P(d.x - 3, LOWER_Y, 1, LOWER_FLOOR - LOWER_Y, '#c8bba8'); P(d.x + d.w + 2, LOWER_Y, 1, LOWER_FLOOR - LOWER_Y, '#c8bba8');
+    P(d.x + 3, LOWER_Y - 9, d.w - 6, 7, garden ? '#8fd694' : '#ff8fab'); P(d.x + 4, LOWER_Y - 8, d.w - 8, 5, garden ? '#a9e6ae' : '#ffc2d2');
+  }
+  // ผนังกั้นห้องประชุม | สวน
+  P(DIVIDER_X, LOWER_Y, 6, H - LOWER_Y, '#5a4560'); P(DIVIDER_X, LOWER_Y, 1, H - LOWER_Y, '#7a6380'); P(DIVIDER_X + 5, LOWER_Y, 1, H - LOWER_Y, '#3a2c3f');
+  // ป้ายห้องประชุม
+  P(28, LOWER_Y + 9, 40, 11, '#3a3150'); P(30, LOWER_Y + 11, 36, 7, '#5a4f78');
+  for (let i = 0; i < 6; i++) P(33 + i * 5, LOWER_Y + 13, 3, 3, '#ffe07a');
   // ---- ขอบห้อง ----
   P(0, 0, 3, H, '#3a2c3f'); P(W - 3, 0, 3, H, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f');
   return c;
@@ -129,6 +205,13 @@ function drawLiveWall(ctx, now, t) {
     }
     ctx.fillStyle = '#fff6e8'; ctx.fillRect(w.x + w.w / 2 - 1, w.y, 2, w.h); ctx.fillRect(w.x, w.y + w.h / 2 - 1, w.w, 2);
   }
+  for (const w of LOWER_WINDOWS) {
+    ctx.fillStyle = '#fff6e8'; ctx.fillRect(w.x - 2, w.y - 2, w.w + 4, w.h + 4);
+    const gr = ctx.createLinearGradient(0, w.y, 0, w.y + w.h);
+    gr.addColorStop(0, sky.top); gr.addColorStop(1, sky.bot);
+    ctx.fillStyle = gr; ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.fillStyle = '#fff6e8'; ctx.fillRect(w.x + w.w / 2 - 1, w.y, 2, w.h);
+  }
   // เข็มนาฬิกา
   const hrs = (now.getHours() % 12) + now.getMinutes() / 60;
   const hand = (a, len, col) => {
@@ -147,10 +230,15 @@ function solidRects(furniture) {
   for (const it of furniture) {
     const d = FURN[it.t];
     if (!d || !d.solid) continue;
-    const fw = d.w - 2;
+    const fw = d.fw || d.w - 2;
     list.push({ x: it.x - fw / 2, y: it.y - d.foot, w: fw, h: d.foot });
   }
   for (const s of DESK_SLOTS) list.push({ x: s.x - 19, y: s.y - 14, w: 38, h: 14 });
+  // ผนังชั้นล่าง (เว้นช่องประตู)
+  let x0 = 0;
+  for (const d of [...DOORS].sort((a, b) => a.x - b.x)) { list.push({ x: x0, y: LOWER_Y - 2, w: d.x - x0, h: LOWER_FLOOR - LOWER_Y + 2 }); x0 = d.x + d.w; }
+  list.push({ x: x0, y: LOWER_Y - 2, w: W - x0, h: LOWER_FLOOR - LOWER_Y + 2 });
+  list.push({ x: DIVIDER_X - 1, y: LOWER_Y - 2, w: 8, h: H - LOWER_Y + 2 });
   return list;
 }
 function hitsRects(rects, x, y) {
@@ -207,7 +295,7 @@ function findPath(grid, sx, sy, tx, ty) {
   const hfn = (i) => { const dx = Math.abs((i % GW) - gx), dy = Math.abs(((i / GW) | 0) - gyy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
   gScore[s] = 0; push(s, hfn(s));
   let iter = 0;
-  while (heap.length && iter++ < 20000) {
+  while (heap.length && iter++ < 60000) {
     const [, cur] = pop();
     if (cur === goal) break;
     if (closed[cur]) continue;
@@ -246,8 +334,8 @@ function allSeats(furniture) {
   for (const it of furniture) {
     const d = FURN[it.t];
     if (!d || !d.seats) continue;
-    d.seats(it.f || 0).forEach((s, i) => seats.push({ id: `${it.id}:${i}`, x: it.x + s.dx, y: it.y + s.dy, dir: s.dir, kind: 'furn' }));
+    d.seats(it.f || 0).forEach((s, i) => seats.push({ id: `${it.id}:${i}`, x: it.x + s.dx, y: it.y + s.dy, dir: s.dir, kind: 'furn', over: !!s.over, itemY: it.y }));
   }
-  for (const s of DESK_SLOTS) seats.push({ id: `desk:${s.id}`, x: s.x, y: s.y + CHAIR_DY - 3, dir: 'up', kind: 'desk', slot: s.id });
+  for (const s of DESK_SLOTS) seats.push({ id: `desk:${s.id}`, x: s.x, y: s.y + CHAIR_DY - 3, dir: 'up', kind: 'desk', slot: s.id, over: true, itemY: s.y + CHAIR_DY });
   return seats;
 }

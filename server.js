@@ -16,7 +16,13 @@ const ROOM_PASSWORD = process.env.ROOM_PASSWORD || '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'room.json');
 const PUBLIC = path.join(__dirname, 'public');
-const COLS = ['furniture', 'desks', 'chat', 'settings'];
+const COLS = ['furniture', 'desks', 'chat', 'settings', 'board'];
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
+// กระดานแนบรูป: เก็บไว้ 24 ชม. แล้วลบเอง
+const BOARD_DIR = path.join(DATA_DIR, 'board');
+const BOARD_MAX = Number(process.env.BOARD_MAX) || 20;      // รูปสูงสุดต่อกระดาน
+const BOARD_TTL = 24 * 60 * 60 * 1000;
+const BOARD_MAX_BYTES = 3 * 1024 * 1024;
 
 const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
 if (process.env.TURN_URL) {
@@ -44,7 +50,49 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/config') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify({ app: 'pixel-hangout', roomName: ROOM_NAME, needPassword: !!ROOM_PASSWORD, maxUsers: MAX_USERS, online: peers.size }));
+    return res.end(JSON.stringify({ app: 'pixel-hangout', roomName: ROOM_NAME, needPassword: !!ROOM_PASSWORD, maxUsers: MAX_USERS, online: peers.size, spotifyClientId: SPOTIFY_CLIENT_ID, boardMax: BOARD_MAX, boardTtl: BOARD_TTL }));
+  }
+  // ---- อัปโหลดรูปขึ้นกระดาน ----
+  const up = url.pathname.match(/^\/api\/board\/([\w.:-]{1,48})$/);
+  if (up && req.method === 'POST') {
+    const boardId = up[1];
+    if (ROOM_PASSWORD && req.headers['x-room-password'] !== ROOM_PASSWORD) { res.writeHead(403); return res.end('{"error":"password"}'); }
+    const type = String(req.headers['content-type'] || '');
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(type)) { res.writeHead(415); return res.end('{"error":"type"}'); }
+    const count = Object.values(store.board).filter((b) => b.b === boardId).length;
+    if (count >= BOARD_MAX) { res.writeHead(409); return res.end(JSON.stringify({ error: 'full', max: BOARD_MAX })); }
+    const chunks = []; let size = 0, tooBig = false;
+    req.on('data', (c) => { size += c.length; if (size > BOARD_MAX_BYTES) { tooBig = true; req.destroy(); } else chunks.push(c); });
+    req.on('end', () => {
+      if (tooBig) return;
+      const id = 'i' + crypto.randomBytes(8).toString('hex');
+      const ext = type.split('/')[1].replace('jpeg', 'jpg');
+      fs.mkdir(BOARD_DIR, { recursive: true }, () => {
+        fs.writeFile(path.join(BOARD_DIR, `${id}.${ext}`), Buffer.concat(chunks), (err) => {
+          if (err) { res.writeHead(500); return res.end('{"error":"save"}'); }
+          const doc = {
+            b: boardId, ext, ts: Date.now(),
+            n: String(req.headers['x-name'] ? decodeURIComponent(req.headers['x-name']) : '').slice(0, 24),
+            w: Number(req.headers['x-w']) || 0, h: Number(req.headers['x-h']) || 0,
+          };
+          store.board[id] = doc;
+          save();
+          broadcast({ t: 'col', col: 'board', id, doc });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ id, doc }));
+        });
+      });
+    });
+    return;
+  }
+  const img = url.pathname.match(/^\/board\/(i[0-9a-f]{16})\.(jpg|png|webp|gif)$/);
+  if (img) {
+    if (!store.board[img[1]]) { res.writeHead(404); return res.end(); }
+    return fs.readFile(path.join(BOARD_DIR, `${img[1]}.${img[2]}`), (err, data) => {
+      if (err) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { 'Content-Type': img[2] === 'jpg' ? 'image/jpeg' : 'image/' + img[2], 'Cache-Control': 'public, max-age=86400' });
+      res.end(data);
+    });
   }
   if (url.pathname === '/health') { res.writeHead(200); return res.end('ok'); }
   const rel = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
@@ -104,7 +152,7 @@ wss.on('connection', (ws) => {
         break;
       }
       case 'set': {
-        if (!COLS.includes(m.col) || !okId(m.id) || !m.doc || typeof m.doc !== 'object') break;
+        if (!COLS.includes(m.col) || m.col === 'board' || !okId(m.id) || !m.doc || typeof m.doc !== 'object') break;
         if (JSON.stringify(m.doc).length > 8192) break;
         if (!store[m.col][m.id] && Object.keys(store[m.col]).length >= (m.col === 'chat' ? 100000 : 200)) break;
         store[m.col][m.id] = m.doc;
@@ -118,8 +166,15 @@ wss.on('connection', (ws) => {
       }
       case 'del': {
         if (!COLS.includes(m.col) || !okId(m.id) || !store[m.col][m.id]) break;
-        delete store[m.col][m.id];
+        if (m.col === 'board') removeImage(m.id);
+        else delete store[m.col][m.id];
         broadcast({ t: 'col', col: m.col, id: m.id, doc: null }, key);
+        save();
+        break;
+      }
+      case 'board-clear': {
+        if (!okId(m.b)) break;
+        for (const [id, d] of Object.entries(store.board)) if (d.b === m.b) { removeImage(id); broadcast({ t: 'col', col: 'board', id, doc: null }); }
         save();
         break;
       }
@@ -138,6 +193,26 @@ wss.on('connection', (ws) => {
     console.log(`- ${(me && me.p.n) || key} (${peers.size} ออนไลน์)`);
   });
 });
+// ---------- ลบรูปบนกระดานที่เกิน 24 ชม. ----------
+function removeImage(id) {
+  const d = store.board[id];
+  if (!d) return;
+  delete store.board[id];
+  fs.unlink(path.join(BOARD_DIR, `${id}.${d.ext || 'jpg'}`), () => {});
+}
+function sweepBoard() {
+  const now = Date.now();
+  let changed = false;
+  for (const [id, d] of Object.entries(store.board)) {
+    if (now - (d.ts || 0) > BOARD_TTL || !fs.existsSync(path.join(BOARD_DIR, `${id}.${d.ext || 'jpg'}`))) {
+      removeImage(id); broadcast({ t: 'col', col: 'board', id, doc: null }); changed = true;
+    }
+  }
+  if (changed) save();
+}
+sweepBoard();
+setInterval(sweepBoard, 5 * 60 * 1000);
+
 setInterval(() => {
   for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; ws.ping(); }
 }, 25000);

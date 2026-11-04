@@ -29,7 +29,8 @@ const G = {
   zoomAdj: 0, scale: 2, cam: { x: 0, y: 0, ready: false }, view: { cw: 1, ch: 1, dpr: 1 },
   myDesk: null, myDeskStyle: cleanDesk(lsGet('pixel.desk', DEFAULT_DESK)),
   emotes: [], unread: 0, chatOpen: !isMobile(),
-  presPending: {}, presLast: 0, actionSig: '', lastActions: 0, bubbleHits: [],
+  presPending: {}, presLast: 0, actionSig: '', lastActions: 0, bubbleHits: [], musicHits: [],
+  zone: 'hall', boardDocs: [], boardOpen: null, layoutV: 1, settingsLoaded: false, music: { sp: null, manual: lsGet('pixel.music', null) },
 };
 G.me.pet = { x: G.me.x + 10, y: G.me.y, face: false, ft: 0 };
 
@@ -92,6 +93,7 @@ function fullPresence() {
     n: me.nick, l: me.look, x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 0, s: me.sit || '', st: me.st,
     say: G.mySay, em: null, dk: G.myDesk ? { slot: G.myDesk, style: G.myDeskStyle } : null, dr: null,
     uid: G.net.uid || null, mic: G.voice && G.voice.mic ? 1 : 0, cam: G.voice && G.voice.cam ? 1 : 0,
+    mu: currentMusic() ? { ...currentMusic() } : null,
   };
 }
 
@@ -113,6 +115,7 @@ function rebuildWorld() {
   G.rects = solidRects(G.furniture);
   G.grid = buildGrid(G.rects);
   G.seats = allSeats(G.furniture);
+  G.seatById = new Map(G.seats.map((x) => [x.id, x]));
 }
 
 function deskInfo(slot) {
@@ -138,6 +141,7 @@ function sitOn(seat) {
 }
 function walkTo(x, y, seat) {
   standUp();
+  G.me.pendingBoard = null;
   const path = findPath(G.grid, G.me.x, G.me.y, x, y);
   if (!path) { toast('ไปตรงนั้นไม่ได้'); return; }
   G.me.path = path;
@@ -174,6 +178,7 @@ function updateMe(dt) {
       me.x = t.x; me.y = t.y; me.path.shift();
       if (!me.path.length) {
         me.path = null;
+        if (me.pendingBoard) { const bd = G.furniture.find((f) => f.id === me.pendingBoard); me.pendingBoard = null; if (bd) openBoard(bd); }
         if (me.pendingSeat) {
           const seat = me.pendingSeat;
           if (Math.hypot(seat.x - me.x, seat.y - me.y) < 26 && !seatTaken(seat.id)) sitOn(seat);
@@ -532,9 +537,15 @@ canvas.addEventListener('pointerdown', (e) => {
     updateSelBar();
     return;
   }
+  for (const h of G.musicHits) if (e.clientX >= h.x0 && e.clientX <= h.x1 && e.clientY >= h.y0 && e.clientY <= h.y1) { window.open(h.u, '_blank', 'noopener'); return; }
   // แตะที่นั่ง/โต๊ะ = เดินไปนั่ง
   let target = null;
   const it = itemAt(w.x, w.y);
+  if (it && FURN[it.t].board) {
+    if (Math.abs(G.me.x - it.x) < 24 && G.me.y > it.y - 4 && G.me.y < it.y + 24) openBoard(it);
+    else { walkTo(it.x, it.y + 12); G.me.pendingBoard = it.id; }
+    return;
+  }
   if (it && FURN[it.t].seats) {
     const seats = G.seats.filter((s) => s.id.startsWith(it.id + ':') && !seatTaken(s.id));
     if (seats.length) target = seats.sort((a, b) => Math.hypot(a.x - w.x, a.y - w.y) - Math.hypot(b.x - w.x, b.y - w.y))[0];
@@ -630,8 +641,9 @@ function drawPet(c, ch, t) {
   const pet = ch.pet;
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
   drawShadow(c, pet.x, pet.y, 8);
-  const s = petSprite(ch.look.pet, frame, pet.face);
-  c.drawImage(s, Math.round(pet.x - 7), Math.round(pet.y - 13));
+  const fly = ch.look.pet === 'fish' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
+  const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0);
+  c.drawImage(s, Math.round(pet.x - 8), Math.round(pet.y - 15 - fly));
 }
 
 function render(t) {
@@ -697,7 +709,8 @@ function render(t) {
   const chars = [me, ...[...G.others.values()].filter((r) => Number.isFinite(r.p.x))];
   for (const c of chars) {
     if (c !== me) c.sit = c.p.s || null;
-    list.push({ y: c.sit && c.sit.startsWith('desk:') ? c.y + 3.5 : c.y + 0.2, kind: 'char', c });
+    const seat = c.sit && G.seatById && G.seatById.get(c.sit);
+    list.push({ y: seat && seat.over ? seat.itemY + 0.5 : c.y + 0.2, kind: 'char', c });
     if (c.look.pet !== 'none') list.push({ y: c.pet.y, kind: 'pet', c });
   }
   list.sort((a, b2) => a.y - b2.y);
@@ -707,6 +720,7 @@ function render(t) {
       const spr = furnSprite(o.it.t, o.it.v || 0, o.it.f || 0);
       drawSprite(b, spr, o.it.x, o.it.y);
       if (d.anim) d.anim(b, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1, t, o.it);
+      if (d.board) drawBoardThumbs(b, o.it, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1);
     } else if (o.kind === 'desk') {
       const info = deskInfos.get(o.s.id);
       drawSprite(b, deskSprite(info ? info.style : { c: 2, s: 'none', items: [] }), o.s.x, o.s.y);
@@ -781,6 +795,8 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
   const now = performance.now();
   const S = (x, y) => [(x - camX) * scale, (y - camY) * scale];
   G.bubbleHits = [];
+  G.musicHits = [];
+  drawDoorLabels(c, camX, camY, scale);
   // ป้ายชื่อโต๊ะ
   c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const s of DESK_SLOTS) {
@@ -803,6 +819,8 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const [sx, sy0] = S(ch.x, ch.y);
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
     let top = sy0 - (ch.sit ? 33 : 35) * scale;
+    const away = ch !== G.me && zoneAt(ch.x, ch.y) !== G.zone;
+    c.globalAlpha = away && G.voice ? 0.5 : 1;
     const key = ch === G.me ? G.net.myKey : ch.key;
     const speaking = G.voice && G.voice.speaking(key);
     // วิดีโอ (เวอร์ชันมีเสียง)
@@ -833,6 +851,19 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     rrect(c, sx - w / 2, ly, w, 18, 6); c.fill();
     c.fillStyle = '#ffffff'; c.fillText(label, sx, ly + 9.5);
     top = ly;
+    // เพลงที่กำลังฟัง
+    const mu = ch === G.me ? currentMusic() : (p.mu && typeof p.mu.t === 'string' ? p.mu : null);
+    if (mu) {
+      const lab = '🎵 ' + musicLabel(mu);
+      c.font = '500 11px Mitr, sans-serif';
+      const mw = c.measureText(lab).width + 12, my = top - 17;
+      c.fillStyle = mu.s === 'sp' ? '#1db954' : '#5a4f78';
+      rrect(c, sx - mw / 2, my, mw, 15, 5); c.fill();
+      c.fillStyle = '#ffffff'; c.fillText(lab, sx, my + 8);
+      const u = safeSpotifyUrl(mu.u);
+      if (u) G.musicHits.push({ x0: sx - mw / 2, y0: my, x1: sx + mw / 2, y1: my + 15, u });
+      top = my;
+    }
     // บับเบิลแชต
     const bub = ch === G.me ? G.me.bubble : ch.bubble;
     if (bub && bub.until > now) {
@@ -855,6 +886,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       top = by;
     } else if (bub) { if (ch === G.me) G.me.bubble = null; else ch.bubble = null; }
     ch._top = top;
+    c.globalAlpha = 1;
   }
   // อีโมต
   G.emotes = G.emotes.filter((e) => now - e.start < 2200);
@@ -877,6 +909,10 @@ function updateActions() {
   const me = G.me;
   const acts = [];
   let hint = '';
+  if (!G.edit && !me.sit && !me.path) {
+    const bd = G.furniture.find((it) => FURN[it.t].board && Math.abs(me.x - it.x) < 24 && me.y > it.y - 4 && me.y < it.y + 24);
+    if (bd) acts.push(['🖼️ เปิดกระดาน', 'board:' + bd.id]);
+  }
   if (!G.edit) {
     if (me.sit) {
       acts.push(['ลุกขึ้น', 'stand']);
@@ -910,6 +946,7 @@ function updateActions() {
       if (act === 'stand') standUp();
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
+      else if (act.startsWith('board:')) { const it = G.furniture.find((f) => f.id === act.slice(6)); if (it) openBoard(it); }
       else if (act.startsWith('sit:')) { const s = G.seats.find((x) => x.id === act.slice(4)); if (s) sitOn(s); }
       G.actionSig = '';
     };
@@ -938,6 +975,11 @@ function buildTrays() {
     et.append(b);
   }
   const st = $('#statusTray'); st.innerHTML = '';
+  const mb = document.createElement('button'); mb.className = 'st';
+  const mi = document.createElement('i'); mi.textContent = '🎵';
+  const ms = document.createElement('span'); ms.textContent = 'เพลงที่ฟัง';
+  mb.append(mi, ms); mb.onclick = () => { $('#statusTray').classList.add('hidden'); closeTrays(); openMusic(); };
+  st.append(mb);
   for (const [e, label] of STATUSES) {
     const b = document.createElement('button'); b.className = 'st' + (G.me.st === e ? ' sel' : '');
     const i = document.createElement('i'); i.textContent = e || '➖';
@@ -963,8 +1005,8 @@ $$('[data-close]').forEach((b) => (b.onclick = () => $('#' + b.dataset.close).cl
 function renderPeople() {
   const ul = $('#peopleList');
   ul.innerHTML = '';
-  const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk }];
-  for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest });
+  const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk, z: zoneAt(G.me.x, G.me.y), mu: currentMusic() }];
+  for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest, z: zoneAt(rt.p.x, rt.p.y), mu: rt.p.mu });
   for (const r of rows) {
     const li = document.createElement('li');
     const cv = mkCanvas(22, 36);
@@ -973,7 +1015,7 @@ function renderPeople() {
     const b = document.createElement('b'); b.textContent = (r.n || 'เพื่อน') + (r.me ? ' (คุณ)' : '');
     const sm = document.createElement('small');
     const stl = STATUSES.find((s) => s[0] === r.st);
-    sm.textContent = [stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ') || 'เดินเล่นอยู่';
+    sm.textContent = [`${ZONES[r.z].icon} ${ZONES[r.z].name}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
     who.append(b, sm);
     li.append(cv, who);
     if (r.rt) {
@@ -996,7 +1038,7 @@ function openModal(build) {
   build(card);
   $('#modal').classList.remove('hidden');
 }
-function closeModal() { $('#modal').classList.add('hidden'); G.previewLoop = null; }
+function closeModal() { $('#modal').classList.add('hidden'); G.previewLoop = null; G.voicePanelOpen = false; G.boardOpen = null; G.musicOpen = false; }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function optRow(label, items, isSel, onPick, kind = 'chip') {
   const o = el('div', 'opt');
@@ -1060,6 +1102,7 @@ function openCreator(first) {
       pw.append(pi); opts.append(pw);
     }
     const sections = () => [
+      optRow('เพศ', SEXES, (it) => draft.sex === it[0], (it) => (draft.sex = it[0])),
       optRow('สีผิว', SKINS, (_, i) => draft.skin === i, (_, i) => (draft.skin = i), 'sw'),
       optRow('ทรงผม', HAIR_STYLES, (it) => draft.hair === it[0], (it) => (draft.hair = it[0])),
       optRow('สีผม', HAIR_COLORS, (_, i) => draft.hc === i, (_, i) => (draft.hc = i), 'sw'),
@@ -1068,6 +1111,7 @@ function openCreator(first) {
       optRow('สีกางเกง / เอี๊ยม', CLOTH_COLORS, (_, i) => draft.bc === i, (_, i) => (draft.bc = i), 'sw'),
       optRow('เครื่องประดับ', ACCS, (it) => draft.acc === it[0], (it) => (draft.acc = it[0])),
       optRow('สัตว์เลี้ยงคู่ใจ', PETS, (it) => draft.pet === it[0], (it) => (draft.pet = it[0])),
+      optRow('สีสัตว์เลี้ยง (ช่องแรก = สีธรรมชาติ)', PET_COLORS.map((c) => c || 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'), (_, i) => (draft.pc || 0) === i, (_, i) => (draft.pc = i), 'sw'),
     ];
     const secBox = el('div', 'opts');
     const paintSections = () => { secBox.innerHTML = ''; sections().forEach((s) => secBox.append(s)); };
@@ -1077,7 +1121,7 @@ function openCreator(first) {
     card.append(wrap);
     dice.onclick = () => {
       const r = (a) => Math.floor(Math.random() * a.length);
-      Object.assign(draft, { skin: r(SKINS), hair: HAIR_STYLES[r(HAIR_STYLES)][0], hc: r(HAIR_COLORS), top: TOPS[r(TOPS)][0], tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: ACCS[r(ACCS)][0], pet: PETS[r(PETS)][0] });
+      Object.assign(draft, { pc: r(PET_COLORS), skin: r(SKINS), hair: HAIR_STYLES[r(HAIR_STYLES)][0], hc: r(HAIR_COLORS), top: TOPS[r(TOPS)][0], tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: ACCS[r(ACCS)][0], pet: PETS[r(PETS)][0] });
       paintSections(); SFX.pop();
     };
     const foot = el('div', 'foot');
@@ -1106,7 +1150,7 @@ function openCreator(first) {
       const L = cleanLook(draft);
       g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
       g.drawImage(charSprite(L, dir, frame, 'stand', (t % 3.3) < 0.12), 17, 13);
-      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); g.drawImage(petSprite(L.pet, Math.floor(t * 4) % 2, false), 36, 36); }
+      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); g.drawImage(petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc), 35, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 35); }
     });
     if (!nick) setTimeout(() => nameInput.focus(), 50);
   });
@@ -1339,7 +1383,7 @@ async function join() {
   $('#hud').classList.remove('hidden');
   setChatOpen(G.chatOpen);
   const pos = lsGet('pixel.pos', null);
-  if (pos && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
+  if (pos && pos.y < H && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
   else { G.me.x = 230 + Math.random() * 40; G.me.y = 318; }
   G.me.pet.x = G.me.x + 12; G.me.pet.y = G.me.y;
   G.me.st = lsGet('pixel.status', '');
@@ -1348,6 +1392,8 @@ async function join() {
   if (net.mode === 'ws') { setupVoice(); net.start(); }
   G.net.setPresence(fullPresence());
   G.presLast = performance.now();
+  G.zone = zoneAt(G.me.x, G.me.y);
+  setTimeout(spPoll, 1500);
   if (net.mode === 'claude' && net.canWrite === false) showBanner('คุณมีสิทธิ์ดูอย่างเดียว: เดิน แชต อีโมตได้ แต่ห้อง/โต๊ะจะไม่ถูกบันทึก');
   if (net.mode === 'solo') showBanner(net.reason);
   setTimeout(() => toast(isMobile() ? 'แตะพื้นเพื่อเดิน · แตะโซฟา/โต๊ะเพื่อไปนั่ง' : 'เดินด้วยลูกศร/WASD หรือคลิกพื้น · E = นั่ง · Enter = แชต'), 500);
@@ -1372,7 +1418,7 @@ function frame(ms) {
       updateOthers(dt);
       if (G.voice) G.voice.tick(dt);
       flushPres(ms);
-      if ((actT += dt) > 0.15) { actT = 0; updateActions(); }
+      if ((actT += dt) > 0.15) { actT = 0; updateActions(); updateZones(); }
       if (G.edit && (selT += dt) > 0.05) { selT = 0; updateSelBar(); }
     }
     render(t);
@@ -1391,7 +1437,7 @@ function frame(ms) {
     try { const cfg = await (await fetch('/config')).json(); net.needPassword = cfg.needPassword; if (cfg.roomName) $('#roomName').textContent = cfg.roomName; document.title = cfg.roomName + ' · Pixel Hangout'; } catch {}
   }
   rebuildWorld();
-  net.watch('furniture', (docs) => { G.furnDocs = docs; if (!G.drag) rebuildWorld(); });
+  net.watch('furniture', (docs) => { G.furnDocs = docs; if (!G.drag) rebuildWorld(); maybeMigrateLayout(); });
   net.watch('desks', (docs) => {
     G.desks = new Map(docs.map((d) => [d.id, d]));
     // กลับมาแล้วจำโต๊ะตัวเองได้
@@ -1412,6 +1458,14 @@ function frame(ms) {
     const s = docs.find((d) => d.id === 'room');
     G.settings = s ? { call: typeof s.call === 'string' ? s.call : '' } : {};
     $('#callBtn').classList.toggle('on', !!G.settings.call);
+    const lv = docs.find((d) => d.id === 'layout');
+    G.layoutV = lv && Number(lv.v) || 1;
+    G.settingsLoaded = true;
+    maybeMigrateLayout();
+  });
+  net.watch('board', (docs) => {
+    G.boardDocs = docs.filter((d) => d && typeof d.b === 'string');
+    if (G.boardOpen) paintBoard();
   });
   net.onPeers(onPeers);
   // ข้อมูลส่วนตัว (จำตัวละครข้ามเครื่อง)
@@ -1422,6 +1476,7 @@ function frame(ms) {
     if (priv.desk) G.myDeskStyle = cleanDesk(priv.desk);
   } else G.me.nick = net.profileName || lsGet('pixel.nick', '');
   $('#loading').classList.add('hidden');
+  spHandleRedirect();
   openCreator(true);
   requestAnimationFrame(frame);
 })();

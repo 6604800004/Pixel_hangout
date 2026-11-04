@@ -178,6 +178,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- โซน / กระดาน ---------- */
+.top-left { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.chip.zone { font-size: 13px; padding: 3px 10px; box-shadow: 0 2px 0 var(--ink); border-width: 2px; background: var(--paper2); }
+.bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.btile { position: relative; border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 3px 0 var(--ink); }
+.btile img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; cursor: zoom-in; background: #eee; }
+.btile .bmeta { display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px; font-size: 12px; }
+.btile .bmeta b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btile .bmeta small { color: var(--ink2); white-space: nowrap; }
+.btile .x { position: absolute; top: 6px; right: 6px; background: rgba(255,247,236,.9); }
+.focus img { max-width: 94vw; max-height: 88dvh; border: 4px solid #fff7ec; border-radius: 12px; background: #fff; }
+
 /* ---------- ตั้งค่าเสียง/กล้อง ---------- */
 .vset { display: grid; grid-template-columns: 250px 1fr; gap: 18px; }
 .cam-prev { position: relative; aspect-ratio: 4 / 3; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #3a3150; display: grid; place-items: center; color: #fff7ec; font-size: 13px; }
@@ -204,6 +216,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .stage { max-width: 220px; margin: 0 auto; width: 100%; }
   .card { padding: 14px; }
   .pbtn .lbl { display: none; }
+  .chip b { display: none; }
+  .top-right { gap: 4px; max-width: 60vw; }
+  .bgrid { grid-template-columns: repeat(2, 1fr); }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
   .pbtn.sq { width: 36px; height: 36px; font-size: 16px; }
   .chip b { font-size: 14px; }

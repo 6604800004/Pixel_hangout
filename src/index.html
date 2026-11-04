@@ -18,11 +18,14 @@
 
 <div id="hud" class="hidden">
   <header class="topbar">
-    <button class="chip" id="roomChip" aria-label="ใครอยู่บ้าง">
-      <span class="dot" id="connDot"></span>
-      <b id="roomName">Pixel Hangout</b>
-      <span class="count"><span>👥</span><span id="onlineCount">1</span></span>
-    </button>
+    <div class="top-left">
+      <button class="chip" id="roomChip" aria-label="ใครอยู่บ้าง">
+        <span class="dot" id="connDot"></span>
+        <b id="roomName">Pixel Hangout</b>
+        <span class="count"><span>👥</span><span id="onlineCount">1</span></span>
+      </button>
+      <div class="chip zone" id="zoneChip">🏠 ห้องรวม</div>
+    </div>
     <div class="top-right">
       <button class="pbtn" id="callBtn" title="ห้องคุยเสียง">🎧 <span class="lbl">ห้องเสียง</span></button>
       <button class="pbtn sq hidden" id="micBtn" title="ไมค์">🎙️</button>

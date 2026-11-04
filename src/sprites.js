@@ -10,8 +10,11 @@ const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก']];
 const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย']];
-const DEFAULT_LOOK = { skin: 1, hair: 'short', hc: 0, top: 'hoodie', tc: 5, bc: 8, acc: 'none', pet: 'none' };
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า']];
+// สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
+const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9'];
+const SEXES = [['m', 'ชาย'], ['f', 'หญิง']];
+const DEFAULT_LOOK = { sex: 'm', skin: 1, hair: 'short', hc: 0, top: 'hoodie', tc: 5, bc: 8, acc: 'none', pet: 'none', pc: 0 };
 
 function cleanLook(l) {
   const o = { ...DEFAULT_LOOK };
@@ -25,6 +28,8 @@ function cleanLook(l) {
   if (TOPS.some((h) => h[0] === l.top)) o.top = l.top;
   if (ACCS.some((h) => h[0] === l.acc)) o.acc = l.acc;
   if (PETS.some((h) => h[0] === l.pet)) o.pet = l.pet;
+  if (l.sex === 'f' || l.sex === 'm') o.sex = l.sex;
+  if (inRange(l.pc, PET_COLORS.length)) o.pc = l.pc;
   return o;
 }
 
@@ -95,7 +100,7 @@ function painter(g, ox = 0, oy = 0) {
 // ============================================================================
 const CHAR_W = 22, CHAR_H = 36;
 function charSprite(look, dir, frame, pose, blink) {
-  const key = `c|${look.skin}|${look.hair}|${look.hc}|${look.top}|${look.tc}|${look.bc}|${look.acc}|${dir}|${frame}|${pose}|${blink ? 1 : 0}`;
+  const key = `c|${look.sex}|${look.skin}|${look.hair}|${look.hc}|${look.top}|${look.tc}|${look.bc}|${look.acc}|${dir}|${frame}|${pose}|${blink ? 1 : 0}`;
   return cached(key, () => {
     const flip = dir === 'right';
     const d = flip ? 'left' : dir;
@@ -166,11 +171,14 @@ function charSprite(look, dir, frame, pose, blink) {
       if (blink) { U(7, 13, 2, 1, EYE); U(13, 13, 2, 1, EYE); }
       else { U(7, 12, 2, 2, EYE); U(13, 12, 2, 2, EYE); U(7, 12, 1, 1, '#ffffff'); U(13, 12, 1, 1, '#ffffff'); }
       U(5, 14, 2, 1, '#ff9fb0'); U(15, 14, 2, 1, '#ff9fb0');
-      U(10, 15, 2, 1, '#c0605a');
+      if (look.sex === 'f') { U(6, 12, 1, 1, EYE); U(15, 12, 1, 1, EYE); U(10, 15, 2, 1, '#e0607a'); }
+      else { U(7, 11, 2, 1, hcD); U(13, 11, 2, 1, hcD); U(10, 15, 2, 1, '#c0605a'); }
     } else if (side) {
       if (blink) U(5, 13, 2, 1, EYE);
       else { U(5, 12, 2, 2, EYE); U(5, 12, 1, 1, '#ffffff'); }
-      U(4, 14, 2, 1, '#ff9fb0'); U(6, 15, 1, 1, '#c0605a');
+      U(4, 14, 2, 1, '#ff9fb0');
+      if (look.sex === 'f') { U(4, 12, 1, 1, EYE); U(6, 15, 1, 1, '#e0607a'); }
+      else { U(5, 11, 2, 1, hcD); U(6, 15, 1, 1, '#c0605a'); }
     }
 
     // ---------- ผม ----------
@@ -244,15 +252,16 @@ function charSprite(look, dir, frame, pose, blink) {
 // ============================================================================
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
-function petSprite(kind, frame, faceRight) {
-  return cached(`p|${kind}|${frame}|${faceRight ? 1 : 0}`, () => {
-    const c = mkCanvas(14, 14);
+function petSprite(kind, frame, faceRight, pc = 0) {
+  return cached(`p|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
+    const c = mkCanvas(16, 16);
     const g = c.getContext('2d');
-    const P = painter(g, 1, 0);
+    const P = painter(g, 1, 1);
     const EYE = '#2e2235';
     const step = frame % 2;
+    const pick = (natural) => PET_COLORS[pc] || natural;
     if (kind === 'cat' || kind === 'dog') {
-      const col = kind === 'cat' ? '#f2a65a' : '#c08552';
+      const col = pick(kind === 'cat' ? '#f2a65a' : '#c08552');
       const dk = shade(col, -0.25);
       P(4, 6, 7, 4, col); P(1, 3, 5, 5, col);
       if (kind === 'cat') { P(1, 2, 1, 1, col); P(4, 2, 1, 1, col); P(10, 3 + step, 1, 3, col); P(11, 3 + step, 1, 1, col); P(6, 6, 1, 4, dk); P(8, 6, 1, 4, dk); }
@@ -260,18 +269,44 @@ function petSprite(kind, frame, faceRight) {
       P(2, 5, 1, 1, EYE); P(1, 6, 1, 1, kind === 'cat' ? '#ff8fab' : EYE);
       P(4, 10, 1, 2 - step, dk); P(9, 10, 1, 1 + step, dk); P(6, 10, 1, 1 + step, col); P(8, 10, 1, 2 - step, col);
     } else if (kind === 'chick') {
+      const col = pick('#ffe07a');
       const y = step;
-      P(3, 4 + y, 7, 6, '#ffe07a'); P(4, 3 + y, 5, 1, '#ffe07a'); P(5, 2 + y, 2, 1, '#ffe07a');
-      P(8, 6 + y, 2, 2, '#f5c84a'); P(4, 5 + y, 1, 1, EYE); P(2, 6 + y, 1, 1, '#ff9a3c');
+      P(3, 4 + y, 7, 6, col); P(4, 3 + y, 5, 1, col); P(5, 2 + y, 2, 1, col);
+      P(8, 6 + y, 2, 2, shade(col, -0.12)); P(4, 5 + y, 1, 1, EYE); P(2, 6 + y, 1, 1, '#ff9a3c');
       P(5, 10, 1, 2, '#ff9a3c'); P(7, 10, 1, 2, '#ff9a3c');
     } else if (kind === 'slime') {
-      if (step) { P(2, 7, 9, 5, '#7ee0a0'); P(3, 6, 7, 1, '#7ee0a0'); }
-      else { P(3, 5, 7, 7, '#7ee0a0'); P(4, 4, 5, 1, '#7ee0a0'); }
-      P(4, step ? 8 : 7, 1, 2, EYE); P(7, step ? 8 : 7, 1, 2, EYE); P(4, step ? 7 : 5, 2, 1, '#c8f7d8'); P(3, 11, 7, 1, '#52b87a');
+      const col = pick('#7ee0a0');
+      if (step) { P(2, 7, 9, 5, col); P(3, 6, 7, 1, col); }
+      else { P(3, 5, 7, 7, col); P(4, 4, 5, 1, col); }
+      P(4, step ? 8 : 7, 1, 2, EYE); P(7, step ? 8 : 7, 1, 2, EYE); P(4, step ? 7 : 5, 2, 1, shade(col, 0.5)); P(3, 11, 7, 1, shade(col, -0.25));
     } else if (kind === 'bunny') {
-      P(4, 6, 6, 5, '#ffffff'); P(2, 4, 4, 4, '#ffffff'); P(2, 0, 1, 4, '#ffffff'); P(4, 0 + step, 1, 4, '#ffffff');
-      P(2, 1, 1, 2, '#ffc0d0'); P(3, 5, 1, 1, EYE); P(2, 6, 1, 1, '#ff8fab'); P(9, 7, 2, 2, '#f4efe6');
-      P(4, 11, 2, 1, '#e8e2ea'); P(8, 11, 2, 1, '#e8e2ea');
+      const col = pick('#ffffff');
+      P(4, 6, 6, 5, col); P(2, 4, 4, 4, col); P(2, 0, 1, 4, col); P(4, 0 + step, 1, 4, col);
+      P(2, 1, 1, 2, '#ffc0d0'); P(3, 5, 1, 1, EYE); P(2, 6, 1, 1, '#ff8fab'); P(9, 7, 2, 2, shade(col, -0.06));
+      P(4, 11, 2, 1, shade(col, -0.1)); P(8, 11, 2, 1, shade(col, -0.1));
+    } else if (kind === 'fish') {
+      // ปลาลอยตัวในฟองน้ำ ว่ายตามเจ้าของ
+      const col = pick('#ff9a3c');
+      const y = step ? 1 : 0;
+      P(1, 3, 11, 9, 'rgba(160,220,255,.35)'); P(2, 2, 9, 1, 'rgba(160,220,255,.35)'); P(2, 12, 9, 1, 'rgba(160,220,255,.35)');
+      P(3, 5 + y, 6, 4, col); P(4, 4 + y, 4, 1, col); P(4, 9 + y, 4, 1, col);
+      P(9, 5 + y - step, 2, 2, shade(col, -0.2)); P(9, 8 + y + step, 2, 2, shade(col, -0.2)); P(10, 6 + y, 1, 2, shade(col, -0.2));
+      P(4, 6 + y, 1, 1, EYE); P(6, 5 + y, 1, 4, shade(col, 0.35)); P(2, 3, 1, 1, '#ffffff');
+    } else if (kind === 'dino') {
+      const col = pick('#7ed37a');
+      const dk = shade(col, -0.28);
+      P(1, 2, 6, 5, col); P(0, 4, 2, 3, col); P(5, 6, 6, 5, col); P(10, 7, 3, 2, col); P(12, 8, 1, 1, col);
+      P(5, 9, 5, 2, '#f6e7b8'); P(2, 3, 1, 1, EYE); P(1, 6, 3, 1, '#ffffff');
+      for (const [x, y2] of [[4, 1], [6, 5], [8, 5], [10, 6]]) P(x, y2, 1, 1, dk);
+      P(4, 8, 2, 1, dk);
+      P(6, 11, 2, 1 + step, dk); P(9, 11, 2, 2 - step, dk);
+    } else if (kind === 'panda') {
+      const patch = pick('#2e2235');
+      P(2, 3, 7, 6, '#ffffff'); P(5, 7, 7, 4, '#ffffff');
+      P(2, 2, 2, 2, patch); P(7, 2, 2, 2, patch);
+      P(3, 5, 2, 2, patch); P(6, 5, 2, 2, patch); P(4, 5, 1, 1, '#ffffff'); P(7, 5, 1, 1, '#ffffff');
+      P(5, 7, 1, 1, '#2e2235'); P(5, 8, 7, 2, patch);
+      P(5, 11, 2, 1 + step, patch); P(9, 11, 2, 2 - step, patch);
     }
     addOutline(c);
     return faceRight ? mirror(c) : c;
@@ -438,10 +473,80 @@ const FURN = {
     ctx.fillStyle = '#ffe07a'; ctx.fillRect(sx + x2, sy + 9, 3, 2);
     ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(sx + 8, sy + 10 - (Math.floor(t * 3) % 8), 1, 1);
   } },
-  whiteboard: { label: 'ไวท์บอร์ด', emo: '📋', w: 36, h: 30, solid: true, foot: 5, draw(P) {
+  whiteboard: { label: 'กระดาน', emo: '📋', w: 36, h: 30, solid: true, foot: 5, board: true, draw(P) {
     P(0, 0, 36, 22, '#c8ccd8'); P(1, 1, 34, 20, '#ffffff'); P(4, 4, 12, 1, '#7d9cf0'); P(4, 7, 18, 1, '#9aa0b8'); P(4, 10, 14, 1, '#9aa0b8');
     P(24, 4, 8, 8, '#ffe07a'); P(25, 13, 7, 5, '#ff8fab'); P(5, 14, 6, 4, '#8fd694'); P(14, 15, 6, 1, '#e8505b');
     P(4, 22, 2, 8, '#5a5f7a'); P(30, 22, 2, 8, '#5a5f7a'); P(0, 21, 36, 1, '#9aa0b8');
+  } },
+  // ---------------- ห้องประชุม ----------------
+  confTable: { label: 'โต๊ะประชุม', emo: '🗂️', w: 104, h: 34, solid: true, foot: 22, draw(P) {
+    P(0, 0, 104, 22, WOOD.l); P(2, 1, 100, 1, '#f2c896'); P(0, 22, 104, 6, WOOD.m); P(0, 27, 104, 1, WOOD.d);
+    P(3, 28, 4, 6, WOOD.d); P(97, 28, 4, 6, WOOD.d); P(50, 28, 4, 6, WOOD.d);
+    P(10, 5, 14, 9, '#9aa0b8'); P(11, 6, 12, 6, '#7ec8ff'); P(10, 14, 14, 2, '#c8ccd8');
+    P(76, 6, 12, 9, '#f4f1e8'); P(77, 8, 9, 1, '#9aa0b8'); P(77, 10, 7, 1, '#9aa0b8');
+    P(40, 6, 3, 8, '#8fd0f0'); P(40, 5, 3, 1, '#4aa3df'); P(60, 7, 3, 8, '#8fd0f0'); P(60, 6, 3, 1, '#4aa3df');
+    P(48, 9, 8, 5, '#ff8fab'); P(50, 7, 4, 2, '#8fd694');
+  } },
+  meetChair: { label: 'เก้าอี้ประชุม', emo: '🪑', w: 16, h: 20, solid: false, facing: true, variants: 6,
+    seats: (f) => [{ dx: 0, dy: f ? -4 : -6, dir: f ? 'up' : 'down', over: true }],
+    draw(P, v, f) {
+      const [m, d, l] = COLORWAYS[v % 6];
+      if (f) { P(1, 0, 14, 9, m); P(2, 1, 12, 1, l); P(0, 8, 16, 4, d); P(1, 8, 14, 1, m); }
+      else { P(1, 0, 14, 8, d); P(2, 1, 12, 1, m); P(0, 7, 16, 5, m); P(1, 7, 14, 1, l); }
+      P(7, 12, 2, 3, '#5a5f7a'); P(2, 15, 12, 1, '#5a5f7a'); P(1, 16, 2, 2, '#2f3245'); P(13, 16, 2, 2, '#2f3245'); P(7, 16, 2, 2, '#2f3245');
+    } },
+  bigScreen: { label: 'จอนำเสนอ', emo: '🖥️', w: 66, h: 42, solid: true, foot: 6, draw(P) {
+    P(0, 0, 66, 34, '#2f3245'); P(2, 2, 62, 30, '#1d1f2e'); P(30, 34, 6, 5, '#5a5f7a'); P(20, 39, 26, 3, '#43475e');
+  },
+  anim(ctx, sx, sy, t) {
+    const slide = Math.floor(t / 4) % 3;
+    ctx.fillStyle = '#fff7ec'; ctx.fillRect(sx + 3, sy + 3, 60, 28);
+    ctx.fillStyle = '#5a4f78'; ctx.fillRect(sx + 7, sy + 6, 26, 2);
+    if (slide === 0) {
+      const hs = [8, 13, 10, 17, 20];
+      hs.forEach((h, i) => { ctx.fillStyle = ['#ff8fab', '#7d9cf0', '#8fd694', '#ffb86b', '#b48cf0'][i]; ctx.fillRect(sx + 10 + i * 9, sy + 28 - h, 6, h); });
+    } else if (slide === 1) {
+      ctx.fillStyle = '#9aa0b8'; for (let i = 0; i < 4; i++) ctx.fillRect(sx + 9, sy + 12 + i * 4, 30 - i * 5, 2);
+      ctx.fillStyle = '#ffe07a'; ctx.fillRect(sx + 44, sy + 11, 14, 14); ctx.fillStyle = '#ff8fab'; ctx.fillRect(sx + 48, sy + 15, 6, 6);
+    } else {
+      ctx.fillStyle = '#7ec8ff'; ctx.fillRect(sx + 16, sy + 12, 34, 14); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 22, sy + 17, 22, 3);
+    }
+  } },
+  // ---------------- สวน ----------------
+  tree: { label: 'ต้นไม้ใหญ่', emo: '🌳', w: 44, h: 60, solid: true, foot: 8, fw: 12, variants: 3, draw(P, v) {
+    const [G, GL, GD] = [['#3fa37a', '#8fd694', '#2d7a5a'], ['#e8a0c0', '#ffd6e6', '#c27896'], ['#e0954a', '#ffd08a', '#b06a30']][v % 3];
+    P(18, 36, 8, 22, WOOD.d); P(19, 36, 2, 20, WOOD.m); P(14, 56, 16, 4, WOOD.dd);
+    P(8, 4, 28, 30, G); P(4, 10, 36, 20, G); P(12, 0, 20, 4, G); P(2, 16, 40, 10, G); P(10, 30, 24, 8, G);
+    for (const [x, y] of [[12, 6], [24, 4], [8, 16], [30, 12], [18, 18], [34, 22], [12, 26], [26, 28]]) { P(x, y, 5, 4, GL); P(x + 1, y + 4, 4, 1, GD); }
+    P(4, 26, 36, 4, GD);
+    if (v === 0) for (const [x, y] of [[16, 12], [30, 20], [10, 22]]) P(x, y, 2, 2, '#ff6b6b');
+  } },
+  bench: { label: 'ม้านั่ง', emo: '🪵', w: 42, h: 22, solid: true, foot: 8, seats: () => [{ dx: -10, dy: -5, dir: 'down', over: true }, { dx: 10, dy: -5, dir: 'down', over: true }], draw(P) {
+    P(0, 0, 42, 4, WOOD.m); P(0, 5, 42, 4, WOOD.m); P(0, 0, 42, 1, WOOD.l); P(0, 5, 42, 1, WOOD.l);
+    P(0, 11, 42, 5, WOOD.l); P(0, 15, 42, 1, WOOD.d);
+    P(3, 0, 3, 22, '#5a5f7a'); P(36, 0, 3, 22, '#5a5f7a');
+  } },
+  flowerBed: { label: 'แปลงดอกไม้', emo: '🌷', w: 38, h: 18, solid: true, foot: 10, variants: 3, draw(P, v) {
+    P(0, 8, 38, 10, WOOD.m); P(0, 8, 38, 2, WOOD.l); P(2, 6, 34, 4, '#6b4430');
+    const cols = [['#ff6b8a', '#ffe07a', '#ff8fab'], ['#7d9cf0', '#b48cf0', '#ffffff'], ['#ffb86b', '#e8505b', '#ffe07a']][v % 3];
+    for (let i = 0; i < 7; i++) {
+      const x = 3 + i * 5, h = 3 + (i % 3);
+      P(x + 1, 7 - h, 1, h, '#3fa37a'); P(x, 4 - h, 3, 3, cols[i % 3]); P(x + 1, 5 - h, 1, 1, '#ffe07a');
+    }
+  } },
+  pond: { label: 'บ่อน้ำ', emo: '🐟', w: 62, h: 34, floor: true, solid: true, foot: 30, draw(P) {
+    P(6, 0, 50, 34, '#9aa0b8'); P(2, 4, 58, 26, '#9aa0b8'); P(0, 8, 62, 18, '#9aa0b8');
+    P(8, 2, 46, 30, '#5ab4e0'); P(4, 6, 54, 22, '#5ab4e0'); P(2, 10, 58, 14, '#5ab4e0');
+    P(10, 4, 20, 2, '#a8ddf5'); P(6, 8, 6, 2, '#a8ddf5');
+    P(44, 20, 8, 5, '#3fa37a'); P(46, 19, 4, 1, '#8fd694'); P(47, 21, 2, 2, '#ff8fab');
+    for (const [x, y] of [[4, 2], [56, 4], [58, 26], [2, 28], [30, 32]]) P(x, y, 4, 3, '#c8ccd8');
+  },
+  anim(ctx, sx, sy, t) {
+    const fx = 14 + Math.floor((Math.sin(t * 0.8) + 1) * 14), fy = 13 + Math.floor(Math.sin(t * 1.3) * 3);
+    ctx.fillStyle = '#ff9a3c'; ctx.fillRect(sx + fx, sy + fy, 5, 2); ctx.fillRect(sx + fx + (Math.cos(t * 0.8) > 0 ? -1 : 5), sy + fy - 1, 1, 4);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 30 - fx / 3, sy + 22, 4, 2); ctx.fillRect(sx + 28 - fx / 3, sy + 23, 1, 1);
+    const r = Math.floor(t * 2) % 6;
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(sx + 34 - r, sy + 8, 2 + r * 2, 1);
   } },
 };
 

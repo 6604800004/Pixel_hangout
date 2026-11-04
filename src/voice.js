@@ -40,12 +40,13 @@ function makeVoice(net, onChange) {
   };
   V.speaking = (key) => {
     if (key === net.myKey) return V.mic && !V.deaf && (V.meters.get('me')?.hold || 0) > 0;
-    return (V.meters.get(key)?.hold || 0) > 0;
+    const p = V.peers.get(key);
+    return !!(p && p.allowed) && (V.meters.get(key)?.hold || 0) > 0;
   };
   V.videoFor = (key) => {
     if (key === net.myKey) return V.cam && V.videoTrack ? V.selfVideo : null;
     const p = V.peers.get(key);
-    return p && p.hasVideo ? p.videoEl : null;
+    return p && p.hasVideo && p.allowed ? p.videoEl : null;
   };
 
   function tuneOpus(sdp) {
@@ -72,10 +73,22 @@ function makeVoice(net, onChange) {
       } catch {}
     }
   }
+  // ส่งเสียง/ภาพให้เฉพาะคนที่อยู่โซนเดียวกัน (คนละโซน = ไม่ส่งและไม่เล่นเสียง)
   function apply(peer) {
-    peer.audioTx?.sender.replaceTrack(V.audioTrack || null).catch(() => {});
-    peer.videoTx?.sender.replaceTrack(V.cam ? V.videoTrack : null).catch(() => {});
+    const ok = !!peer.allowed;
+    peer.audioTx?.sender.replaceTrack(ok ? V.audioTrack || null : null).catch(() => {});
+    peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
+    peer.audioEl.muted = V.deaf || !ok;
+    if (ok && !V.deaf) peer.audioEl.play().catch(() => {});
   }
+  V.audience = new Set();
+  V.setAudience = (keys) => {
+    V.audience = keys;
+    for (const p of V.peers.values()) {
+      const ok = keys.has(p.key);
+      if (ok !== p.allowed) { p.allowed = ok; apply(p); }
+    }
+  };
   function create(key, initiator) {
     close(key);
     const pc = new RTCPeerConnection({ iceServers: net.iceServers, bundlePolicy: 'max-bundle' });
@@ -85,7 +98,7 @@ function makeVoice(net, onChange) {
     videoEl.autoplay = true; videoEl.muted = true; videoEl.playsInline = true; videoEl.setAttribute('playsinline', '');
     sink.append(audioEl, videoEl);
     if (V.settings && V.settings.spkId && audioEl.setSinkId) audioEl.setSinkId(V.settings.spkId).catch(() => {});
-    const peer = { key, pc, initiator, audioEl, videoEl, audioTx: null, videoTx: null, hasVideo: false, state: 'new' };
+    const peer = { key, pc, initiator, audioEl, videoEl, audioTx: null, videoTx: null, hasVideo: false, state: 'new', allowed: V.audience.has(key) };
     V.peers.set(key, peer);
     pc.onicecandidate = (e) => e.candidate && net.signal(key, { candidate: e.candidate });
     pc.ontrack = (e) => {
@@ -192,7 +205,7 @@ function makeVoice(net, onChange) {
     V.meterTrack = t ? t.clone() : null;          // สำเนาที่เปิดไว้เสมอ ใช้วัดระดับเสียง/ฟังตัวเอง
     if (V.meterTrack) V.meterTrack.enabled = true;
     if (t) t.enabled = V.mic && !V.deaf;
-    for (const p of V.peers.values()) p.audioTx?.sender.replaceTrack(t || null).catch(() => {});
+    for (const p of V.peers.values()) apply(p);
     if (old && old !== t) old.stop();
     meter('me', V.meterTrack);
     updateMonitor();
@@ -271,7 +284,7 @@ function makeVoice(net, onChange) {
     V.videoTrack = t;
     V.selfVideo.srcObject = t ? new MediaStream([t]) : null;
     if (t) V.selfVideo.play().catch(() => {});
-    for (const p of V.peers.values()) { p.videoTx?.sender.replaceTrack(V.cam ? t : null).catch(() => {}); if (t) tune(p); }
+    for (const p of V.peers.values()) { apply(p); if (t) tune(p); }
     if (old && old !== t) old.stop();
   }
   V.toggleCam = async () => {
@@ -295,8 +308,8 @@ function makeVoice(net, onChange) {
   };
   V.toggleDeaf = () => {
     V.deaf = !V.deaf;
-    for (const p of V.peers.values()) { p.audioEl.muted = V.deaf; if (!V.deaf) p.audioEl.play().catch(() => {}); }
     if (V.deaf && V.mic) V.mic = false;
+    for (const p of V.peers.values()) apply(p);
     if (V.audioTrack) V.audioTrack.enabled = V.mic && !V.deaf;
     if (V.mon) V.mon.gain.gain.value = V.deaf ? 0 : V.settings.monVol;
     onChange('media');
