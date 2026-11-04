@@ -1111,6 +1111,7 @@ $('#toolbar').addEventListener('click', (e) => {
 });
 $('#roomChip').onclick = () => { const p = $('#people'); p.classList.toggle('hidden'); G.peopleSig = ''; if (!p.classList.contains('hidden')) renderPeople(); };
 // ออกจากห้อง: รีโหลดหน้าเพื่อปิดไมค์/กล้อง/การเชื่อมต่อทั้งหมด แล้วกลับไปหน้าเข้าห้อง
+$('#leaveTop').onclick = () => $('#leaveBtn').onclick();
 $('#leaveBtn').onclick = () => {
   if (!confirm('ออกจากห้องใช่ไหม?')) return;
   try { sessionStorage.setItem('pixel.left', '1'); } catch {}
