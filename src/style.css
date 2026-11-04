@@ -299,3 +299,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .modal { padding: 8px; }
   .top-right:has(#micBtn:not(.hidden)) .zoom { display: none; }
 }
+
+/* ย่อหน้าต่างคลิป: ซ่อนภาพแต่ยังเล่นเสียงต่อ (ตัวเล่นยังอยู่ แค่มองไม่เห็น) */
+.yt.mini .ytbox { position: absolute; left: 0; top: 0; width: 240px; height: 135px; aspect-ratio: auto; opacity: 0.01; pointer-events: none; z-index: -1; }
+.yt.mini #ytTap { display: none; }
+.yt.mini header b::after { content: ' · 🎧 ฟังอย่างเดียว'; opacity: .7; }
+.yt.mini { width: auto; max-width: 100%; }
+.leave-row { padding: 0 12px 12px; display: flex; justify-content: flex-end; }

@@ -449,7 +449,9 @@ async function ensurePlayer(doc) {
     });
   });
 }
-function ytCall(fn) { YT.suppressUntil = Date.now() + 1500; try { fn(); } catch {} }
+function ytCall(fn) { YT.suppressUntil = Date.now() + 4000; try { fn(); } catch {} }
+const YT_DRIFT = 4;          // คลาดเกินกี่วินาทีถึงจะกระโดดให้ตรงกัน
+const YT_SEEK_GAP = 10000;  // กระโดดได้ไม่บ่อยกว่านี้ (กันเสียงสะดุดซ้ำๆ ตอนเน็ตช้า)
 // คนกด เล่น/หยุด/เลื่อน บนตัว YouTube เอง → แชร์ให้ทุกคน
 function onYTState(e) {
   const cur = YT.cur;
@@ -459,7 +461,8 @@ function onYTState(e) {
   const S = window.YT.PlayerState;
   const pos = YT.player.getCurrentTime();
   if (e.data === S.PAUSED && doc.playing) shareScreen(cur.id, { ...doc, playing: false, pos, ts: ytNow() });
-  else if (e.data === S.PLAYING && (!doc.playing || Math.abs(pos - screenExpected(doc)) > 3)) shareScreen(cur.id, { ...doc, playing: true, pos, ts: ytNow() });
+  // แชร์ให้ทุกคนเฉพาะตอนกดเล่นเอง หรือเลื่อนไปไกลจริงๆ (ไม่แชร์การคลาดเล็กน้อยจากการโหลด ไม่งั้นทุกเครื่องจะกระโดดตามกันไปมา)
+  else if (e.data === S.PLAYING && (!doc.playing || Math.abs(pos - screenExpected(doc)) > 10)) shareScreen(cur.id, { ...doc, playing: true, pos, ts: ytNow() });
   if (e.data === S.PLAYING) $('#ytTap').classList.add('hidden');
 }
 async function shareScreen(id, doc) {
@@ -491,7 +494,9 @@ async function syncScreens() {
   const S = window.YT.PlayerState;
   const st = YT.player.getPlayerState();
   const pos = YT.player.getCurrentTime();
-  if (Math.abs(pos - expected) > 2.5 && st !== S.BUFFERING) ytCall(() => YT.player.seekTo(expected, true));
+  if (act.doc.playing && st === S.PLAYING && Math.abs(pos - expected) > YT_DRIFT && Date.now() - (YT.lastSeek || 0) > YT_SEEK_GAP) {
+    YT.lastSeek = Date.now(); ytCall(() => YT.player.seekTo(expected, true));
+  } else if (!act.doc.playing && Math.abs(pos - expected) > 1.5 && st !== S.BUFFERING) ytCall(() => YT.player.seekTo(expected, true));
   if (act.doc.playing && st !== S.PLAYING && st !== S.BUFFERING && st !== S.ENDED) {
     ytCall(() => YT.player.playVideo());
     if (!YT.lastPlayTry) YT.lastPlayTry = Date.now();
@@ -507,7 +512,17 @@ $('#ytToggle').onclick = () => {
   const pos = YT.player.getCurrentTime();
   shareScreen(YT.cur.id, { ...cur, playing: !cur.playing, pos, ts: ytNow() });
 };
-$('#ytBig').onclick = () => $('#ytPanel').classList.toggle('big');
+$('#ytBig').onclick = () => { $('#ytPanel').classList.remove('mini'); $('#ytPanel').classList.toggle('big'); };
+// ย่อ = ฟังอย่างเดียว (จำไว้ในเครื่องนี้)
+function setMini(panelSel, btnSel, on, keyName) {
+  const p = $(panelSel); p.classList.toggle('mini', on); if (on) p.classList.remove('big');
+  $(btnSel).textContent = on ? '🔼' : '➖'; $(btnSel).title = on ? 'แสดงภาพ' : 'ย่อ (ฟังอย่างเดียว ไม่ต้องเห็นภาพ)';
+  lsSet(keyName, on);
+}
+$('#ytMin').onclick = () => setMini('#ytPanel', '#ytMin', !$('#ytPanel').classList.contains('mini'), 'pixel.ytMini');
+$('#scrMin').onclick = () => setMini('#scrPanel', '#scrMin', !$('#scrPanel').classList.contains('mini'), 'pixel.scrMini');
+setMini('#ytPanel', '#ytMin', !!lsGet('pixel.ytMini', false), 'pixel.ytMini');
+setMini('#scrPanel', '#scrMin', !!lsGet('pixel.scrMini', false), 'pixel.scrMini');
 $('#ytHide').onclick = () => {
   const act = activeScreen();
   if (act) YT.hiddenKey = act.doc.v + ':' + act.doc.ts0;

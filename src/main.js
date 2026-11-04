@@ -1110,6 +1110,13 @@ $('#toolbar').addEventListener('click', (e) => {
   if (tool === 'chat') setChatOpen(!G.chatOpen);
 });
 $('#roomChip').onclick = () => { const p = $('#people'); p.classList.toggle('hidden'); G.peopleSig = ''; if (!p.classList.contains('hidden')) renderPeople(); };
+// ออกจากห้อง: รีโหลดหน้าเพื่อปิดไมค์/กล้อง/การเชื่อมต่อทั้งหมด แล้วกลับไปหน้าเข้าห้อง
+$('#leaveBtn').onclick = () => {
+  if (!confirm('ออกจากห้องใช่ไหม?')) return;
+  try { sessionStorage.setItem('pixel.left', '1'); } catch {}
+  try { G.net.stop && G.net.stop(); } catch {}
+  location.reload();
+};
 $$('[data-close]').forEach((b) => (b.onclick = () => $('#' + b.dataset.close).classList.add('hidden')));
 
 function renderPeople() {
@@ -1650,6 +1657,7 @@ function frame(ms) {
   $('#loading').classList.add('hidden');
   spHandleRedirect();
   openCreator(true);
+  try { if (sessionStorage.getItem('pixel.left')) { sessionStorage.removeItem('pixel.left'); toast('👋 ออกจากห้องแล้ว — กดเข้าห้องเพื่อกลับมาได้ทุกเมื่อ', 4000); } } catch {}
   try { const k = sessionStorage.getItem('pixel.kicked'); if (k) { sessionStorage.removeItem('pixel.kicked'); toast('👢 ' + k, 6000); } } catch {}
   requestAnimationFrame(frame);
 })();
