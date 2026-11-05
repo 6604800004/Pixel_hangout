@@ -105,10 +105,12 @@ function makeVoice(net, onChange) {
   };
   // sendKeys = คนที่เสียงเราไปถึง (ตามรัศมีไมค์ของเรา), playKeys = คนที่เราได้ยิน (ตามรัศมีไมค์ของเขา)
   V.playAud = new Set();
+  // เขาบอกว่า "กำลังฟังเราอยู่" (ฝั่งคนฟังเป็นคนตัดสินว่าได้ยินไหม) → ส่งเสียงให้เขาเสมอ แม้ตำแหน่งที่เราเห็นจะคลาดเคลื่อน
+  const wantFresh = (p) => Date.now() - (p.wantAt || 0) < 9000;
   V.setAudience = (sendKeys, playKeys = sendKeys) => {
     V.audience = sendKeys; V.playAud = playKeys;
     for (const p of V.peers.values()) {
-      const ok = sendKeys.has(p.key), pl = playKeys.has(p.key);
+      const ok = sendKeys.has(p.key) || wantFresh(p), pl = playKeys.has(p.key);
       if (ok !== p.allowed || pl !== p.playOk) { p.allowed = ok; p.playOk = pl; apply(p); }
     }
   };
@@ -166,6 +168,9 @@ function makeVoice(net, onChange) {
     if (data.relayPlease) { if (peer) { peer.forceRelay = Date.now(); if (V.actx && V.actx.state !== 'running') onChange('unlock-mic'); } return; }
     if ('fb' in data) {
       if (peer) {
+        peer.wantAt = Date.now();
+        if (!peer.allowed) { peer.allowed = true; apply(peer); }
+        if (data.fb === 2) return;
         peer.theyHear = { ok: !!data.fb, at: Date.now() };
         // เขาบอกว่ายังไม่ได้ยินเรา ทั้งที่เราเปิดไมค์อยู่ → ส่งทางเซิร์ฟเวอร์ (หรือขอให้แตะจอถ้าเสียงในเครื่องยังไม่เริ่ม)
         if (!data.fb && V.mic && V.audioTrack) { peer.forceRelay = Date.now(); if (V.actx && V.actx.state !== 'running') onChange('unlock-mic'); }
@@ -550,9 +555,15 @@ registerProcessor('px-play', PxPlay);`;
         p.silentSince = p.silentSince || now;
         if (now - p.silentSince > 6000 && (!p.askedAt || now - p.askedAt > 20000)) { p.askedAt = now; net.signal(p.key, { relayPlease: 1 }); }
       } else p.silentSince = 0;
-      // บอกเขาทุก ~6 วิ ว่าเราได้ยินเขาไหม (ให้ฝั่งเขารู้ว่าเสียงไปถึงหรือเปล่า)
-      if (fbTick % 3 === 0 && p.playOk && V.remoteMicOn(p.key)) net.signal(p.key, { fb: V.rxOk(p) ? 1 : 0 });
+      // บอกเขาทุก ~4 วิ ว่าเรากำลังฟังเขาอยู่ และได้ยินจริงไหม (1 ได้ยิน / 0 ไม่ได้ยิน / 2 ฟังอยู่แต่เขาปิดไมค์)
+      if (fbTick % 2 === 0 && p.playOk) net.signal(p.key, { fb: V.remoteMicOn(p.key) ? (V.rxOk(p) ? 1 : 0) : 2 });
+      // เลิกส่งให้คนที่ไม่ได้ฟังเราแล้ว
+      if (p.allowed && !V.audience.has(p.key) && !wantFresh(p)) { p.allowed = false; apply(p); }
     }
+    // ไมค์เปิดอยู่แต่ไม่มีสัญญาณเสียงเข้าเลย (เลือกไมค์ผิดตัว / แอปอื่นแย่ง / ระบบปิดไมค์)
+    const me = V.meters.get('me');
+    if (!V.mic || !V.audioTrack || !me || !V.actx || V.actx.state !== 'running' || me.lvl > 0.00002) { V.micAliveAt = now; if (V.micDead) { V.micDead = false; onChange('mic-alive'); } }
+    else if (!V.micDead && now - (V.micAliveAt || now) > 12000) { V.micDead = true; onChange('mic-dead'); }
   }, 2000);
   if (net.onRelay) net.onRelay((from, bytes) => V.relayIn(from, bytes));
   return V;

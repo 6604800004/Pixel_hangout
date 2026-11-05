@@ -1006,6 +1006,7 @@ function voiceStatus(rt) {
   const viaServer = V.relayActive && V.relayActive(peer);
   if (!viaServer && st !== 'connected') return '🟡 กำลังเชื่อมต่อเสียง…';
   if (rt.p.mic !== 1) return '🎙️ เขาปิดไมค์อยู่';
+  if (rt.p.md) return '⚠️ เขาเปิดไมค์ แต่ไมค์เขาไม่มีเสียงเข้า (เลือกไมค์ผิดตัว/แอปอื่นใช้ไมค์อยู่) — ให้เขาเปลี่ยนไมค์ในตั้งค่าเสียง แล้วรีเฟรช';
   if (V.deaf) return '🔇 คุณปิดหูฟังอยู่';
   if (!G.audible.has(rt.key)) return `📏 เขาตั้งไมค์ระยะ "${micRangeName(peerRange(rt.p))}" — เดินเข้าไปใกล้ๆ หรือให้เขาเลื่อนระยะไมค์เป็น "ทั้งห้อง"`;
   if (V.actx && V.actx.state !== 'running' && viaServer) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
@@ -1039,7 +1040,7 @@ function voiceDiag() {
   if (!V) { lines.push('ระบบเสียงยังไม่เริ่ม'); return lines; }
   const t = V.audioTrack;
   const lvl = V.meters.get('me');
-  lines.push(`ไมค์ของฉัน: ${!t ? (V.micLost ? '❌ หลุด (แอปอื่นแย่งไมค์)' : '⭕ ยังไม่เปิด') : t.readyState !== 'live' ? '❌ หยุดทำงาน' : t.muted ? '⚠️ ถูกระบบปิด (แอปอื่นใช้ไมค์อยู่?)' : V.mic ? `🟢 เปิด · ระดับเสียง ${lvl ? Math.round(lvl.lvl * 1000) : 0}` : '🔴 ปิดอยู่ (กดปุ่มไมค์)'}${V.deaf ? ' · 🔇 ปิดหูฟังอยู่' : ''}`);
+  lines.push(`ไมค์ของฉัน: ${!t ? (V.micLost ? '❌ หลุด (แอปอื่นแย่งไมค์)' : '⭕ ยังไม่เปิด') : t.readyState !== 'live' ? '❌ หยุดทำงาน' : t.muted ? '⚠️ ถูกระบบปิด (แอปอื่นใช้ไมค์อยู่?)' : V.mic ? (V.micDead ? '⚠️ เปิดอยู่แต่ไม่มีเสียงเข้าเลย — เปลี่ยนไมค์ในตั้งค่าเสียง' : `🟢 เปิด · ระดับเสียง ${lvl ? Math.round(lvl.lvl * 1000) : 0}`) : '🔴 ปิดอยู่ (กดปุ่มไมค์)'}${V.deaf ? ' · 🔇 ปิดหูฟังอยู่' : ''}`);
   lines.push(`เสียงในเครื่อง: ${V.actx ? V.actx.state : 'ยังไม่เริ่ม'}${V.actx && V.actx.state !== 'running' ? ' ⚠️ แตะหน้าจอ 1 ครั้ง' : ''} · TURN: ${G.net.hasTurn ? 'มี' : 'ไม่มี (ใช้เซิร์ฟเวอร์สำรอง)'}`);
   for (const rt of G.others.values()) {
     const p = V.peers.get(rt.key);
