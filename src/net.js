@@ -140,6 +140,10 @@ function makeWsNet(cfg) {
       } else if (m.t === 'peer') {
         peers.set(m.key, { key: m.key, uid: m.uid, p: m.p || {} });
         emitPeers();
+      } else if (m.t === 'mv') {
+        // ตำแหน่งแบบย่อ: แก้ในวัตถุเดิม (ตัวเกมอ่านค่าเองทุกเฟรม ไม่ต้องสร้างรายชื่อใหม่)
+        const pr = peers.get(m.k);
+        if (pr && Number.isFinite(m.x) && Number.isFinite(m.y)) { pr.p.x = m.x; pr.p.y = m.y; if (m.d) pr.p.d = m.d; pr.p.m = m.m ? 1 : 0; }
       } else if (m.t === 'peer-left') {
         peers.delete(m.key); emitPeers();
       } else if (m.t === 'col') {
@@ -178,7 +182,8 @@ function makeWsNet(cfg) {
     setPresence(patch) {
       for (const [k, v] of Object.entries(patch)) { if (v === null) delete myPresence[k]; else myPresence[k] = v; }
       const mine = peers.get(net.myKey);
-      if (mine) { mine.p = { ...myPresence }; emitPeers(); }
+      const moveOnly = Object.keys(patch).every((k) => k === 'x' || k === 'y' || k === 'd' || k === 'm');
+      if (mine) { mine.p = { ...myPresence }; if (!moveOnly) emitPeers(); }
       send({ t: 'p', patch });
     },
     onPeers(cb) { L.peers.push(cb); },

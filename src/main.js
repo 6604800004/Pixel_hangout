@@ -338,7 +338,7 @@ function onPeers(list) {
   G.peerCount = 1 + [...G.others.values()].filter((r) => Number.isFinite(r.p.x)).length;
   $('#onlineCount').textContent = G.peerCount;
   if (furnitureMoved && !G.drag) rebuildWorld();
-  if (!$('#people').classList.contains('hidden')) renderPeople();
+  if (!$('#people').classList.contains('hidden') && !G.peopleQueued) { G.peopleQueued = true; setTimeout(() => { G.peopleQueued = false; renderPeople(); }, 400); }
   if (G.voice) G.voice.syncPeers([...G.others.keys()]);
 }
 
@@ -752,8 +752,15 @@ $('#zoomIn').onclick = () => (G.zoomAdj = clamp(G.zoomAdj + 1, -1, 3));
 $('#zoomOut').onclick = () => (G.zoomAdj = clamp(G.zoomAdj - 1, -1, 3));
 
 // ============================================================ วาด ====
+// เครื่องช้า: ลดความละเอียดการวาดลงอัตโนมัติ (ภาพพิกเซลยังคมเหมือนเดิม แต่เบาเครื่องกว่ามาก)
+let dprCap = 2, slowT = 0, fastT = 0;
+function perfAdapt(dt) {
+  if (document.hidden) return;
+  if (dt > 1 / 38) { slowT += dt; fastT = 0; } else { fastT += dt; slowT = Math.max(0, slowT - dt * 0.5); }
+  if (slowT > 3 && dprCap > 1) { dprCap = Math.max(1, dprCap - 0.5); slowT = 0; resize(); }
+}
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
   const cw = window.innerWidth, ch = window.innerHeight;
   canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
   G.view = { cw, ch, dpr };
@@ -1647,6 +1654,7 @@ function frame(ms) {
   const dt = Math.min(0.1, (ms - lastT) / 1000);
   G.frameDt = dt || 1 / 60;
   lastT = ms;
+  perfAdapt(dt);
   const t = ms / 1000;
   if (G.grid) {
     if (G.joined) {

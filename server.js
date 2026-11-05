@@ -169,6 +169,7 @@ function broadcast(m, except) {
   const s = JSON.stringify(m);
   for (const [k, c] of peers) if (k !== except && c.ws.readyState === 1) c.ws.send(s);
 }
+const MOVE_KEYS = new Set(['x', 'y', 'd', 'm']);
 const okId = (id) => typeof id === 'string' && /^[\w.:-]{1,48}$/.test(id);
 
 wss.on('connection', (ws) => {
@@ -189,7 +190,7 @@ wss.on('connection', (ws) => {
       const audio = raw.subarray(o);
       const head = Buffer.from([1, key.length]);
       const out = Buffer.concat([head, Buffer.from(key, 'latin1'), audio]);
-      for (const k of to) { const c = peers.get(k); if (c && c.ws.readyState === 1 && c.ws.bufferedAmount < 256000) c.ws.send(out, { binary: true }); }
+      for (const k of to) { const c = peers.get(k); if (c && c.ws.readyState === 1 && c.ws.bufferedAmount < 48000) c.ws.send(out, { binary: true }); }
       return;
     }
     let m;
@@ -222,6 +223,17 @@ wss.on('connection', (ws) => {
         for (const [k, v] of Object.entries(m.patch)) { if (v === null) delete next[k]; else next[k] = v; }
         if (JSON.stringify(next).length > 4096) break;
         me.p = next;
+        // แค่เดิน → ส่งแบบย่อ (ไม่ส่งข้อมูลทั้งก้อนซ้ำทุก 0.1 วิ) และข้ามเครื่องที่เน็ตช้าจนคิวค้าง เพื่อไม่ให้ดีเลย์สะสม
+        const ks = Object.keys(m.patch);
+        if (ks.length && ks.every((k) => MOVE_KEYS.has(k))) {
+          const s = JSON.stringify({ t: 'mv', k: key, x: next.x, y: next.y, d: next.d, m: next.m });
+          for (const [k, c] of peers) {
+            if (k === key || c.ws.readyState !== 1) continue;
+            if (next.m && c.ws.bufferedAmount > 24000) continue; // กำลังเดิน: ทิ้งได้ ตำแหน่งถัดไปจะตามมาเอง (ตอนหยุดส่งเสมอ)
+            c.ws.send(s);
+          }
+          break;
+        }
         broadcast({ t: 'peer', key, uid: me.uid, p: me.p }, key);
         break;
       }
