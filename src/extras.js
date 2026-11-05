@@ -1074,3 +1074,103 @@ function openVoiceDiag() {
 }
 // เปิดได้จาก: พิมพ์ "ตรวจเสียง"/"diag" ในแชต · ปุ่มในหน้า ⚙️ · ปุ่มในรายชื่อคน
 $('#diagBtn').onclick = () => { $('#people').classList.add('hidden'); openVoiceDiag(); };
+
+
+// ================================================= รายชื่อห้องด้านข้าง (แบบช่องเสียง) ====
+// แต่ละห้อง = ช่องเสียงหนึ่งช่อง · แตะชื่อห้องเพื่อเดินไป · แตะชื่อคนเพื่อเดินไปหา · ขอบเขียว = กำลังพูด
+const ROOM_ORDER = ['shrine', 'cinema', 'hall', 'meet', 'garden', 'pub', 'karaoke'];
+const ROOM_SPOTS = {
+  shrine: [240, -40], cinema: [-40, 130], hall: [256, 250], meet: [230, 420],
+  garden: [408, 420], pub: [440, 660], karaoke: [228, 757],
+};
+function roomTarget(z) {
+  const [cx, cy] = ROOM_SPOTS[z];
+  const offs = [[0, 0], [16, 0], [-16, 0], [0, 16], [0, -16], [24, 24], [-24, 24], [24, -24], [-24, -24], [40, 0], [-40, 0], [0, 40], [0, -40], [48, 32], [-48, 32]];
+  for (const [dx, dy] of offs) {
+    const x = cx + dx, y = cy + dy;
+    if (zoneAt(x, y) !== z) continue;
+    if (findPath(G.grid, G.me.x, G.me.y, x, y)) return [x, y];
+  }
+  return null;
+}
+function goToRoom(z) {
+  if (zoneAt(G.me.x, G.me.y) === z) { toast(`${ZONES[z].icon} คุณอยู่ใน${ZONES[z].name}แล้ว`); return; }
+  const t = roomTarget(z);
+  if (!t) { toast('ไปห้องนั้นไม่ได้ตอนนี้'); return; }
+  walkTo(t[0], t[1]);
+  toast(`🚶 กำลังเดินไป${ZONES[z].name}`, 1800);
+  if (isMobile()) setRoomsOpen(false);
+}
+let roomsOpen = lsGet('pixel.rooms', null);
+if (typeof roomsOpen !== 'boolean') roomsOpen = !isMobile() && window.innerWidth >= 900;
+function setRoomsOpen(v) {
+  roomsOpen = v; lsSet('pixel.rooms', v);
+  $('#rooms').classList.toggle('hidden', !v);
+  $('#roomsTab').classList.toggle('hidden', v);
+  G.roomsSig = '';
+  if (v) renderRooms();
+}
+$('#roomsTab').onclick = () => setRoomsOpen(true);
+$('#roomsClose').onclick = () => setRoomsOpen(false);
+function roomMembers() {
+  const by = Object.fromEntries(ROOM_ORDER.map((z) => [z, []]));
+  const V = G.voice;
+  by[zoneAt(G.me.x, G.me.y)].push({ key: G.net && G.net.myKey, me: true, n: G.me.nick, l: G.me.look, mic: !!(V && V.mic), deaf: !!(V && V.deaf) });
+  for (const rt of G.others.values()) {
+    if (!Number.isFinite(rt.p.x)) continue;
+    const z = zoneAt(rt.p.x, rt.p.y);
+    if (by[z]) by[z].push({ key: rt.key, rt, n: rt.p.n, l: rt.p.l, mic: rt.p.mic === 1 });
+  }
+  return by;
+}
+function renderRooms() {
+  if (!G.joined || !roomsOpen) return;
+  const by = roomMembers();
+  const here = zoneAt(G.me.x, G.me.y);
+  const inCall = !!G.voice;
+  const sig = JSON.stringify([here, inCall, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf]))]);
+  const list = $('#roomsList');
+  if (sig !== G.roomsSig) {
+    G.roomsSig = sig;
+    list.innerHTML = '';
+    for (const z of ROOM_ORDER) {
+      const b = document.createElement('button');
+      b.className = 'rm' + (z === here ? ' here' : '');
+      const spk = document.createElement('span'); spk.className = 'spk'; spk.textContent = '🔊';
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = `${ZONES[z].icon} ${ZONES[z].name}`;
+      b.append(spk, n);
+      if (by[z].length) { const c = document.createElement('span'); c.className = 'c'; c.textContent = by[z].length; b.append(c); }
+      b.onclick = () => goToRoom(z);
+      list.append(b);
+      for (const m of by[z]) {
+        const row = document.createElement('div'); row.className = 'mem'; row.dataset.key = m.key || '';
+        const cv = mkCanvas(22, 36);
+        cv.getContext('2d').drawImage(charSprite(cleanLook(m.l), 'down', 0, 'stand', false), 0, 0);
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (m.n || 'เพื่อน') + (m.me ? ' (คุณ)' : '');
+        const mi = document.createElement('span'); mi.className = 'mi';
+        if (inCall && m.deaf) { mi.textContent = '🔇'; mi.title = 'ปิดหูฟัง'; }
+        else if (inCall && !m.mic) { mi.textContent = '🎙️'; mi.className = 'mi off'; mi.title = 'ปิดไมค์'; }
+        row.append(cv, nm, mi);
+        if (m.rt) row.onclick = () => { walkTo(m.rt.x + 14, m.rt.y + 4); if (isMobile()) setRoomsOpen(false); };
+        list.append(row);
+      }
+    }
+  }
+  // ขอบเขียวรอบตัวคนที่กำลังพูด (อัปเดตถี่โดยไม่ต้องสร้างรายการใหม่)
+  const V = G.voice;
+  for (const row of list.querySelectorAll('.mem')) {
+    const k = row.dataset.key;
+    row.classList.toggle('talk', !!(V && k && V.speaking(k)));
+  }
+}
+setInterval(() => {
+  if (!G.joined) return;
+  const tabHidden = $('#roomsTab').classList.contains('hidden'), panelHidden = $('#rooms').classList.contains('hidden');
+  if (tabHidden && panelHidden) setRoomsOpen(roomsOpen); // ครั้งแรกหลังเข้าห้อง
+  // วางไว้ใต้ชิปด้านบนซ้ายเสมอ (ชิปสูงไม่เท่ากันในแต่ละจอ)
+  const top = Math.round($('.top-left').getBoundingClientRect().bottom + 8) + 'px';
+  for (const el of [$('#rooms'), $('#roomsTab')]) if (el.style.top !== top) el.style.top = top;
+  const mh = `calc(100dvh - ${top} - 110px - var(--safe-b))`;
+  if ($('#rooms').style.maxHeight !== mh) $('#rooms').style.maxHeight = mh;
+  renderRooms();
+}, 250);
