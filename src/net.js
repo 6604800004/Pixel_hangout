@@ -193,7 +193,7 @@ function makeWsNet(cfg) {
     signal(to, data) { send({ t: 'signal', to, data }); },
     // กระดานแนบรูป (มีเฉพาะเวอร์ชันเซิร์ฟเวอร์)
     timeOffset: 0, now() { return Date.now() + (net.timeOffset || 0); }, youtube: true,
-    board: true, boardMax: cfg.boardMax || 20, boardTtl: cfg.boardTtl || 86400000, spotifyClientId: cfg.spotifyClientId || '',
+    board: true, boardMax: cfg.boardMax || 20, boardTtl: cfg.boardTtl || 86400000, spotifyClientId: cfg.spotifyClientId || '', lastfm: !!cfg.lastfm,
     async uploadBoard(boardId, blob, meta) {
       const r = await fetch(`/api/board/${encodeURIComponent(boardId)}`, {
         method: 'POST', body: blob,

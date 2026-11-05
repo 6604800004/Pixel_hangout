@@ -62,6 +62,7 @@ npm start          # รวมไฟล์ใน src/ แล้วเปิด�
 | `DATA_DIR` | ./data | ที่เก็บห้อง/โต๊ะ/แชต/รูปบนกระดาน |
 | `BOARD_MAX` | 20 | จำนวนรูปสูงสุดต่อกระดาน |
 | `SPOTIFY_CLIENT_ID` | (ไม่มี) | เปิดปุ่มเชื่อม Spotify |
+| `LASTFM_API_KEY` | (ไม่มี) | ดึงเพลงที่ฟังอยู่ผ่าน Last.fm — **ไม่ต้องมี Spotify Premium** (สร้างคีย์ฟรีที่ last.fm/api/account/create · แต่ละคนเชื่อม Spotify เข้ากับ Last.fm แล้วใส่ชื่อผู้ใช้ Last.fm ในเกมครั้งเดียว) |
 | `ADMIN_KEY` | (ไม่มี) | รหัสแอดมิน: พิมพ์ในแชต `admin <รหัส>` ครั้งเดียว แล้วใช้ `kick all` / `kick ชื่อ` (เข้าใหม่ได้ทันที) / `ชื่อ kick delay 1m` (ห้ามเข้าตามเวลา: 30s, 5m, 1h) / `clear chat` และกด ✕ ที่ข้อความเพื่อลบ |
 | `TURN_URL` `TURN_USER` `TURN_PASS` | (ไม่มี) | TURN server สำหรับเน็ตที่ต่อเสียงตรงไม่ได้ |
 

@@ -23,6 +23,10 @@ const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
 // แอดมิน: คนที่รู้รหัสนี้ใช้คำสั่งในแชตได้ (admin <รหัส> แล้ว kick all / kick ชื่อ)
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
+// Last.fm: ดึงเพลงที่กำลังฟังแบบไม่ต้องมี Spotify Premium (ผู้ใช้เชื่อม Spotify เข้ากับ Last.fm ฟรี)
+const LASTFM_API_KEY = process.env.LASTFM_API_KEY || '';
+const npCache = new Map(); // user -> { at, body }
+const LASTFM_BASE = process.env.LASTFM_API_BASE || 'https://ws.audioscrobbler.com/2.0/';
 const fmtWait = (ms) => ms >= 3600000 ? `${Math.ceil(ms / 3600000)} ชม.` : ms >= 60000 ? `${Math.ceil(ms / 60000)} นาที` : `${Math.ceil(ms / 1000)} วินาที`;
 const kickedUntil = new Map(); // uid -> เวลาที่กลับเข้าได้
 // กระดานแนบรูป: เก็บไว้ 24 ชม. แล้วลบเอง
@@ -57,7 +61,34 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/config') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify({ app: 'pixel-hangout', roomName: ROOM_NAME, needPassword: !!ROOM_PASSWORD, maxUsers: MAX_USERS, online: peers.size, spotifyClientId: SPOTIFY_CLIENT_ID, boardMax: BOARD_MAX, boardTtl: BOARD_TTL }));
+    return res.end(JSON.stringify({ app: 'pixel-hangout', roomName: ROOM_NAME, needPassword: !!ROOM_PASSWORD, maxUsers: MAX_USERS, online: peers.size, spotifyClientId: SPOTIFY_CLIENT_ID, lastfm: !!LASTFM_API_KEY, boardMax: BOARD_MAX, boardTtl: BOARD_TTL }));
+  }
+  // ---- Last.fm: เพลงที่ผู้ใช้กำลังฟังอยู่ตอนนี้ ----
+  if (url.pathname === '/api/np') {
+    const user = String(url.searchParams.get('u') || '');
+    const out = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    if (!LASTFM_API_KEY) return out(503, { error: 'no-key' });
+    if (!/^[A-Za-z][\w-]{1,30}$/.test(user)) return out(400, { error: 'bad-user' });
+    const hit = npCache.get(user.toLowerCase());
+    if (hit && Date.now() - hit.at < 8000) return out(hit.code, hit.body);
+    const api = `${LASTFM_BASE}?method=user.getrecenttracks&user=${encodeURIComponent(user)}&limit=1&format=json&api_key=${LASTFM_API_KEY}`;
+    fetch(api, { headers: { 'User-Agent': 'PixelHangout/1.0' }, signal: AbortSignal.timeout(6000) })
+      .then((r) => r.json())
+      .then((j) => {
+        let code = 200, body;
+        if (j && j.error) { code = j.error === 6 ? 404 : 502; body = { error: j.error === 6 ? 'not-found' : 'lastfm', message: j.message || '' }; }
+        else {
+          const tr = j && j.recenttracks && j.recenttracks.track;
+          const t = Array.isArray(tr) ? tr[0] : tr;
+          const playing = !!(t && t['@attr'] && t['@attr'].nowplaying === 'true');
+          body = { ok: true, np: playing ? { t: String(t.name || '').slice(0, 60), a: String((t.artist && (t.artist['#text'] || t.artist.name)) || '').slice(0, 60) } : null };
+        }
+        npCache.set(user.toLowerCase(), { at: Date.now(), code, body });
+        if (npCache.size > 200) npCache.delete(npCache.keys().next().value);
+        out(code, body);
+      })
+      .catch(() => out(502, { error: 'lastfm' }));
+    return;
   }
   // ---- อัปโหลดรูปขึ้นกระดาน ----
   const up = url.pathname.match(/^\/api\/board\/([\w.:-]{1,48})$/);

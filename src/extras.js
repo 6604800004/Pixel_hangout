@@ -252,8 +252,24 @@ function maybeMigrateLayout() {
 
 // ---------------------------------------------------------------- เพลง ----
 const spConnected = () => !!(G.net.spotifyClientId && lsGet('pixel.spotify', null));
-// เชื่อม Spotify แล้ว = ใช้เพลงที่เปิดอยู่จริงเท่านั้น (อัตโนมัติ) · ยังไม่เชื่อม = ใช้ที่พิมพ์เอง
-function currentMusic() { return spConnected() ? G.music.sp || null : G.music.manual || null; }
+const lfmUser = () => (G.net.lastfm ? lsGet('pixel.lastfm', '') || '' : '');
+const autoConnected = () => spConnected() || !!lfmUser();
+// เชื่อมแบบอัตโนมัติแล้ว (Spotify หรือ Last.fm) = ใช้เพลงที่เปิดอยู่จริงเท่านั้น · ยังไม่เชื่อม = ใช้ที่พิมพ์เอง
+function currentMusic() { return autoConnected() ? G.music.sp || null : G.music.manual || null; }
+// ---- Last.fm (ไม่ต้องมี Premium): ถามเซิร์ฟเวอร์ทุก 15 วินาที ----
+async function lfmPoll() {
+  const u = lfmUser();
+  if (!u || !G.joined || spConnected()) return;
+  try {
+    const r = await fetch('/api/np?u=' + encodeURIComponent(u));
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return;
+    const m = j.np ? { t: j.np.t, a: j.np.a, u: safeSpotifyUrl('https://open.spotify.com/search/' + encodeURIComponent(`${j.np.t} ${j.np.a}`.trim())), s: 'lf' } : null;
+    if (JSON.stringify(G.music.sp) !== JSON.stringify(m)) { G.music.sp = m; pushMusic(); }
+  } catch {}
+}
+setInterval(lfmPoll, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) lfmPoll(); });
 function pushMusic() {
   const m = currentMusic();
   pres({ mu: m ? { t: m.t.slice(0, 60), a: (m.a || '').slice(0, 60), u: m.u || '', s: m.s } : null });
@@ -265,7 +281,7 @@ function musicLabel(m) {
   return Array.from(s).length > 28 ? Array.from(s).slice(0, 27).join('') + '…' : s;
 }
 function safeSpotifyUrl(u) {
-  return typeof u === 'string' && /^https:\/\/open\.spotify\.com\/[\w/?=&.-]+$/.test(u) ? u : '';
+  return typeof u === 'string' && /^https:\/\/open\.spotify\.com\/[\w/?=&.%+-]+$/.test(u) ? u : '';
 }
 function openMusic() {
   G.musicOpen = true;
@@ -280,17 +296,53 @@ function paintMusic() {
   const now = currentMusic();
   if (now) {
     const box = el('div', 'mon');
-    box.append(el('b', null, `${now.s === 'sp' ? '🟢 Spotify' : '✍️ พิมพ์เอง'} · ${musicLabel(now)}`));
+    box.append(el('b', null, `${now.s === 'sp' ? '🟢 Spotify' : now.s === 'lf' ? '🔴 Last.fm' : '✍️ พิมพ์เอง'} · ${musicLabel(now)}`));
     card.append(box);
   }
   // ---- Spotify: ดึงเพลงที่กำลังเปิดอยู่ให้อัตโนมัติ ----
+  // ---- Last.fm: ใช้ได้กับ Spotify ฟรี (เชื่อม Spotify เข้ากับ Last.fm ครั้งเดียว) ----
+  if (G.net.lastfm && !spConnected()) {
+    const lf = el('div', 'opt'); lf.style.marginTop = '14px';
+    lf.append(el('span', null, '🔴 ดึงอัตโนมัติผ่าน Last.fm (Spotify ฟรีก็ใช้ได้)'));
+    const cur = lfmUser();
+    if (cur) {
+      const row = el('div', 'vbtns');
+      row.append(el('span', 'tip', `เชื่อมแล้ว ✅ ${cur} — เปิดเพลงใน Spotify แล้วชื่อเพลงจะขึ้นเองภายใน ~15 วินาที`));
+      const off = el('button', 'pbtn sm', 'เลิกเชื่อม');
+      off.onclick = () => { lsSet('pixel.lastfm', ''); G.music.sp = null; pushMusic(); };
+      row.append(off); lf.append(row);
+    } else {
+      const row = el('div', 'vbtns');
+      const inp = el('input'); inp.placeholder = 'ชื่อผู้ใช้ Last.fm'; inp.maxLength = 30; inp.autocapitalize = 'off'; inp.style.flex = '1'; inp.style.minWidth = '0';
+      const go = el('button', 'pbtn sm pink', 'เชื่อม');
+      const msg = el('p', 'tip', 'ครั้งแรก: สมัคร last.fm (ฟรี) → Settings → Applications → Connect ที่ "Spotify Scrobbling" แล้วใส่ชื่อผู้ใช้ Last.fm ตรงนี้');
+      go.onclick = async () => {
+        const u = inp.value.trim();
+        if (!/^[A-Za-z][\w-]{1,30}$/.test(u)) { msg.textContent = 'ชื่อผู้ใช้ไม่ถูกต้อง (ภาษาอังกฤษ/ตัวเลข)'; return; }
+        go.disabled = true; msg.textContent = 'กำลังตรวจสอบ…';
+        try {
+          const r = await fetch('/api/np?u=' + encodeURIComponent(u));
+          if (r.status === 404) { msg.textContent = `ไม่เจอผู้ใช้ "${u}" ใน Last.fm`; go.disabled = false; return; }
+          if (!r.ok) { msg.textContent = 'เชื่อมต่อ Last.fm ไม่ได้ ลองใหม่อีกครั้ง'; go.disabled = false; return; }
+          lsSet('pixel.lastfm', u); G.music.manual = null; lsSet('pixel.music', null);
+          toast('เชื่อม Last.fm แล้ว 🎵 เพลงที่คุณเปิดอยู่จะขึ้นเอง', 3500);
+          await lfmPoll(); pushMusic(); paintMusic();
+        } catch { msg.textContent = 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง'; go.disabled = false; }
+      };
+      row.append(inp, go); lf.append(row, msg);
+    }
+    card.append(lf);
+  }
   const sp = el('div', 'opt'); sp.style.marginTop = '14px';
-  sp.append(el('span', null, '🟢 ดึงจาก Spotify อัตโนมัติ'));
+  sp.append(el('span', null, '🟢 ดึงจาก Spotify อัตโนมัติ (ต้องมี Premium)'));
   const cid = G.net.spotifyClientId;
-  const connected = spConnected();
-  if (!cid) {
-    sp.append(el('p', 'tip', 'ยังเปิดใช้ไม่ได้: เจ้าของห้องต้องตั้งค่า Spotify ครั้งเดียวก่อน (ใส่ SPOTIFY_CLIENT_ID ใน Render ตามวิธีใน README)'));
-  } else if (connected) {
+  const connected = autoConnected();
+  if (!cid && G.net.lastfm) {
+    sp.style.display = 'none';
+  } else if (!cid) {
+    sp.firstChild.textContent = '🎵 ดึงเพลงอัตโนมัติ';
+    sp.append(el('p', 'tip', 'ยังเปิดใช้ไม่ได้: เจ้าของห้องต้องใส่ LASTFM_API_KEY (ฟรี ใช้กับ Spotify ฟรีได้) หรือ SPOTIFY_CLIENT_ID (ต้องมี Premium) ใน Render ก่อน'));
+  } else if (spConnected()) {
     const row = el('div', 'vbtns');
     row.append(el('span', 'tip', G.music.sp ? 'เชื่อมแล้ว ✅ เพลงจะเปลี่ยนตามที่คุณเปิดใน Spotify เอง' : 'เชื่อมแล้ว ✅ เปิดเพลงใน Spotify แล้วชื่อเพลงจะขึ้นเองภายในไม่กี่วินาที'));
     const off = el('button', 'pbtn sm', 'เลิกเชื่อม');
@@ -309,7 +361,7 @@ function paintMusic() {
   if (connected) { foot.append(close); card.append(foot); return; }
   // ---- สำรอง: พิมพ์เอง (เฉพาะตอนยังไม่เชื่อม Spotify) ----
   const man = el('label', 'field opt'); man.style.marginTop = '14px';
-  man.append(el('span', null, cid ? 'หรือพิมพ์ชื่อเพลงเอง' : 'ระหว่างนี้พิมพ์ชื่อเพลงเองได้'));
+  man.append(el('span', null, cid || G.net.lastfm ? 'หรือพิมพ์ชื่อเพลงเอง' : 'ระหว่างนี้พิมพ์ชื่อเพลงเองได้'));
   const inp = el('input'); inp.maxLength = 90; inp.placeholder = 'เช่น ทางของฝุ่น – Atom ชนกันต์';
   const cur = G.music.manual;
   inp.value = cur ? musicLabel(cur).replace(/…$/, '') : '';
