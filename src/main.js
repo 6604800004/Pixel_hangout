@@ -869,7 +869,7 @@ function render(t) {
       drawSprite(b, spr, o.it.x, o.it.y);
       if (d.anim) d.anim(b, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1, t, o.it);
       if (d.board) drawBoardThumbs(b, o.it, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1);
-      if (SCREEN_TYPES.has(o.it.t)) drawScreenThumb(b, o.it, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1);
+      if (SCREEN_TYPES.has(o.it.t) && o.it.t !== 'speaker') drawScreenThumb(b, o.it, Math.round(o.it.x - spr.width / 2) + 1, Math.round(o.it.y - spr.height + 1) + 1);
     } else if (o.kind === 'desk') {
       const info = deskInfos.get(o.s.id);
       drawSprite(b, deskSprite(info ? info.style : { c: 2, s: 'none', items: [] }), o.s.x, o.s.y);
@@ -1064,7 +1064,7 @@ function updateActions() {
     const bd = G.furniture.find((it) => FURN[it.t].board && Math.abs(me.x - it.x) < 24 && me.y > it.y - 4 && me.y < it.y + 24);
     if (bd) acts.push(['🖼️ เปิดกระดาน', 'board:' + bd.id]);
     const sc = G.furniture.find((it) => SCREEN_TYPES.has(it.t) && nearScreen(it));
-    if (sc) acts.push(['📺 YouTube บนจอ', 'screen:' + sc.id]);
+    if (sc) acts.push([sc.t === 'speaker' ? '🔊 เปิดเพลงที่ลำโพง' : '📺 YouTube บนจอ', 'screen:' + sc.id]);
   }
   if (!G.edit) {
     if (me.sit) {

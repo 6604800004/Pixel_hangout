@@ -240,7 +240,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -454,7 +454,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) spPo
 
 // ------------------------------------------------- YouTube ดูด้วยกัน ----
 // เปิดคลิปบนทีวี/จอนำเสนอ: คนที่อยู่ห้องเดียวกับจอจะเห็นและเล่นพร้อมกัน
-const SCREEN_TYPES = new Set(['tv', 'bigScreen']);
+const SCREEN_TYPES = new Set(['tv', 'bigScreen', 'speaker']); // ลำโพง = เปิด YouTube แบบฟังอย่างเดียว ได้ยินเฉพาะคนในห้องนั้น
 G.screens = new Map();
 const YT = { player: null, ready: false, apiPromise: null, cur: null, suppressUntil: 0, hiddenKey: '', lastPlayTry: 0 };
 function parseYouTube(text) {
@@ -540,7 +540,13 @@ async function syncScreens() {
   if (YT.hiddenKey === key) { panel.classList.add('hidden'); if (YT.ready) ytCall(() => YT.player.pauseVideo()); YT.cur = null; return; }
   panel.classList.remove('hidden');
   const where = ZONES[zoneAt(act.it.x, act.it.y + 6)];
-  $('#ytTitle').textContent = `📺 ${act.doc.title || 'YouTube'} · ${where.name}`;
+  const isSpk = act.it.t === 'speaker';
+  $('#ytTitle').textContent = `${isSpk ? '🔊' : '📺'} ${act.doc.title || 'YouTube'} · ${where.name}`;
+  // ลำโพง: ย่อเป็นแถบฟังอย่างเดียวให้เอง (กด 🔼 ถ้าอยากเห็นภาพ)
+  if (isSpk && YT.autoMini !== key) {
+    YT.autoMini = key; panel.classList.add('mini'); panel.classList.remove('big');
+    $('#ytMin').textContent = '🔼'; $('#ytMin').title = 'แสดงภาพ';
+  }
   const expected = screenExpected(act.doc);
   if (!YT.player) { YT.cur = { id: act.id, v: act.doc.v }; await ensurePlayer(act.doc); }
   if (!YT.ready) return;
@@ -592,8 +598,12 @@ function openScreenModal(it) {
   if (!G.net.youtube) { toast('ดู YouTube ด้วยกันใช้ได้ในเวอร์ชันเซิร์ฟเวอร์ (onrender.com)'); return; }
   const doc = G.screens.get(it.id);
   openModal((card) => {
-    card.append(el('h2', null, `📺 ${FURN[it.t].label}: ดู YouTube ด้วยกัน`));
-    card.append(el('p', 'sub', `ทุกคนที่อยู่ใน${ZONES[zoneAt(it.x, it.y + 6)].name}จะเห็นคลิปเดียวกันและเล่นพร้อมกัน ใครกด เล่น/หยุด/เลื่อน ทุกคนก็จะตามไปด้วย`));
+    const spk = it.t === 'speaker';
+    const zn = ZONES[zoneAt(it.x, it.y + 6)].name;
+    card.append(el('h2', null, spk ? '🔊 ลำโพง: เปิดเพลงจาก YouTube' : `📺 ${FURN[it.t].label}: ดู YouTube ด้วยกัน`));
+    card.append(el('p', 'sub', spk
+      ? `ทุกคนที่อยู่ใน${zn}จะได้ยินเพลงเดียวกันพร้อมกัน (คนห้องอื่นไม่ได้ยิน) · ขึ้นเป็นแถบเล็กฟังอย่างเดียว กด 🔼 ถ้าอยากดูภาพ · ใครกด เล่น/หยุด ทุกคนก็ตาม`
+      : `ทุกคนที่อยู่ใน${zn}จะเห็นคลิปเดียวกันและเล่นพร้อมกัน ใครกด เล่น/หยุด/เลื่อน ทุกคนก็จะตามไปด้วย`));
     if (doc && doc.v) {
       const box = el('div', 'mon');
       box.append(el('b', null, `กำลังฉาย: ${doc.title || doc.v}`), el('p', 'tip', `เปิดโดย ${doc.by || 'เพื่อน'}`));
@@ -613,7 +623,7 @@ function openScreenModal(it) {
       foot.append(show);
     }
     const close = el('button', 'pbtn', 'ปิด'); close.onclick = closeModal;
-    const play = el('button', 'pbtn pink', '▶ เล่นบนจอ');
+    const play = el('button', 'pbtn pink', spk ? '▶ เปิดเพลง' : '▶ เล่นบนจอ');
     play.onclick = async () => {
       const y = parseYouTube(inp.value);
       if (!y) { toast('ลิงก์ YouTube ไม่ถูกต้อง'); return; }
