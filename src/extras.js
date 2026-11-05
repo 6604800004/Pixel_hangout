@@ -1016,7 +1016,7 @@ function voiceStatus(rt) {
   if (!G.audible.has(rt.key)) return `📏 เขาตั้งไมค์ระยะ "${micRangeName(peerRange(rt.p))}" — เดินเข้าไปใกล้ๆ หรือให้เขาเลื่อนระยะไมค์เป็น "ทั้งห้อง"`;
   if (V.actx && V.actx.state !== 'running' && viaServer) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
   if (!V.rxOk(peer)) return '🔴 ยังไม่มีเสียงจากเขามาถึง — ให้เขาแตะหน้าจอ 1 ครั้ง ถ้ายังไม่ได้ให้เขารีเฟรช';
-  if (viaServer) return '🟢 ได้ยินอยู่ (ส่งผ่านเซิร์ฟเวอร์ · ไม่มีวิดีโอ)';
+  if (viaServer) return (peer.state === 'connected' ? '🟢 ได้ยินอยู่ (เสียงผ่านเซิร์ฟเวอร์)' : '🟢 ได้ยินอยู่ (เสียงผ่านเซิร์ฟเวอร์ · ไม่มีวิดีโอ)');
   if (peer.audioEl && peer.audioEl.paused) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
   return '🟢 ได้ยินอยู่';
 }
@@ -1046,6 +1046,7 @@ function voiceDiag() {
   const t = V.audioTrack;
   const lvl = V.meters.get('me');
   lines.push(`ไมค์ของฉัน: ${!t ? (V.micLost ? '❌ หลุด (แอปอื่นแย่งไมค์)' : '⭕ ยังไม่เปิด') : t.readyState !== 'live' ? '❌ หยุดทำงาน' : t.muted ? '⚠️ ถูกระบบปิด (แอปอื่นใช้ไมค์อยู่?)' : V.mic ? (V.micDead ? '⚠️ เปิดอยู่แต่ไม่มีเสียงเข้าเลย — เปลี่ยนไมค์ในตั้งค่าเสียง' : `🟢 เปิด · ระดับเสียง ${lvl ? Math.round(lvl.lvl * 1000) : 0}`) : '🔴 ปิดอยู่ (กดปุ่มไมค์)'}${V.deaf ? ' · 🔇 ปิดหูฟังอยู่' : ''}`);
+  if (V.cam && V.videoTrack) { const vt = V.videoTrack, st = vt.getSettings ? vt.getSettings() : {}; lines.push(`กล้องของฉัน: ${vt.readyState !== 'live' ? '❌ หยุดทำงาน' : vt.muted ? '⚠️ ระบบพักกล้อง (ไม่มีภาพ)' : '🟢 เปิด'} · ${st.width || '?'}x${st.height || '?'}`); }
   lines.push(`เสียงในเครื่อง: ${V.actx ? V.actx.state : 'ยังไม่เริ่ม'}${V.actx && V.actx.state !== 'running' ? ' ⚠️ แตะหน้าจอ 1 ครั้ง' : ''} · TURN: ${G.net.hasTurn ? 'มี' : 'ไม่มี (ใช้เซิร์ฟเวอร์สำรอง)'}`);
   for (const rt of G.others.values()) {
     const p = V.peers.get(rt.key);
@@ -1054,6 +1055,11 @@ function voiceDiag() {
     const rx = p && p.stat ? Math.round(p.stat.rxRate / 1000) : '-', tx = p && p.stat ? Math.round(p.stat.txRate / 1000) : '-';
     const th = p && p.theyHear && Date.now() - p.theyHear.at < 15000 ? (p.theyHear.ok ? '✅' : '❌') : '?';
     lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · เขาได้ยินฉัน ${V.mic ? th : '(ฉันปิดไมค์)'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (Date.now() - (V.relaySentAt || 0) < 1500 && relayTargetsInfo(p) ? 'กำลังส่ง' : relayTargetsInfo(p) ? '⚠️ ส่งไม่ออก' + (V.relayErr ? ' (' + V.relayErr.slice(0, 40) + ')' : '') : 'ไม่ได้ส่ง') : tx + 'KB/s'} · ${voiceStatus(rt)}`);
+    if (rt.p.cam === 1 && p) {
+      const vi = p.vinfo;
+      const bl = G.blackSt && G.blackSt.get(rt.key);
+      lines.push(`   📷 กล้องเขา: ${p.state !== 'connected' ? 'ต่อตรงไม่ได้ → ไม่มีภาพ (เซิร์ฟเวอร์สำรองส่งได้แค่เสียง)' : !vi || !vi.w ? 'ยังไม่มีภาพมาถึง' : `${vi.w}x${vi.h} · ${vi.fps}fps · ${vi.codec || '?'}${vi.dec ? ' (' + vi.dec + ')' : ''}${bl && bl.black ? ' · ⚫ ภาพดำ' : ''}`}`);
+    }
   }
   return lines;
 }

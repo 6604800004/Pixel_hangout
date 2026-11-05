@@ -169,10 +169,21 @@ function makeVoice(net, onChange) {
       peer.audioTx = pc.addTransceiver('audio', { direction: 'sendrecv' });
       peer.videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
       peer.screenTx = pc.addTransceiver('video', { direction: 'sendrecv' });
+      preferVP8(peer.videoTx); preferVP8(peer.screenTx);
       apply(peer);
       offer(peer);
     }
     return peer;
+  }
+  // วิดีโอ: ใช้ VP8 ก่อน (มือถือ iPhone ชอบส่ง H.264 ซึ่งคอมบางเครื่องถอดรหัสแล้วได้ภาพดำ)
+  function preferVP8(tx) {
+    try {
+      if (!tx || !tx.setCodecPreferences || !window.RTCRtpReceiver || !RTCRtpReceiver.getCapabilities) return;
+      const caps = RTCRtpReceiver.getCapabilities('video');
+      if (!caps || !caps.codecs || !caps.codecs.some((c) => /vp8/i.test(c.mimeType))) return;
+      const rank = (c) => (/vp8/i.test(c.mimeType) ? 0 : /vp9/i.test(c.mimeType) ? 1 : /h264/i.test(c.mimeType) ? 2 : /rtx|red|ulpfec|flexfec/i.test(c.mimeType) ? 4 : 3);
+      tx.setCodecPreferences([...caps.codecs].sort((a, b) => rank(a) - rank(b)));
+    } catch {}
   }
   async function offer(peer, iceRestart = false) {
     try {
@@ -217,6 +228,7 @@ function makeVoice(net, onChange) {
           if (k === 'video' && !peer.videoTx) peer.videoTx = tx;
           else if (k === 'video' && tx !== peer.videoTx && !peer.screenTx) peer.screenTx = tx;
           tx.direction = 'sendrecv';
+          if (k === 'video') preferVP8(tx);
         }
         apply(peer);
         const a = await peer.pc.createAnswer();
@@ -279,6 +291,9 @@ function makeVoice(net, onChange) {
     }
     const t = s.getAudioTracks()[0];
     try { t.contentHint = 'speech'; } catch {}
+    let muteT = 0;
+    t.addEventListener('mute', () => { clearTimeout(muteT); muteT = setTimeout(() => { if (V.videoTrack === t && t.muted) onChange('error', '📷 กล้องไม่ส่งภาพ (ระบบพักกล้องไว้) — ถ้าเปิดผ่าน LINE/IG/Facebook ให้เปิดเว็บใน Safari หรือ Chrome แทน แล้วเปิดกล้องใหม่'); }, 3000); });
+    t.addEventListener('unmute', () => clearTimeout(muteT));
     t.addEventListener('ended', () => {
       if (V.audioTrack !== t) return;
       V.micLost = true;
@@ -582,7 +597,12 @@ registerProcessor('px-play', PxPlay);`;
           let rx = 0, tx = 0;
           let vf = -1;
           stats.forEach((r) => { if (r.kind === 'audio' && r.type === 'inbound-rtp') rx += r.bytesReceived || 0; if (r.kind === 'audio' && r.type === 'outbound-rtp') tx += r.bytesSent || 0; });
-          try { (await p.videoTx.receiver.getStats()).forEach((r) => { if (r.type === 'inbound-rtp') vf = r.framesDecoded || 0; }); } catch {}
+          try {
+            const vs = await p.videoTx.receiver.getStats();
+            let codecId = '';
+            vs.forEach((r) => { if (r.type === 'inbound-rtp') { vf = r.framesDecoded || 0; codecId = r.codecId; p.vinfo = { w: r.frameWidth || 0, h: r.frameHeight || 0, fps: Math.round(r.framesPerSecond || 0), dec: r.decoderImplementation || '' }; } });
+            if (codecId && vs.get(codecId) && p.vinfo) p.vinfo.codec = String(vs.get(codecId).mimeType || '').replace('video/', '');
+          } catch {}
           if (vf >= 0) { if (p.vFrames != null && vf > p.vFrames) p.vLiveAt = Math.max(p.vLiveAt || 0, Date.now() - 500); p.vFrames = vf; }
           const t = Date.now();
           p.stat = { rx, tx, rxRate: p.stat ? (rx - p.stat.rx) / ((t - p.stat.at) / 1000) : 0, txRate: p.stat ? (tx - p.stat.tx) / ((t - p.stat.at) / 1000) : 0, at: t };
@@ -592,12 +612,14 @@ registerProcessor('px-play', PxPlay);`;
         } catch {}
       }
       // เขาเปิดไมค์ เราควรได้ยิน แต่ไม่มีเสียงมาถึงเลย 6 วิ → ขอให้เขาส่งทางเซิร์ฟเวอร์ (ส่งผ่านเซิร์ฟเวอร์ได้แม้ต่อตรงไม่ติด)
-      if (p.playOk && V.remoteMicOn(p.key) && !V.rxOk(p)) {
+      if (p.playOk && V.remoteMicOn(p.key) && !V.rxOk(p) && now - (p.created || 0) > 4000) {
         p.silentSince = p.silentSince || now;
         if (now - p.silentSince > 6000 && (!p.askedAt || now - p.askedAt > 20000)) { p.askedAt = now; net.signal(p.key, { relayPlease: 1 }); }
       } else p.silentSince = 0;
       // บอกเขาทุก ~4 วิ ว่าเรากำลังฟังเขาอยู่ และได้ยินจริงไหม (1 ได้ยิน / 0 ไม่ได้ยิน / 2 ฟังอยู่แต่เขาปิดไมค์)
-      if (fbTick % 2 === 0 && p.playOk) net.signal(p.key, { fb: V.remoteMicOn(p.key) ? (V.rxOk(p) ? 1 : 0) : 2 });
+      // (ช่วงแรกหลังเชื่อมยังไม่มีสถิติ อย่าเพิ่งตอบว่า "ไม่ได้ยิน" ไม่งั้นเขาจะสลับไปส่งผ่านเซิร์ฟเวอร์โดยไม่จำเป็น)
+      const settled = now - (p.created || 0) > 9000 && (V.rxOk(p) || (p.stat && now - p.stat.at < 5000) || p.state !== 'connected');
+      if (fbTick % 2 === 0 && p.playOk) net.signal(p.key, { fb: !V.remoteMicOn(p.key) ? 2 : V.rxOk(p) ? 1 : settled ? 0 : 2 });
       // เลิกส่งให้คนที่ไม่ได้ฟังเราแล้ว
       if (p.allowed && !V.audience.has(p.key) && !wantFresh(p)) { p.allowed = false; apply(p); }
     }

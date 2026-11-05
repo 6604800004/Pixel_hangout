@@ -1240,15 +1240,18 @@ function doLeave(mode) {
   hangUp();
   G.joined = false;
   if (mode === 'room') { try { sessionStorage.setItem('pixel.left', '1'); } catch {} location.reload(); return; }
-  // ออกจากเว็บ: ลองปิดแท็บ (ได้เฉพาะบางเบราว์เซอร์) ถ้าปิดไม่ได้ ขึ้นหน้าบอกลาแทน — ตัดการเชื่อมต่อแล้วทุกอย่าง
+  // ออกจากเว็บ: 1) ลองปิดแท็บ/หน้าต่าง 2) ย้อนกลับไปหน้าก่อนหน้า (เปิดจาก LINE/IG = ปิดหน้าเว็บกลับไปแชท)
+  // 3) ถ้ายังอยู่ ไปหน้าว่างเปล่า (ออกจากเว็บไปแล้วจริงๆ) — เบราว์เซอร์ไม่อนุญาตให้เว็บปิดแท็บที่ผู้ใช้เปิดเองโดยตรง
   try { window.close(); } catch {}
+  setTimeout(() => { try { if (history.length > 1) history.back(); } catch {} }, 150);
+  setTimeout(() => { try { location.replace('about:blank'); } catch {} }, 900);
   setTimeout(() => {
     for (const e of document.body.children) e.style.display = 'none';
     const bye = document.createElement('div'); document.body.append(bye);
     bye.outerHTML = '<div class="bye"><div class="bye-card"><div class="bye-emo">👋</div><h2>ออกจากเว็บแล้ว</h2><p>ไมค์ กล้อง และการเชื่อมต่อปิดหมดแล้ว<br>ปิดแท็บนี้ได้เลย (หรือกดปุ่มย้อนกลับ/ปัดแอปทิ้ง)</p><button class="pbtn pink big" id="byeBack">กลับเข้าเว็บอีกครั้ง</button></div></div>';
     document.getElementById('byeBack').onclick = () => location.reload();
     try { history.replaceState(null, '', location.pathname); } catch {}
-  }, 250);
+  }, 1600);
 }
 // ปิดแท็บ/ปัดแอปทิ้ง: ตัดการเชื่อมต่อทันที เพื่อนจะเห็นว่าออกแล้วเลย ไม่ค้างอยู่ในห้อง
 window.addEventListener('pagehide', (e) => { if (!e.persisted && G.joined) hangUp(); });
