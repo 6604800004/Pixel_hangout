@@ -344,6 +344,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ytvol .tip { flex-basis: 100%; margin: 0; font-size: 11px; }
 .ytvol { flex-wrap: wrap; }
 
+/* โรงหนัง: วิดีโอวางทับจอโปรเจกเตอร์ในห้อง (แถบปุ่มอยู่ใต้จอ) */
+.yt.onscreen { position: fixed; z-index: 3; display: flex; flex-direction: column-reverse; border-width: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; }
+.yt.onscreen .ytbox { aspect-ratio: auto; height: var(--sh, 120px); }
+.yt.onscreen header { background: rgba(29,31,46,.86); border-radius: 0 0 10px 10px; padding: 3px 8px; font-size: 12px; }
+.yt.onscreen header button { width: 26px; height: 22px; font-size: 12px; }
+.yt.onscreen .ytvol { background: rgba(29,31,46,.86); }
+
 </style>
 </head>
 <body>
@@ -1026,7 +1033,62 @@ const FURN = {
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 30 - fx / 3, sy + 22, 4, 2); ctx.fillRect(sx + 28 - fx / 3, sy + 23, 1, 1);
     const r = Math.floor(t * 2) % 6;
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(sx + 34 - r, sy + 8, 2 + r * 2, 1);
-  } },  // ---------------- ห้องไหว้พระ ----------------
+  } },  // ---------------- โรงหนัง ----------------
+  projectorScreen: { label: 'จอโปรเจกเตอร์', emo: '📽️', w: 212, h: 72, solid: true, foot: 4, draw(P) {
+    P(0, 0, 212, 70, '#1d1f2e'); P(0, 0, 212, 3, '#43475e'); P(2, 2, 208, 66, '#2f3245');
+    P(6, 5, 200, 60, '#d8dce8'); P(6, 5, 200, 2, '#ffffff');
+    P(0, 68, 212, 4, '#1d1f2e'); P(3, 69, 206, 1, '#43475e');
+  },
+  anim(ctx, sx, sy, t) {
+    // ยังไม่ฉาย: จอขาวนวลๆ มีโลโก้ฟิล์มเบาๆ
+    ctx.fillStyle = '#eef0f6'; ctx.fillRect(sx + 7, sy + 6, 198, 58);
+    ctx.fillStyle = 'rgba(90,79,120,.35)';
+    const cx = sx + 106, cy = sy + 35;
+    ctx.fillRect(cx - 14, cy - 8, 28, 16); ctx.fillStyle = '#eef0f6'; for (let i = 0; i < 4; i++) { ctx.fillRect(cx - 12 + i * 7, cy - 6, 4, 2); ctx.fillRect(cx - 12 + i * 7, cy + 4, 4, 2); }
+    ctx.fillStyle = 'rgba(90,79,120,.25)'; ctx.fillRect(cx - 20, cy + 12, 40, 2);
+  } },
+  cinemaSeat: { label: 'เก้าอี้โรงหนัง', emo: '💺', w: 16, h: 20, solid: true, foot: 6, variants: 3,
+    seats: () => [{ dx: 0, dy: -8, dir: 'up' }],
+    draw(P, v) {
+      const [m, d, l] = [['#b02a3a', '#7a1626', '#d84a5a'], ['#3f5fb0', '#26387a', '#6a86d8'], ['#2f3245', '#1d1f2e', '#4a4f68']][v % 3];
+      P(2, 0, 12, 6, d); P(3, 1, 10, 4, m);                // เบาะนั่ง
+      P(0, 4, 3, 12, '#2f3245'); P(13, 4, 3, 12, '#2f3245'); // ที่วางแขน
+      P(1, 7, 14, 11, m); P(1, 7, 14, 2, l); P(1, 16, 14, 2, d); P(7, 9, 2, 7, d); // พนักพิง (เห็นด้านหลัง)
+      P(13, 3, 3, 2, '#ffd34d');                            // ที่วางแก้ว
+      P(2, 18, 2, 2, '#1d1f2e'); P(12, 18, 2, 2, '#1d1f2e');
+    } },
+  vipSeat: { label: 'เก้าอี้ VIP', emo: '🛋️', w: 24, h: 24, solid: true, foot: 8, variants: 2,
+    seats: () => [{ dx: 0, dy: -10, dir: 'up' }],
+    draw(P, v) {
+      const [m, d, l] = [['#2a2a30', '#141418', '#4a4a55'], ['#5a2a6e', '#3a1648', '#7e4a94']][v % 2];
+      P(3, 0, 18, 8, d); P(4, 1, 16, 6, m);
+      P(0, 5, 4, 14, '#d9a441'); P(20, 5, 4, 14, '#d9a441'); P(0, 5, 4, 1, '#f4d27a'); P(20, 5, 4, 1, '#f4d27a');
+      P(1, 9, 22, 13, m); P(1, 9, 22, 2, l); P(1, 20, 22, 2, d); P(6, 12, 12, 1, d); P(6, 16, 12, 1, d);
+      P(9, 10, 6, 2, '#d9a441'); P(10, 10, 4, 1, '#f4d27a');      // ตรา VIP
+      P(21, 3, 3, 3, '#e8e8f0');                                    // แก้วเครื่องดื่ม
+    } },
+  vvipBed: { label: 'เตียง VVIP (2 คน)', emo: '🛏️', w: 56, h: 40, solid: true, foot: 30,
+    seats: () => [{ dx: -12, dy: -14, dir: 'up', over: true }, { dx: 12, dy: -14, dir: 'up', over: true }],
+    draw(P) {
+      P(2, 2, 52, 28, '#f4ead2'); P(2, 2, 52, 2, '#ffffff');               // ที่นอน
+      P(2, 4, 52, 14, '#b02a3a'); P(2, 4, 52, 2, '#d84a5a'); P(2, 16, 52, 2, '#7a1626'); // ผ้าห่มแดง
+      for (let x = 6; x < 52; x += 8) P(x, 9, 4, 1, '#d9a441');
+      P(5, 20, 20, 8, '#ffffff'); P(31, 20, 20, 8, '#ffffff'); P(5, 26, 20, 2, '#d9cfb6'); P(31, 26, 20, 2, '#d9cfb6'); // หมอน
+      P(0, 28, 56, 10, '#3a2418'); P(0, 28, 56, 2, '#d9a441'); P(2, 31, 52, 5, '#5a3824'); // หัวเตียง (หันมาทางเรา)
+      P(25, 32, 6, 3, '#d9a441'); P(26, 33, 4, 1, '#f4d27a');
+      P(0, 0, 3, 30, '#3a2418'); P(53, 0, 3, 30, '#3a2418'); P(0, 38, 4, 2, '#1d1f2e'); P(52, 38, 4, 2, '#1d1f2e');
+    } },
+  popcorn: { label: 'ตู้ป๊อปคอร์น', emo: '🍿', w: 22, h: 34, solid: true, foot: 8, draw(P) {
+    P(1, 20, 20, 12, '#b02a3a'); P(1, 20, 20, 2, '#d84a5a'); P(3, 24, 16, 6, '#ffd34d'); P(5, 26, 12, 2, '#b02a3a');
+    P(0, 4, 22, 17, '#cfe8f7'); P(0, 4, 22, 1, '#ffffff'); P(0, 4, 1, 17, '#2f3245'); P(21, 4, 1, 17, '#2f3245');
+    P(0, 0, 22, 5, '#b02a3a'); P(2, 1, 18, 2, '#ffd34d'); P(3, 32, 3, 2, '#1d1f2e'); P(16, 32, 3, 2, '#1d1f2e');
+  },
+  anim(ctx, sx, sy, t) {
+    ctx.fillStyle = '#fff6d8';
+    for (let i = 0; i < 14; i++) { const x = sx + 2 + ((i * 7) % 18), y = sy + 13 + ((i * 5) % 7); ctx.fillRect(x, y, 2, 2); }
+    for (let i = 0; i < 3; i++) { const ph = (t * 1.6 + i / 3) % 1; ctx.fillRect(sx + 6 + i * 5, sy + 13 - Math.round(Math.sin(ph * Math.PI) * 6), 2, 2); }
+  } },
+  // ---------------- ห้องไหว้พระ ----------------
   prayerMat: { label: 'เบาะกราบ', emo: '🙏', w: 20, h: 10, floor: true, solid: false, variants: 3,
     seats: () => [{ dx: 0, dy: -2, dir: 'up', kneel: true }],
     draw(P, v) {
@@ -1246,6 +1308,10 @@ const STATUSES = [['', 'ไม่มี'], ['💻', 'ทำงาน'], ['🎧',
 const W = 512, H = 856, WALL = 58;
 // ห้องไหว้พระอยู่ "ข้างบนสุด" เหนือห้องรวม (พิกัด y ติดลบ) — พระต้องอยู่สูงสุดในบ้าน
 const TOP = -232;
+// โรงหนังอยู่ "ข้างๆ" ทางซ้ายของห้องรวม (พิกัด x ติดลบ)
+const LEFT = -288;
+const CINEMA = { x0: LEFT, x1: 0, y0: 0, y1: 352 }; // รวมผนัง
+const DOOR_CINEMA = { x: 0, y: 112, h: 34, zone: 'cinema', side: true, left: true };
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
 const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
@@ -1266,8 +1332,10 @@ const ZONES = {
   karaoke: { id: 'karaoke', name: 'ห้องคาราโอเกะ', icon: '🎤' },
   pub: { id: 'pub', name: 'ผับ', icon: '🍻' },
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
+  cinema: { id: 'cinema', name: 'โรงหนัง', icon: '🎬' },
 };
 function zoneAt(x, y) {
+  if (x < 0) return 'cinema';
   if (y < 0) return 'shrine';
   if (y < LOWER_Y + 16) return 'hall';
   if (y < LOWER2_Y + 16) return x < DIVIDER_X + 3 ? 'meet' : 'garden';
@@ -1321,10 +1389,17 @@ const DEFAULT_LAYOUT = [
   { t: 'chantTable', x: 96, y: -48 }, { t: 'chantTable', x: 416, y: -48 },
   // ---- ลำโพงเปิดเพลง YouTube (ห้องรวม + ผับ) ----
   { t: 'speaker', x: 490, y: 262 }, { t: 'speaker', x: 440, y: 676 },
+  // ---- โรงหนัง (ทางซ้ายของห้องรวม) ----
+  { t: 'projectorScreen', x: -146, y: 76 },
+  ...[-250, -230, -210, -190, -170, -122, -102, -82, -62, -42].flatMap((x) => [{ t: 'cinemaSeat', x, y: 150 }, { t: 'cinemaSeat', x, y: 180 }]),
+  ...[-240, -210, -180, -112, -82, -52].map((x) => ({ t: 'vipSeat', x, y: 222 })),
+  { t: 'vvipBed', x: -214, y: 300 }, { t: 'vvipBed', x: -78, y: 300 },
+  { t: 'popcorn', x: -266, y: 344 }, { t: 'speaker', x: -272, y: 92 }, { t: 'speaker', x: -20, y: 92 },
 ];
-const LAYOUT_VERSION = 6;
+const LAYOUT_VERSION = 7;
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
+const LAYOUT_V7_FROM = 92; // def92 ขึ้นไปมาในเวอร์ชัน 7 (โรงหนัง)
 const LAYOUT_V6_FROM = 90; // def90 ขึ้นไปมาในเวอร์ชัน 6 (ลำโพงในห้องรวม/ผับ)
 const LAYOUT_V4_FROM = 73; // def73 ขึ้นไปมาในเวอร์ชัน 4–5 (ห้องไหว้พระ — v5 ย้ายขึ้นไปอยู่บนสุด)
 
@@ -1344,9 +1419,9 @@ const LOWER_WINDOWS = [{ x: 256, y: 360, w: 26, h: 16 }];
 const CLOCK = { x: 176, y: 26 };
 
 function buildBackground() {
-  const c = mkCanvas(W, H - TOP);
+  const c = mkCanvas(W - LEFT, H - TOP);
   const g = c.getContext('2d');
-  g.translate(0, -TOP); // วาดด้วยพิกัดโลก (รวมส่วนที่ y ติดลบของห้องไหว้พระ)
+  g.translate(-LEFT, -TOP); // วาดด้วยพิกัดโลก (รวมส่วนที่ y ติดลบของห้องไหว้พระ)
   const P = painter(g);
   let seed = 11;
   const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
@@ -1580,6 +1655,24 @@ function buildBackground() {
   }
   // ---- ขอบห้อง ----
   P(0, TOP, 3, H - TOP, '#3a2c3f'); P(W - 3, TOP, 3, H - TOP, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f'); P(0, TOP, W, 3, '#3a2c3f');
+  // ================= โรงหนัง =================
+  { const { x0, y1 } = CINEMA, fx = x0 + 3, fw = -6 - fx;
+    for (let y = WALL; y < y1; y += 8) for (let x = fx; x < -6; x += 8) {
+      P(x, y, 8, 8, ((x / 8 + y / 8) | 0) % 2 ? '#4a1626' : '#521a2b');
+      if (((x * 7 + y * 3) & 31) === 0) P(x + 3, y + 3, 2, 2, '#7a2a3e');
+    }
+    for (const ry of [164, 194, 238]) { P(fx, ry, fw, 2, '#3a0f1c'); P(fx, ry + 2, fw, 1, '#6a2236'); }
+    for (let y = 120; y < y1; y += 22) { P(-148, y, 3, 2, '#ffd34d'); P(-30, y, 3, 2, '#ffd34d'); }
+    P(fx, 0, fw, WALL, '#2a0a14');
+    for (let x = fx; x < -6; x += 6) { P(x, 4, 3, WALL - 8, '#8f1d2c'); P(x + 3, 4, 3, WALL - 8, '#a8263a'); P(x + 1, 4, 1, WALL - 8, '#c03a4e'); }
+    P(fx, 0, fw, 6, '#d9a441'); P(fx, 5, fw, 1, '#a8752a'); P(fx, WALL - 6, fw, 6, '#3a0f1c'); P(fx, WALL - 6, fw, 1, '#5a1828');
+    P(x0, 0, 3, y1 + 30, '#3a2c3f'); P(x0, 0, -x0, 3, '#3a2c3f');
+    P(fx, y1, fw + 6, 30, '#2a0a14'); P(fx, y1, fw + 6, 2, '#5a1828'); P(x0, y1 + 27, -x0, 3, '#3a2c3f');
+    const d = DOOR_CINEMA;
+    P(-6, WALL, 9, d.y - WALL, '#3a2c3f'); P(-6, d.y + d.h, 9, y1 - d.y - d.h, '#3a2c3f');
+    P(-6, d.y, 9, d.h, '#521a2b'); P(-7, d.y - 3, 11, 3, '#d9a441'); P(-7, d.y + d.h, 11, 3, '#d9a441');
+    P(0, d.y, 3, d.h, '#d9a374');
+  }
   return c;
 }
 
@@ -1643,6 +1736,18 @@ function drawLiveWall(ctx, now, t) {
       ctx.fillRect(Math.round(cx + Math.sin(ph * 7 + i) * 3) - 1, Math.round(top + 38 - ph * 26), 2, 2);
     }
   }
+  // ---- โรงหนัง: ไฟหรี่ + ลำแสงโปรเจกเตอร์ตอนฉาย ----
+  { const playing = typeof G !== 'undefined' && G.cinemaPlaying;
+    ctx.fillStyle = 'rgba(10,0,8,0.28)'; ctx.fillRect(LEFT + 3, WALL, -LEFT - 9, CINEMA.y1 - WALL);
+    if (playing) {
+      const a = 0.07 + 0.025 * Math.sin(t * 2.3);
+      ctx.fillStyle = `rgba(200,220,255,${a})`;
+      ctx.beginPath(); ctx.moveTo(-150, CINEMA.y1 - 6); ctx.lineTo(-250, 70); ctx.lineTo(-40, 70); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = '#2f3245'; ctx.fillRect(-156, CINEMA.y1 - 10, 14, 8); ctx.fillStyle = playing ? '#fff6c8' : '#5a5f7a'; ctx.fillRect(-151, CINEMA.y1 - 11, 4, 3);
+    const on = Math.floor(t * 3) % 2;
+    for (let i = 0; i < 6; i++) { ctx.fillStyle = (i + on) % 2 ? '#ffd34d' : '#ff8f2a'; ctx.fillRect(5 + (i % 2) * 2, DOOR_CINEMA.y + 2 + i * 5, 2, 2); }
+  }
   // ---- ผับ: ป้ายนีออน PUB ----
   ctx.fillStyle = Math.floor(t * 1.3) % 7 ? '#ffb86b' : '#7a4e34';
   const px = 470, py = LOWER2_Y + 10;
@@ -1681,6 +1786,11 @@ function solidRects(furniture) {
   list.push({ x: DOOR_PUB.x + DOOR_PUB.w, y: LOWER2_Y - 2, w: W - DOOR_PUB.x - DOOR_PUB.w, h: LOWER2_FLOOR - LOWER2_Y + 2 });
   list.push({ x: DIVIDER2_X - 1, y: LOWER2_Y - 2, w: 8, h: DOOR_KARAOKE.y - LOWER2_Y + 2 });
   list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: H - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
+  // โรงหนัง: นอกห้อง = ทึบ, ผนังกั้นกับห้องรวม (เว้นประตู)
+  list.push({ x: LEFT - 20, y: TOP - 20, w: -LEFT + 20, h: WALL - TOP + 20 });
+  list.push({ x: LEFT - 20, y: CINEMA.y1, w: -LEFT + 20, h: H - CINEMA.y1 + 20 });
+  list.push({ x: -6, y: WALL - 4, w: 9, h: DOOR_CINEMA.y - WALL + 4 });
+  list.push({ x: -6, y: DOOR_CINEMA.y + DOOR_CINEMA.h, w: 9, h: CINEMA.y1 - DOOR_CINEMA.y - DOOR_CINEMA.h });
   // ผนังด้านบนของห้องรวม = ผนังกั้นห้องไหว้พระ (เว้นประตู) + โต๊ะหมู่บูชา + เสา
   list.push({ x: 0, y: -6, w: DOOR_SHRINE.x, h: WALL + 6 });
   list.push({ x: DOOR_SHRINE.x + DOOR_SHRINE.w, y: -6, w: W - DOOR_SHRINE.x - DOOR_SHRINE.w, h: WALL + 6 });
@@ -1689,16 +1799,16 @@ function solidRects(furniture) {
   return list;
 }
 function hitsRects(rects, x, y) {
-  if (x < 9 || x > W - 9 || y < SHRINE_FLOOR + 5 || y > H - 5) return true;
+  if (x < LEFT + 9 || x > W - 9 || y < SHRINE_FLOOR + 5 || y > H - 5) return true;
   for (const r of rects) if (x + 5 > r.x && x - 5 < r.x + r.w && y + 2 > r.y && y - 3 < r.y + r.h) return true;
   return false;
 }
 
 // ---------- หาเส้นทาง (A* บนตาราง 4px) ----------
-const CELL = 4, GW = W / CELL, GH = (H - TOP) / CELL; // แถวที่ 0 = y TOP
+const CELL = 4, GW = (W - LEFT) / CELL, GH = (H - TOP) / CELL; // คอลัมน์ 0 = x LEFT, แถว 0 = y TOP
 function buildGrid(rects) {
   const grid = new Uint8Array(GW * GH);
-  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) grid[gy * GW + gx] = hitsRects(rects, gx * CELL + 2, gy * CELL + 2 + TOP) ? 1 : 0;
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) grid[gy * GW + gx] = hitsRects(rects, gx * CELL + 2 + LEFT, gy * CELL + 2 + TOP) ? 1 : 0;
   return grid;
 }
 function findPath(grid, sx, sy, tx, ty) {
@@ -1714,15 +1824,15 @@ function findPath(grid, sx, sy, tx, ty) {
     }
     return best;
   };
-  let s = toCell(sy - TOP, GH) * GW + toCell(sx, GW);
-  let goal = toCell(ty - TOP, GH) * GW + toCell(tx, GW);
+  let s = toCell(sy - TOP, GH) * GW + toCell(sx - LEFT, GW);
+  let goal = toCell(ty - TOP, GH) * GW + toCell(tx - LEFT, GW);
   const prefix = [];
   if (grid[s]) {
     // เริ่มจากในเฟอร์นิเจอร์ (เช่นเพิ่งลุกจากโซฟา): ออกไปช่องว่างใกล้สุดก่อน
     const f = nearestFree(s);
     if (f < 0) return null;
     s = f;
-    prefix.push({ x: (f % GW) * CELL + 2, y: ((f / GW) | 0) * CELL + 2 + TOP });
+    prefix.push({ x: (f % GW) * CELL + 2 + LEFT, y: ((f / GW) | 0) * CELL + 2 + TOP });
   }
   if (grid[goal]) {
     // เป้าหมายอยู่ในของ: หาช่องว่างที่ใกล้ที่สุด
@@ -1730,7 +1840,7 @@ function findPath(grid, sx, sy, tx, ty) {
     if (best < 0) return null;
     goal = best;
   }
-  if (s === goal) return prefix.concat([{ x: (goal % GW) * CELL + 2, y: ((goal / GW) | 0) * CELL + 2 + TOP }]);
+  if (s === goal) return prefix.concat([{ x: (goal % GW) * CELL + 2 + LEFT, y: ((goal / GW) | 0) * CELL + 2 + TOP }]);
   const N = GW * GH;
   const gScore = new Float32Array(N).fill(Infinity);
   const came = new Int32Array(N).fill(-1);
@@ -1764,7 +1874,7 @@ function findPath(grid, sx, sy, tx, ty) {
   for (let c = goal; c !== -1 && c !== s; c = came[c]) cells.push(c);
   cells.reverse();
   // ลดจุดที่เรียงเป็นเส้นตรง
-  const pts = cells.map((c) => ({ x: (c % GW) * CELL + 2, y: ((c / GW) | 0) * CELL + 2 + TOP }));
+  const pts = cells.map((c) => ({ x: (c % GW) * CELL + 2 + LEFT, y: ((c / GW) | 0) * CELL + 2 + TOP }));
   const out = [];
   for (let i = 0; i < pts.length; i++) {
     const a = out[out.length - 1], b = pts[i], n = pts[i + 1];
@@ -2679,7 +2789,7 @@ function updateMe(dt) {
     const inside = hitsRects(G.rects, me.x, me.y);
     if (inside || !hitsRects(G.rects, me.x + vx * step, me.y)) { me.x += vx * step; moved = true; }
     if (inside || !hitsRects(G.rects, me.x, me.y + vy * step)) { me.y += vy * step; moved = true; }
-    me.x = clamp(me.x, 6, W - 6); me.y = clamp(me.y, SHRINE_FLOOR + 2, H - 4);
+    me.x = clamp(me.x, LEFT + 6, W - 6); me.y = clamp(me.y, SHRINE_FLOOR + 2, H - 4);
   } else if (me.path && me.path.length) {
     const t = me.path[0];
     const dx = t.x - me.x, dy = t.y - me.y, d = Math.hypot(dx, dy);
@@ -3033,7 +3143,7 @@ function buildPalette() {
     const l = document.createElement('span'); l.textContent = d.label; b.append(l);
     b.onclick = async () => {
       if (!(await materializeDefaults())) return;
-      const it = { id: 'f' + randomId(8), t: type, x: Math.round(clamp(G.me.x, 30, W - 30)), y: Math.round(clamp(G.me.y - 20, SHRINE_FLOOR + d.h * 0.4, H - 8)), v: 0, f: 0 };
+      const it = { id: 'f' + randomId(8), t: type, x: Math.round(clamp(G.me.x, LEFT + 30, W - 30)), y: Math.round(clamp(G.me.y - 20, SHRINE_FLOOR + d.h * 0.4, H - 8)), v: 0, f: 0 };
       if (G.furnDocs) G.furnDocs = [...G.furnDocs, it];
       rebuildWorld();
       G.selected = it.id;
@@ -3171,14 +3281,14 @@ canvas.addEventListener('pointermove', (e) => {
   if (G.drag) {
     const it = G.furniture.find((f) => f.id === G.drag.id);
     if (!it) return;
-    it.x = clamp(Math.round(w.x - G.drag.ox), 10, W - 10);
+    it.x = clamp(Math.round(w.x - G.drag.ox), LEFT + 10, W - 10);
     it.y = clamp(Math.round(w.y - G.drag.oy), SHRINE_FLOOR + 4, H - 4);
     G.drag.moved = true;
     pres({ dr: { id: it.id, x: it.x, y: it.y } });
     updateSelBar();
   } else if (G.pan) {
     G.camManual = true;
-    G.cam.mx = clamp(G.pan.mx - (e.clientX - G.pan.sx) / G.scale, 0, W);
+    G.cam.mx = clamp(G.pan.mx - (e.clientX - G.pan.sx) / G.scale, LEFT, W);
     G.cam.my = clamp(G.pan.my - (e.clientY - G.pan.sy) / G.scale, TOP, H);
     G.cam.cx = G.cam.mx; G.cam.cy = G.cam.my;
   } else if (G.holding && performance.now() - holdTimer > 160) {
@@ -3281,7 +3391,7 @@ function render(t) {
   b.setTransform(scale, 0, 0, scale, -Math.round(camX * scale), -Math.round(camY * scale));
   b.imageSmoothingEnabled = false;
   b.fillStyle = '#2e2235'; b.fillRect(camX, camY, bw, bh);
-  b.drawImage(BG, 0, TOP);
+  b.drawImage(BG, LEFT, TOP);
   const sky = drawLiveWall(b, new Date(), t);
 
   // ชั้นพื้น: พรม, พรมใต้โต๊ะ, ที่นอนแมว
@@ -3406,6 +3516,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
   G.bubbleHits = [];
   G.musicHits = [];
   drawDoorLabels(c, camX, camY, scale);
+  placeCinemaPanel(camX, camY, scale);
   // ป้ายชื่อโต๊ะ
   c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const s of DESK_SLOTS) {
@@ -4217,6 +4328,7 @@ const ZONE_TIPS = {
   karaoke: 'ห้องส่วนตัว — ร้องเพลงได้เต็มที่ คนข้างนอกไม่ได้ยิน',
   pub: 'ห้องส่วนตัว — ได้ยินทุกคนในผับ คนข้างนอกไม่ได้ยิน',
   shrine: 'ห้องส่วนตัว เงียบสงบ — ได้ยินเฉพาะคนในห้อง · นั่งเบาะกราบเพื่อไหว้พระ 🙏',
+  cinema: 'ห้องส่วนตัว — แตะจอใหญ่เพื่อฉายหนังจาก YouTube แล้วเลือกที่นั่ง ธรรมดา / VIP / เตียง VVIP 🍿',
 };
 const peerRange = (p) => clamp(Number(p.mr) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
 const peerRingColor = (p) => MIC_COLORS[Number.isInteger(p.mc) && p.mc >= 0 && p.mc < MIC_COLORS.length ? p.mc : 0];
@@ -4229,7 +4341,7 @@ function setMic(patch) {
 function updateZones() {
   if (!G.joined) return;
   const dock = $('#dock');
-  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big') && !c.classList.contains('free')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
+  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big') && !c.classList.contains('free') && !c.classList.contains('onscreen')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
   const z = zoneAt(G.me.x, G.me.y);
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
@@ -4279,9 +4391,9 @@ function drawHearingRange(b, t) {
 function drawDoorLabels(c, camX, camY, scale) {
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = '500 11px Mitr, sans-serif';
-  for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE, DOOR_SHRINE]) {
+  for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE, DOOR_SHRINE, DOOR_CINEMA]) {
     const Z = ZONES[d.zone];
-    const sx = d.side ? (d.x + 44 - camX) * scale : (d.x + d.w / 2 - camX) * scale;
+    const sx = d.side ? (d.x + (d.left ? 40 : 44) - camX) * scale : (d.x + d.w / 2 - camX) * scale;
     const sy = d.side ? (d.y + d.h / 2 - camY) * scale : d.up ? (WALL + 12 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
     const label = `${Z.icon} ${Z.name}`;
     const w = c.measureText(label).width + 14;
@@ -4434,7 +4546,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -4648,7 +4760,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) spPo
 
 // ------------------------------------------------- YouTube ดูด้วยกัน ----
 // เปิดคลิปบนทีวี/จอนำเสนอ: คนที่อยู่ห้องเดียวกับจอจะเห็นและเล่นพร้อมกัน
-const SCREEN_TYPES = new Set(['tv', 'bigScreen', 'speaker']); // ลำโพง = เปิด YouTube แบบฟังอย่างเดียว ได้ยินเฉพาะคนในห้องนั้น
+const SCREEN_TYPES = new Set(['tv', 'bigScreen', 'speaker', 'projectorScreen']); // ลำโพง = เปิด YouTube แบบฟังอย่างเดียว ได้ยินเฉพาะคนในห้องนั้น
 G.screens = new Map();
 const YT = { player: null, ready: false, apiPromise: null, cur: null, suppressUntil: 0, hiddenKey: '', lastPlayTry: 0 };
 function parseYouTube(text) {
@@ -4726,6 +4838,7 @@ async function syncScreens() {
   const act = activeScreen();
   const panel = $('#ytPanel');
   if (!act) {
+    G.cinemaPlaying = false; YT.act = null;
     if (YT.cur) { YT.cur = null; if (YT.ready) ytCall(() => YT.player.pauseVideo()); }
     panel.classList.add('hidden');
     return;
@@ -4735,6 +4848,8 @@ async function syncScreens() {
   panel.classList.remove('hidden');
   const where = ZONES[zoneAt(act.it.x, act.it.y + 6)];
   const isSpk = act.it.t === 'speaker';
+  G.cinemaPlaying = act.it.t === 'projectorScreen' && !!act.doc.playing;
+  YT.act = act;
   $('#ytTitle').textContent = `${isSpk ? '🔊' : '📺'} ${act.doc.title || 'YouTube'} · ${where.name}`;
   // ลำโพง: ย่อเป็นแถบฟังอย่างเดียวให้เอง (กด 🔼 ถ้าอยากเห็นภาพ)
   if (isSpk && YT.autoMini !== key) {
@@ -4852,12 +4967,17 @@ function openScreenModal(it) {
 
 // ภาพปกคลิปบนจอในห้อง
 const ytThumbs = new Map();
+function screenRect(it, sx, sy) {
+  if (it.t === 'tv') return [sx + 4, sy + 1, 28, 15];
+  if (it.t === 'projectorScreen') return [sx + 7, sy + 6, 198, 58];
+  return [sx + 3, sy + 3, 60, 28];
+}
 function drawScreenThumb(c, it, sx, sy) {
   // มีคนแชร์จออยู่ในห้องเดียวกัน → โชว์ภาพจอสดบนทีวี/จอนำเสนอ
   const live = zoneAt(it.x, it.y + 6) === G.zone && shareSources()[0];
   if (live) {
     const v = live.el;
-    const r = it.t === 'tv' ? [sx + 4, sy + 1, 28, 15] : [sx + 3, sy + 3, 60, 28];
+    const r = screenRect(it, sx, sy);
     c.fillStyle = '#000'; c.fillRect(...r);
     if (v.readyState >= 2 && v.videoWidth) {
       const k = Math.min(r[2] / v.videoWidth, r[3] / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
@@ -4872,9 +4992,14 @@ function drawScreenThumb(c, it, sx, sy) {
   if (!doc || !doc.v) return;
   let e = ytThumbs.get(doc.v);
   if (!e) { const img = new Image(); e = { img, ready: false }; img.onload = () => (e.ready = true); img.src = `https://i.ytimg.com/vi/${doc.v}/mqdefault.jpg`; ytThumbs.set(doc.v, e); }
-  const r = it.t === 'tv' ? [sx + 4, sy + 1, 28, 15] : [sx + 3, sy + 3, 60, 28];
+  const r = screenRect(it, sx, sy);
   c.fillStyle = '#000'; c.fillRect(...r);
-  if (e.ready) { const prev = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true; c.drawImage(e.img, ...r); c.imageSmoothingEnabled = prev; }
+  if (e.ready) {
+    const prev = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true;
+    const k = Math.min(r[2] / 320, r[3] / 180), w = 320 * k, h = 180 * k; // ภาพปก 16:9 ไม่ยืด
+    c.drawImage(e.img, r[0] + (r[2] - w) / 2, r[1] + (r[3] - h) / 2, w, h);
+    c.imageSmoothingEnabled = prev;
+  }
   const cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2;
   c.fillStyle = '#ff0033'; c.fillRect(cx - 4, cy - 3, 9, 7);
   c.fillStyle = '#ffffff'; c.fillRect(cx - 1, cy - 2, 1, 5); c.fillRect(cx, cy - 1, 1, 3); c.fillRect(cx + 1, cy, 1, 1);
@@ -5119,6 +5244,24 @@ $('#ytVol').oninput = () => setMyVolume(Number($('#ytVol').value));
 $('#ytMute').onclick = () => setMyVolume(null, !G.myVol.muted);
 if (isIOS) $('#ytVolRow').append(el('p', 'tip', 'iPhone/iPad: แถบนี้ปิด/เปิดเสียงได้ แต่ความดังต้องใช้ปุ่มข้างเครื่อง (Safari ไม่ให้เว็บปรับระดับเสียง)'));
 paintMyVolume();
+
+// ---------- โรงหนัง: ให้วิดีโอไปอยู่บนจอโปรเจกเตอร์ในห้องจริงๆ ----------
+// (ถ้าผู้ใช้ย่อ/ขยาย/ลากหน้าต่างเอง จะใช้แบบที่ผู้ใช้เลือกแทน)
+function placeCinemaPanel(camX, camY, scale) {
+  const panel = $('#ytPanel');
+  const act = YT.act;
+  const want = act && act.it.t === 'projectorScreen' && !panel.classList.contains('hidden') && !panel.classList.contains('mini') && !panel.classList.contains('big') && !panel.classList.contains('free') && zoneAt(act.it.x, act.it.y) === G.zone;
+  if (!want) {
+    if (panel.classList.contains('onscreen')) { panel.classList.remove('onscreen'); panel.style.left = panel.style.top = panel.style.width = ''; panel.style.removeProperty('--sh'); }
+    return;
+  }
+  const it = act.it;
+  const x = (it.x - 106 + 1 + 7 - camX) * scale, y = (it.y - 72 + 1 + 6 - camY) * scale;
+  panel.classList.add('onscreen');
+  panel.style.left = Math.round(x) + 'px'; panel.style.top = Math.round(y) + 'px';
+  panel.style.width = Math.round(198 * scale) + 'px';
+  panel.style.setProperty('--sh', Math.round(58 * scale) + 'px');
+}
 
 })();
 </script>

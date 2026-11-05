@@ -220,7 +220,7 @@ function updateMe(dt) {
     const inside = hitsRects(G.rects, me.x, me.y);
     if (inside || !hitsRects(G.rects, me.x + vx * step, me.y)) { me.x += vx * step; moved = true; }
     if (inside || !hitsRects(G.rects, me.x, me.y + vy * step)) { me.y += vy * step; moved = true; }
-    me.x = clamp(me.x, 6, W - 6); me.y = clamp(me.y, SHRINE_FLOOR + 2, H - 4);
+    me.x = clamp(me.x, LEFT + 6, W - 6); me.y = clamp(me.y, SHRINE_FLOOR + 2, H - 4);
   } else if (me.path && me.path.length) {
     const t = me.path[0];
     const dx = t.x - me.x, dy = t.y - me.y, d = Math.hypot(dx, dy);
@@ -574,7 +574,7 @@ function buildPalette() {
     const l = document.createElement('span'); l.textContent = d.label; b.append(l);
     b.onclick = async () => {
       if (!(await materializeDefaults())) return;
-      const it = { id: 'f' + randomId(8), t: type, x: Math.round(clamp(G.me.x, 30, W - 30)), y: Math.round(clamp(G.me.y - 20, SHRINE_FLOOR + d.h * 0.4, H - 8)), v: 0, f: 0 };
+      const it = { id: 'f' + randomId(8), t: type, x: Math.round(clamp(G.me.x, LEFT + 30, W - 30)), y: Math.round(clamp(G.me.y - 20, SHRINE_FLOOR + d.h * 0.4, H - 8)), v: 0, f: 0 };
       if (G.furnDocs) G.furnDocs = [...G.furnDocs, it];
       rebuildWorld();
       G.selected = it.id;
@@ -712,14 +712,14 @@ canvas.addEventListener('pointermove', (e) => {
   if (G.drag) {
     const it = G.furniture.find((f) => f.id === G.drag.id);
     if (!it) return;
-    it.x = clamp(Math.round(w.x - G.drag.ox), 10, W - 10);
+    it.x = clamp(Math.round(w.x - G.drag.ox), LEFT + 10, W - 10);
     it.y = clamp(Math.round(w.y - G.drag.oy), SHRINE_FLOOR + 4, H - 4);
     G.drag.moved = true;
     pres({ dr: { id: it.id, x: it.x, y: it.y } });
     updateSelBar();
   } else if (G.pan) {
     G.camManual = true;
-    G.cam.mx = clamp(G.pan.mx - (e.clientX - G.pan.sx) / G.scale, 0, W);
+    G.cam.mx = clamp(G.pan.mx - (e.clientX - G.pan.sx) / G.scale, LEFT, W);
     G.cam.my = clamp(G.pan.my - (e.clientY - G.pan.sy) / G.scale, TOP, H);
     G.cam.cx = G.cam.mx; G.cam.cy = G.cam.my;
   } else if (G.holding && performance.now() - holdTimer > 160) {
@@ -822,7 +822,7 @@ function render(t) {
   b.setTransform(scale, 0, 0, scale, -Math.round(camX * scale), -Math.round(camY * scale));
   b.imageSmoothingEnabled = false;
   b.fillStyle = '#2e2235'; b.fillRect(camX, camY, bw, bh);
-  b.drawImage(BG, 0, TOP);
+  b.drawImage(BG, LEFT, TOP);
   const sky = drawLiveWall(b, new Date(), t);
 
   // ชั้นพื้น: พรม, พรมใต้โต๊ะ, ที่นอนแมว
@@ -947,6 +947,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
   G.bubbleHits = [];
   G.musicHits = [];
   drawDoorLabels(c, camX, camY, scale);
+  placeCinemaPanel(camX, camY, scale);
   // ป้ายชื่อโต๊ะ
   c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const s of DESK_SLOTS) {

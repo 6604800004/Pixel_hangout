@@ -23,6 +23,7 @@ const ZONE_TIPS = {
   karaoke: 'ห้องส่วนตัว — ร้องเพลงได้เต็มที่ คนข้างนอกไม่ได้ยิน',
   pub: 'ห้องส่วนตัว — ได้ยินทุกคนในผับ คนข้างนอกไม่ได้ยิน',
   shrine: 'ห้องส่วนตัว เงียบสงบ — ได้ยินเฉพาะคนในห้อง · นั่งเบาะกราบเพื่อไหว้พระ 🙏',
+  cinema: 'ห้องส่วนตัว — แตะจอใหญ่เพื่อฉายหนังจาก YouTube แล้วเลือกที่นั่ง ธรรมดา / VIP / เตียง VVIP 🍿',
 };
 const peerRange = (p) => clamp(Number(p.mr) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
 const peerRingColor = (p) => MIC_COLORS[Number.isInteger(p.mc) && p.mc >= 0 && p.mc < MIC_COLORS.length ? p.mc : 0];
@@ -35,7 +36,7 @@ function setMic(patch) {
 function updateZones() {
   if (!G.joined) return;
   const dock = $('#dock');
-  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big') && !c.classList.contains('free')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
+  G.dockBottom = isMobile() && !isLand() && [...dock.children].some((c) => !c.classList.contains('hidden') && !c.classList.contains('big') && !c.classList.contains('free') && !c.classList.contains('onscreen')) ? Math.min(dock.getBoundingClientRect().bottom, G.view.ch * 0.6) : 0;
   const z = zoneAt(G.me.x, G.me.y);
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
@@ -85,9 +86,9 @@ function drawHearingRange(b, t) {
 function drawDoorLabels(c, camX, camY, scale) {
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = '500 11px Mitr, sans-serif';
-  for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE, DOOR_SHRINE]) {
+  for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE, DOOR_SHRINE, DOOR_CINEMA]) {
     const Z = ZONES[d.zone];
-    const sx = d.side ? (d.x + 44 - camX) * scale : (d.x + d.w / 2 - camX) * scale;
+    const sx = d.side ? (d.x + (d.left ? 40 : 44) - camX) * scale : (d.x + d.w / 2 - camX) * scale;
     const sy = d.side ? (d.y + d.h / 2 - camY) * scale : d.up ? (WALL + 12 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
     const label = `${Z.icon} ${Z.name}`;
     const w = c.measureText(label).width + 14;
@@ -240,7 +241,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -454,7 +455,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) spPo
 
 // ------------------------------------------------- YouTube ดูด้วยกัน ----
 // เปิดคลิปบนทีวี/จอนำเสนอ: คนที่อยู่ห้องเดียวกับจอจะเห็นและเล่นพร้อมกัน
-const SCREEN_TYPES = new Set(['tv', 'bigScreen', 'speaker']); // ลำโพง = เปิด YouTube แบบฟังอย่างเดียว ได้ยินเฉพาะคนในห้องนั้น
+const SCREEN_TYPES = new Set(['tv', 'bigScreen', 'speaker', 'projectorScreen']); // ลำโพง = เปิด YouTube แบบฟังอย่างเดียว ได้ยินเฉพาะคนในห้องนั้น
 G.screens = new Map();
 const YT = { player: null, ready: false, apiPromise: null, cur: null, suppressUntil: 0, hiddenKey: '', lastPlayTry: 0 };
 function parseYouTube(text) {
@@ -532,6 +533,7 @@ async function syncScreens() {
   const act = activeScreen();
   const panel = $('#ytPanel');
   if (!act) {
+    G.cinemaPlaying = false; YT.act = null;
     if (YT.cur) { YT.cur = null; if (YT.ready) ytCall(() => YT.player.pauseVideo()); }
     panel.classList.add('hidden');
     return;
@@ -541,6 +543,8 @@ async function syncScreens() {
   panel.classList.remove('hidden');
   const where = ZONES[zoneAt(act.it.x, act.it.y + 6)];
   const isSpk = act.it.t === 'speaker';
+  G.cinemaPlaying = act.it.t === 'projectorScreen' && !!act.doc.playing;
+  YT.act = act;
   $('#ytTitle').textContent = `${isSpk ? '🔊' : '📺'} ${act.doc.title || 'YouTube'} · ${where.name}`;
   // ลำโพง: ย่อเป็นแถบฟังอย่างเดียวให้เอง (กด 🔼 ถ้าอยากเห็นภาพ)
   if (isSpk && YT.autoMini !== key) {
@@ -658,12 +662,17 @@ function openScreenModal(it) {
 
 // ภาพปกคลิปบนจอในห้อง
 const ytThumbs = new Map();
+function screenRect(it, sx, sy) {
+  if (it.t === 'tv') return [sx + 4, sy + 1, 28, 15];
+  if (it.t === 'projectorScreen') return [sx + 7, sy + 6, 198, 58];
+  return [sx + 3, sy + 3, 60, 28];
+}
 function drawScreenThumb(c, it, sx, sy) {
   // มีคนแชร์จออยู่ในห้องเดียวกัน → โชว์ภาพจอสดบนทีวี/จอนำเสนอ
   const live = zoneAt(it.x, it.y + 6) === G.zone && shareSources()[0];
   if (live) {
     const v = live.el;
-    const r = it.t === 'tv' ? [sx + 4, sy + 1, 28, 15] : [sx + 3, sy + 3, 60, 28];
+    const r = screenRect(it, sx, sy);
     c.fillStyle = '#000'; c.fillRect(...r);
     if (v.readyState >= 2 && v.videoWidth) {
       const k = Math.min(r[2] / v.videoWidth, r[3] / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
@@ -678,9 +687,14 @@ function drawScreenThumb(c, it, sx, sy) {
   if (!doc || !doc.v) return;
   let e = ytThumbs.get(doc.v);
   if (!e) { const img = new Image(); e = { img, ready: false }; img.onload = () => (e.ready = true); img.src = `https://i.ytimg.com/vi/${doc.v}/mqdefault.jpg`; ytThumbs.set(doc.v, e); }
-  const r = it.t === 'tv' ? [sx + 4, sy + 1, 28, 15] : [sx + 3, sy + 3, 60, 28];
+  const r = screenRect(it, sx, sy);
   c.fillStyle = '#000'; c.fillRect(...r);
-  if (e.ready) { const prev = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true; c.drawImage(e.img, ...r); c.imageSmoothingEnabled = prev; }
+  if (e.ready) {
+    const prev = c.imageSmoothingEnabled; c.imageSmoothingEnabled = true;
+    const k = Math.min(r[2] / 320, r[3] / 180), w = 320 * k, h = 180 * k; // ภาพปก 16:9 ไม่ยืด
+    c.drawImage(e.img, r[0] + (r[2] - w) / 2, r[1] + (r[3] - h) / 2, w, h);
+    c.imageSmoothingEnabled = prev;
+  }
   const cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2;
   c.fillStyle = '#ff0033'; c.fillRect(cx - 4, cy - 3, 9, 7);
   c.fillStyle = '#ffffff'; c.fillRect(cx - 1, cy - 2, 1, 5); c.fillRect(cx, cy - 1, 1, 3); c.fillRect(cx + 1, cy, 1, 1);
@@ -925,3 +939,21 @@ $('#ytVol').oninput = () => setMyVolume(Number($('#ytVol').value));
 $('#ytMute').onclick = () => setMyVolume(null, !G.myVol.muted);
 if (isIOS) $('#ytVolRow').append(el('p', 'tip', 'iPhone/iPad: แถบนี้ปิด/เปิดเสียงได้ แต่ความดังต้องใช้ปุ่มข้างเครื่อง (Safari ไม่ให้เว็บปรับระดับเสียง)'));
 paintMyVolume();
+
+// ---------- โรงหนัง: ให้วิดีโอไปอยู่บนจอโปรเจกเตอร์ในห้องจริงๆ ----------
+// (ถ้าผู้ใช้ย่อ/ขยาย/ลากหน้าต่างเอง จะใช้แบบที่ผู้ใช้เลือกแทน)
+function placeCinemaPanel(camX, camY, scale) {
+  const panel = $('#ytPanel');
+  const act = YT.act;
+  const want = act && act.it.t === 'projectorScreen' && !panel.classList.contains('hidden') && !panel.classList.contains('mini') && !panel.classList.contains('big') && !panel.classList.contains('free') && zoneAt(act.it.x, act.it.y) === G.zone;
+  if (!want) {
+    if (panel.classList.contains('onscreen')) { panel.classList.remove('onscreen'); panel.style.left = panel.style.top = panel.style.width = ''; panel.style.removeProperty('--sh'); }
+    return;
+  }
+  const it = act.it;
+  const x = (it.x - 106 + 1 + 7 - camX) * scale, y = (it.y - 72 + 1 + 6 - camY) * scale;
+  panel.classList.add('onscreen');
+  panel.style.left = Math.round(x) + 'px'; panel.style.top = Math.round(y) + 'px';
+  panel.style.width = Math.round(198 * scale) + 'px';
+  panel.style.setProperty('--sh', Math.round(58 * scale) + 'px');
+}

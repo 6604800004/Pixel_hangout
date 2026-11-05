@@ -4,6 +4,10 @@
 const W = 512, H = 856, WALL = 58;
 // ห้องไหว้พระอยู่ "ข้างบนสุด" เหนือห้องรวม (พิกัด y ติดลบ) — พระต้องอยู่สูงสุดในบ้าน
 const TOP = -232;
+// โรงหนังอยู่ "ข้างๆ" ทางซ้ายของห้องรวม (พิกัด x ติดลบ)
+const LEFT = -288;
+const CINEMA = { x0: LEFT, x1: 0, y0: 0, y1: 352 }; // รวมผนัง
+const DOOR_CINEMA = { x: 0, y: 112, h: 34, zone: 'cinema', side: true, left: true };
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
 const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
@@ -24,8 +28,10 @@ const ZONES = {
   karaoke: { id: 'karaoke', name: 'ห้องคาราโอเกะ', icon: '🎤' },
   pub: { id: 'pub', name: 'ผับ', icon: '🍻' },
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
+  cinema: { id: 'cinema', name: 'โรงหนัง', icon: '🎬' },
 };
 function zoneAt(x, y) {
+  if (x < 0) return 'cinema';
   if (y < 0) return 'shrine';
   if (y < LOWER_Y + 16) return 'hall';
   if (y < LOWER2_Y + 16) return x < DIVIDER_X + 3 ? 'meet' : 'garden';
@@ -79,10 +85,17 @@ const DEFAULT_LAYOUT = [
   { t: 'chantTable', x: 96, y: -48 }, { t: 'chantTable', x: 416, y: -48 },
   // ---- ลำโพงเปิดเพลง YouTube (ห้องรวม + ผับ) ----
   { t: 'speaker', x: 490, y: 262 }, { t: 'speaker', x: 440, y: 676 },
+  // ---- โรงหนัง (ทางซ้ายของห้องรวม) ----
+  { t: 'projectorScreen', x: -146, y: 76 },
+  ...[-250, -230, -210, -190, -170, -122, -102, -82, -62, -42].flatMap((x) => [{ t: 'cinemaSeat', x, y: 150 }, { t: 'cinemaSeat', x, y: 180 }]),
+  ...[-240, -210, -180, -112, -82, -52].map((x) => ({ t: 'vipSeat', x, y: 222 })),
+  { t: 'vvipBed', x: -214, y: 300 }, { t: 'vvipBed', x: -78, y: 300 },
+  { t: 'popcorn', x: -266, y: 344 }, { t: 'speaker', x: -272, y: 92 }, { t: 'speaker', x: -20, y: 92 },
 ];
-const LAYOUT_VERSION = 6;
+const LAYOUT_VERSION = 7;
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
+const LAYOUT_V7_FROM = 92; // def92 ขึ้นไปมาในเวอร์ชัน 7 (โรงหนัง)
 const LAYOUT_V6_FROM = 90; // def90 ขึ้นไปมาในเวอร์ชัน 6 (ลำโพงในห้องรวม/ผับ)
 const LAYOUT_V4_FROM = 73; // def73 ขึ้นไปมาในเวอร์ชัน 4–5 (ห้องไหว้พระ — v5 ย้ายขึ้นไปอยู่บนสุด)
 
@@ -102,9 +115,9 @@ const LOWER_WINDOWS = [{ x: 256, y: 360, w: 26, h: 16 }];
 const CLOCK = { x: 176, y: 26 };
 
 function buildBackground() {
-  const c = mkCanvas(W, H - TOP);
+  const c = mkCanvas(W - LEFT, H - TOP);
   const g = c.getContext('2d');
-  g.translate(0, -TOP); // วาดด้วยพิกัดโลก (รวมส่วนที่ y ติดลบของห้องไหว้พระ)
+  g.translate(-LEFT, -TOP); // วาดด้วยพิกัดโลก (รวมส่วนที่ y ติดลบของห้องไหว้พระ)
   const P = painter(g);
   let seed = 11;
   const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
@@ -338,6 +351,24 @@ function buildBackground() {
   }
   // ---- ขอบห้อง ----
   P(0, TOP, 3, H - TOP, '#3a2c3f'); P(W - 3, TOP, 3, H - TOP, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f'); P(0, TOP, W, 3, '#3a2c3f');
+  // ================= โรงหนัง =================
+  { const { x0, y1 } = CINEMA, fx = x0 + 3, fw = -6 - fx;
+    for (let y = WALL; y < y1; y += 8) for (let x = fx; x < -6; x += 8) {
+      P(x, y, 8, 8, ((x / 8 + y / 8) | 0) % 2 ? '#4a1626' : '#521a2b');
+      if (((x * 7 + y * 3) & 31) === 0) P(x + 3, y + 3, 2, 2, '#7a2a3e');
+    }
+    for (const ry of [164, 194, 238]) { P(fx, ry, fw, 2, '#3a0f1c'); P(fx, ry + 2, fw, 1, '#6a2236'); }
+    for (let y = 120; y < y1; y += 22) { P(-148, y, 3, 2, '#ffd34d'); P(-30, y, 3, 2, '#ffd34d'); }
+    P(fx, 0, fw, WALL, '#2a0a14');
+    for (let x = fx; x < -6; x += 6) { P(x, 4, 3, WALL - 8, '#8f1d2c'); P(x + 3, 4, 3, WALL - 8, '#a8263a'); P(x + 1, 4, 1, WALL - 8, '#c03a4e'); }
+    P(fx, 0, fw, 6, '#d9a441'); P(fx, 5, fw, 1, '#a8752a'); P(fx, WALL - 6, fw, 6, '#3a0f1c'); P(fx, WALL - 6, fw, 1, '#5a1828');
+    P(x0, 0, 3, y1 + 30, '#3a2c3f'); P(x0, 0, -x0, 3, '#3a2c3f');
+    P(fx, y1, fw + 6, 30, '#2a0a14'); P(fx, y1, fw + 6, 2, '#5a1828'); P(x0, y1 + 27, -x0, 3, '#3a2c3f');
+    const d = DOOR_CINEMA;
+    P(-6, WALL, 9, d.y - WALL, '#3a2c3f'); P(-6, d.y + d.h, 9, y1 - d.y - d.h, '#3a2c3f');
+    P(-6, d.y, 9, d.h, '#521a2b'); P(-7, d.y - 3, 11, 3, '#d9a441'); P(-7, d.y + d.h, 11, 3, '#d9a441');
+    P(0, d.y, 3, d.h, '#d9a374');
+  }
   return c;
 }
 
@@ -401,6 +432,18 @@ function drawLiveWall(ctx, now, t) {
       ctx.fillRect(Math.round(cx + Math.sin(ph * 7 + i) * 3) - 1, Math.round(top + 38 - ph * 26), 2, 2);
     }
   }
+  // ---- โรงหนัง: ไฟหรี่ + ลำแสงโปรเจกเตอร์ตอนฉาย ----
+  { const playing = typeof G !== 'undefined' && G.cinemaPlaying;
+    ctx.fillStyle = 'rgba(10,0,8,0.28)'; ctx.fillRect(LEFT + 3, WALL, -LEFT - 9, CINEMA.y1 - WALL);
+    if (playing) {
+      const a = 0.07 + 0.025 * Math.sin(t * 2.3);
+      ctx.fillStyle = `rgba(200,220,255,${a})`;
+      ctx.beginPath(); ctx.moveTo(-150, CINEMA.y1 - 6); ctx.lineTo(-250, 70); ctx.lineTo(-40, 70); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = '#2f3245'; ctx.fillRect(-156, CINEMA.y1 - 10, 14, 8); ctx.fillStyle = playing ? '#fff6c8' : '#5a5f7a'; ctx.fillRect(-151, CINEMA.y1 - 11, 4, 3);
+    const on = Math.floor(t * 3) % 2;
+    for (let i = 0; i < 6; i++) { ctx.fillStyle = (i + on) % 2 ? '#ffd34d' : '#ff8f2a'; ctx.fillRect(5 + (i % 2) * 2, DOOR_CINEMA.y + 2 + i * 5, 2, 2); }
+  }
   // ---- ผับ: ป้ายนีออน PUB ----
   ctx.fillStyle = Math.floor(t * 1.3) % 7 ? '#ffb86b' : '#7a4e34';
   const px = 470, py = LOWER2_Y + 10;
@@ -439,6 +482,11 @@ function solidRects(furniture) {
   list.push({ x: DOOR_PUB.x + DOOR_PUB.w, y: LOWER2_Y - 2, w: W - DOOR_PUB.x - DOOR_PUB.w, h: LOWER2_FLOOR - LOWER2_Y + 2 });
   list.push({ x: DIVIDER2_X - 1, y: LOWER2_Y - 2, w: 8, h: DOOR_KARAOKE.y - LOWER2_Y + 2 });
   list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: H - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
+  // โรงหนัง: นอกห้อง = ทึบ, ผนังกั้นกับห้องรวม (เว้นประตู)
+  list.push({ x: LEFT - 20, y: TOP - 20, w: -LEFT + 20, h: WALL - TOP + 20 });
+  list.push({ x: LEFT - 20, y: CINEMA.y1, w: -LEFT + 20, h: H - CINEMA.y1 + 20 });
+  list.push({ x: -6, y: WALL - 4, w: 9, h: DOOR_CINEMA.y - WALL + 4 });
+  list.push({ x: -6, y: DOOR_CINEMA.y + DOOR_CINEMA.h, w: 9, h: CINEMA.y1 - DOOR_CINEMA.y - DOOR_CINEMA.h });
   // ผนังด้านบนของห้องรวม = ผนังกั้นห้องไหว้พระ (เว้นประตู) + โต๊ะหมู่บูชา + เสา
   list.push({ x: 0, y: -6, w: DOOR_SHRINE.x, h: WALL + 6 });
   list.push({ x: DOOR_SHRINE.x + DOOR_SHRINE.w, y: -6, w: W - DOOR_SHRINE.x - DOOR_SHRINE.w, h: WALL + 6 });
@@ -447,16 +495,16 @@ function solidRects(furniture) {
   return list;
 }
 function hitsRects(rects, x, y) {
-  if (x < 9 || x > W - 9 || y < SHRINE_FLOOR + 5 || y > H - 5) return true;
+  if (x < LEFT + 9 || x > W - 9 || y < SHRINE_FLOOR + 5 || y > H - 5) return true;
   for (const r of rects) if (x + 5 > r.x && x - 5 < r.x + r.w && y + 2 > r.y && y - 3 < r.y + r.h) return true;
   return false;
 }
 
 // ---------- หาเส้นทาง (A* บนตาราง 4px) ----------
-const CELL = 4, GW = W / CELL, GH = (H - TOP) / CELL; // แถวที่ 0 = y TOP
+const CELL = 4, GW = (W - LEFT) / CELL, GH = (H - TOP) / CELL; // คอลัมน์ 0 = x LEFT, แถว 0 = y TOP
 function buildGrid(rects) {
   const grid = new Uint8Array(GW * GH);
-  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) grid[gy * GW + gx] = hitsRects(rects, gx * CELL + 2, gy * CELL + 2 + TOP) ? 1 : 0;
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) grid[gy * GW + gx] = hitsRects(rects, gx * CELL + 2 + LEFT, gy * CELL + 2 + TOP) ? 1 : 0;
   return grid;
 }
 function findPath(grid, sx, sy, tx, ty) {
@@ -472,15 +520,15 @@ function findPath(grid, sx, sy, tx, ty) {
     }
     return best;
   };
-  let s = toCell(sy - TOP, GH) * GW + toCell(sx, GW);
-  let goal = toCell(ty - TOP, GH) * GW + toCell(tx, GW);
+  let s = toCell(sy - TOP, GH) * GW + toCell(sx - LEFT, GW);
+  let goal = toCell(ty - TOP, GH) * GW + toCell(tx - LEFT, GW);
   const prefix = [];
   if (grid[s]) {
     // เริ่มจากในเฟอร์นิเจอร์ (เช่นเพิ่งลุกจากโซฟา): ออกไปช่องว่างใกล้สุดก่อน
     const f = nearestFree(s);
     if (f < 0) return null;
     s = f;
-    prefix.push({ x: (f % GW) * CELL + 2, y: ((f / GW) | 0) * CELL + 2 + TOP });
+    prefix.push({ x: (f % GW) * CELL + 2 + LEFT, y: ((f / GW) | 0) * CELL + 2 + TOP });
   }
   if (grid[goal]) {
     // เป้าหมายอยู่ในของ: หาช่องว่างที่ใกล้ที่สุด
@@ -488,7 +536,7 @@ function findPath(grid, sx, sy, tx, ty) {
     if (best < 0) return null;
     goal = best;
   }
-  if (s === goal) return prefix.concat([{ x: (goal % GW) * CELL + 2, y: ((goal / GW) | 0) * CELL + 2 + TOP }]);
+  if (s === goal) return prefix.concat([{ x: (goal % GW) * CELL + 2 + LEFT, y: ((goal / GW) | 0) * CELL + 2 + TOP }]);
   const N = GW * GH;
   const gScore = new Float32Array(N).fill(Infinity);
   const came = new Int32Array(N).fill(-1);
@@ -522,7 +570,7 @@ function findPath(grid, sx, sy, tx, ty) {
   for (let c = goal; c !== -1 && c !== s; c = came[c]) cells.push(c);
   cells.reverse();
   // ลดจุดที่เรียงเป็นเส้นตรง
-  const pts = cells.map((c) => ({ x: (c % GW) * CELL + 2, y: ((c / GW) | 0) * CELL + 2 + TOP }));
+  const pts = cells.map((c) => ({ x: (c % GW) * CELL + 2 + LEFT, y: ((c / GW) | 0) * CELL + 2 + TOP }));
   const out = [];
   for (let i = 0; i < pts.length; i++) {
     const a = out[out.length - 1], b = pts[i], n = pts[i + 1];

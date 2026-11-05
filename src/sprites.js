@@ -565,7 +565,62 @@ const FURN = {
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 30 - fx / 3, sy + 22, 4, 2); ctx.fillRect(sx + 28 - fx / 3, sy + 23, 1, 1);
     const r = Math.floor(t * 2) % 6;
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(sx + 34 - r, sy + 8, 2 + r * 2, 1);
-  } },  // ---------------- ห้องไหว้พระ ----------------
+  } },  // ---------------- โรงหนัง ----------------
+  projectorScreen: { label: 'จอโปรเจกเตอร์', emo: '📽️', w: 212, h: 72, solid: true, foot: 4, draw(P) {
+    P(0, 0, 212, 70, '#1d1f2e'); P(0, 0, 212, 3, '#43475e'); P(2, 2, 208, 66, '#2f3245');
+    P(6, 5, 200, 60, '#d8dce8'); P(6, 5, 200, 2, '#ffffff');
+    P(0, 68, 212, 4, '#1d1f2e'); P(3, 69, 206, 1, '#43475e');
+  },
+  anim(ctx, sx, sy, t) {
+    // ยังไม่ฉาย: จอขาวนวลๆ มีโลโก้ฟิล์มเบาๆ
+    ctx.fillStyle = '#eef0f6'; ctx.fillRect(sx + 7, sy + 6, 198, 58);
+    ctx.fillStyle = 'rgba(90,79,120,.35)';
+    const cx = sx + 106, cy = sy + 35;
+    ctx.fillRect(cx - 14, cy - 8, 28, 16); ctx.fillStyle = '#eef0f6'; for (let i = 0; i < 4; i++) { ctx.fillRect(cx - 12 + i * 7, cy - 6, 4, 2); ctx.fillRect(cx - 12 + i * 7, cy + 4, 4, 2); }
+    ctx.fillStyle = 'rgba(90,79,120,.25)'; ctx.fillRect(cx - 20, cy + 12, 40, 2);
+  } },
+  cinemaSeat: { label: 'เก้าอี้โรงหนัง', emo: '💺', w: 16, h: 20, solid: true, foot: 6, variants: 3,
+    seats: () => [{ dx: 0, dy: -8, dir: 'up' }],
+    draw(P, v) {
+      const [m, d, l] = [['#b02a3a', '#7a1626', '#d84a5a'], ['#3f5fb0', '#26387a', '#6a86d8'], ['#2f3245', '#1d1f2e', '#4a4f68']][v % 3];
+      P(2, 0, 12, 6, d); P(3, 1, 10, 4, m);                // เบาะนั่ง
+      P(0, 4, 3, 12, '#2f3245'); P(13, 4, 3, 12, '#2f3245'); // ที่วางแขน
+      P(1, 7, 14, 11, m); P(1, 7, 14, 2, l); P(1, 16, 14, 2, d); P(7, 9, 2, 7, d); // พนักพิง (เห็นด้านหลัง)
+      P(13, 3, 3, 2, '#ffd34d');                            // ที่วางแก้ว
+      P(2, 18, 2, 2, '#1d1f2e'); P(12, 18, 2, 2, '#1d1f2e');
+    } },
+  vipSeat: { label: 'เก้าอี้ VIP', emo: '🛋️', w: 24, h: 24, solid: true, foot: 8, variants: 2,
+    seats: () => [{ dx: 0, dy: -10, dir: 'up' }],
+    draw(P, v) {
+      const [m, d, l] = [['#2a2a30', '#141418', '#4a4a55'], ['#5a2a6e', '#3a1648', '#7e4a94']][v % 2];
+      P(3, 0, 18, 8, d); P(4, 1, 16, 6, m);
+      P(0, 5, 4, 14, '#d9a441'); P(20, 5, 4, 14, '#d9a441'); P(0, 5, 4, 1, '#f4d27a'); P(20, 5, 4, 1, '#f4d27a');
+      P(1, 9, 22, 13, m); P(1, 9, 22, 2, l); P(1, 20, 22, 2, d); P(6, 12, 12, 1, d); P(6, 16, 12, 1, d);
+      P(9, 10, 6, 2, '#d9a441'); P(10, 10, 4, 1, '#f4d27a');      // ตรา VIP
+      P(21, 3, 3, 3, '#e8e8f0');                                    // แก้วเครื่องดื่ม
+    } },
+  vvipBed: { label: 'เตียง VVIP (2 คน)', emo: '🛏️', w: 56, h: 40, solid: true, foot: 30,
+    seats: () => [{ dx: -12, dy: -14, dir: 'up', over: true }, { dx: 12, dy: -14, dir: 'up', over: true }],
+    draw(P) {
+      P(2, 2, 52, 28, '#f4ead2'); P(2, 2, 52, 2, '#ffffff');               // ที่นอน
+      P(2, 4, 52, 14, '#b02a3a'); P(2, 4, 52, 2, '#d84a5a'); P(2, 16, 52, 2, '#7a1626'); // ผ้าห่มแดง
+      for (let x = 6; x < 52; x += 8) P(x, 9, 4, 1, '#d9a441');
+      P(5, 20, 20, 8, '#ffffff'); P(31, 20, 20, 8, '#ffffff'); P(5, 26, 20, 2, '#d9cfb6'); P(31, 26, 20, 2, '#d9cfb6'); // หมอน
+      P(0, 28, 56, 10, '#3a2418'); P(0, 28, 56, 2, '#d9a441'); P(2, 31, 52, 5, '#5a3824'); // หัวเตียง (หันมาทางเรา)
+      P(25, 32, 6, 3, '#d9a441'); P(26, 33, 4, 1, '#f4d27a');
+      P(0, 0, 3, 30, '#3a2418'); P(53, 0, 3, 30, '#3a2418'); P(0, 38, 4, 2, '#1d1f2e'); P(52, 38, 4, 2, '#1d1f2e');
+    } },
+  popcorn: { label: 'ตู้ป๊อปคอร์น', emo: '🍿', w: 22, h: 34, solid: true, foot: 8, draw(P) {
+    P(1, 20, 20, 12, '#b02a3a'); P(1, 20, 20, 2, '#d84a5a'); P(3, 24, 16, 6, '#ffd34d'); P(5, 26, 12, 2, '#b02a3a');
+    P(0, 4, 22, 17, '#cfe8f7'); P(0, 4, 22, 1, '#ffffff'); P(0, 4, 1, 17, '#2f3245'); P(21, 4, 1, 17, '#2f3245');
+    P(0, 0, 22, 5, '#b02a3a'); P(2, 1, 18, 2, '#ffd34d'); P(3, 32, 3, 2, '#1d1f2e'); P(16, 32, 3, 2, '#1d1f2e');
+  },
+  anim(ctx, sx, sy, t) {
+    ctx.fillStyle = '#fff6d8';
+    for (let i = 0; i < 14; i++) { const x = sx + 2 + ((i * 7) % 18), y = sy + 13 + ((i * 5) % 7); ctx.fillRect(x, y, 2, 2); }
+    for (let i = 0; i < 3; i++) { const ph = (t * 1.6 + i / 3) % 1; ctx.fillRect(sx + 6 + i * 5, sy + 13 - Math.round(Math.sin(ph * Math.PI) * 6), 2, 2); }
+  } },
+  // ---------------- ห้องไหว้พระ ----------------
   prayerMat: { label: 'เบาะกราบ', emo: '🙏', w: 20, h: 10, floor: true, solid: false, variants: 3,
     seats: () => [{ dx: 0, dy: -2, dir: 'up', kneel: true }],
     draw(P, v) {
