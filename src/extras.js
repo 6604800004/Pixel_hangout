@@ -1008,7 +1008,9 @@ function voiceStatus(rt) {
   if (rt.p.mic !== 1) return '🎙️ เขาปิดไมค์อยู่';
   if (V.deaf) return '🔇 คุณปิดหูฟังอยู่';
   if (!G.audible.has(rt.key)) return `📏 เขาตั้งไมค์ระยะ "${micRangeName(peerRange(rt.p))}" — เดินเข้าไปใกล้ๆ หรือให้เขาเลื่อนระยะไมค์เป็น "ทั้งห้อง"`;
-  if (viaServer) return V.actx && V.actx.state !== 'running' ? '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง' : '🟢 ได้ยินอยู่ (ส่งผ่านเซิร์ฟเวอร์ · ไม่มีวิดีโอ)';
+  if (V.actx && V.actx.state !== 'running' && viaServer) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
+  if (!V.rxOk(peer)) return '🔴 ยังไม่มีเสียงจากเขามาถึง — ให้เขาแตะหน้าจอ 1 ครั้ง ถ้ายังไม่ได้ให้เขารีเฟรช';
+  if (viaServer) return '🟢 ได้ยินอยู่ (ส่งผ่านเซิร์ฟเวอร์ · ไม่มีวิดีโอ)';
   if (peer.audioEl && peer.audioEl.paused) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
   return '🟢 ได้ยินอยู่';
 }
@@ -1044,7 +1046,8 @@ function voiceDiag() {
     const relay = p && V.relayActive(p);
     const mode = !p ? 'ยังไม่เชื่อม' : relay ? '🛰️ ผ่านเซิร์ฟเวอร์' : p.state === 'connected' ? '🔗 ต่อตรง' : `🟡 ${p.state}`;
     const rx = p && p.stat ? Math.round(p.stat.rxRate / 1000) : '-', tx = p && p.stat ? Math.round(p.stat.txRate / 1000) : '-';
-    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (relayTargetsInfo(p) ? 'กำลังส่ง' : 'ไม่ได้ส่ง') : tx + 'KB/s'} · ${voiceStatus(rt)}`);
+    const th = p && p.theyHear && Date.now() - p.theyHear.at < 15000 ? (p.theyHear.ok ? '✅' : '❌') : '?';
+    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · เขาได้ยินฉัน ${V.mic ? th : '(ฉันปิดไมค์)'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (Date.now() - (V.relaySentAt || 0) < 1500 && relayTargetsInfo(p) ? 'กำลังส่ง' : relayTargetsInfo(p) ? '⚠️ ส่งไม่ออก' + (V.relayErr ? ' (' + V.relayErr.slice(0, 40) + ')' : '') : 'ไม่ได้ส่ง') : tx + 'KB/s'} · ${voiceStatus(rt)}`);
   }
   return lines;
 }

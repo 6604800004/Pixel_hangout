@@ -163,7 +163,15 @@ function makeVoice(net, onChange) {
   }
   async function handleSignal(from, data) {
     let peer = V.peers.get(from);
-    if (data.relayPlease) { if (peer) peer.forceRelay = Date.now(); return; }
+    if (data.relayPlease) { if (peer) { peer.forceRelay = Date.now(); if (V.actx && V.actx.state !== 'running') onChange('unlock-mic'); } return; }
+    if ('fb' in data) {
+      if (peer) {
+        peer.theyHear = { ok: !!data.fb, at: Date.now() };
+        // เขาบอกว่ายังไม่ได้ยินเรา ทั้งที่เราเปิดไมค์อยู่ → ส่งทางเซิร์ฟเวอร์ (หรือขอให้แตะจอถ้าเสียงในเครื่องยังไม่เริ่ม)
+        if (!data.fb && V.mic && V.audioTrack) { peer.forceRelay = Date.now(); if (V.actx && V.actx.state !== 'running') onChange('unlock-mic'); }
+      }
+      return;
+    }
     if (data.sdp) {
       const desc = { type: data.sdp.type, sdp: tuneOpus(data.sdp.sdp) };
       if (desc.type === 'offer') {
@@ -410,7 +418,7 @@ function makeVoice(net, onChange) {
   // ================= สำรอง: ส่งเสียงผ่านเซิร์ฟเวอร์ของเราเอง =================
   // ใช้เมื่อต่อตรงไม่ได้ (เน็ตมือถือ/บริษัทบล็อก) และไม่มี TURN — เสียง 16kHz μ-law ~16KB/วินาที ต่อคน
   const relay = { cap: null, capBuf: [], rx: new Map(), mod: null, rate: 16000, frame: 320 };
-  V.relayActive = (p) => !!p && ((p.forceRelay && Date.now() - p.forceRelay < 120000) || (p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000)));
+  V.relayActive = (p) => !!p && ((p.forceRelay && Date.now() - p.forceRelay < 600000) || (p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000)));
   const WORKLET = `
 class PxCap extends AudioWorkletProcessor { process(i) { const c = i[0] && i[0][0]; if (c) this.port.postMessage(c.slice(0)); return true; } }
 registerProcessor('px-cap', PxCap);
@@ -461,10 +469,12 @@ registerProcessor('px-play', PxPlay);`;
           if (!to.length) continue;
           const bytes = new Uint8Array(fr.length); for (let k = 0; k < fr.length; k++) bytes[k] = mulawEnc(fr[k]);
           net.relaySend && net.relaySend(to, bytes);
+          V.relaySentAt = Date.now();
         }
       };
       relay.cap = { src, node, sinkGain, track: V.audioTrack };
-    } catch {} finally { relay.starting = false; }
+      V.relayErr = '';
+    } catch (e) { V.relayErr = String((e && e.message) || e); } finally { relay.starting = false; }
   }
   function relayCapStop() {
     const c = relay.cap; if (!c) return;
@@ -507,6 +517,8 @@ registerProcessor('px-play', PxPlay);`;
   setInterval(() => {
     const need = relayTargets().length > 0;
     if (need && (!relay.cap || relay.cap.track !== V.audioTrack)) { relayCapStop(); relayCapStart(); }
+    // ต้องส่งทางเซิร์ฟเวอร์ แต่เสียงในเครื่องยังไม่เริ่ม (เช่น เพิ่งรีโหลดอัตโนมัติ) → ลองปลุก แล้วขอให้แตะจอ
+    if (need && V.actx && V.actx.state !== 'running') { V.actx.resume().catch(() => {}); if (!relay.unlockAskAt || Date.now() - relay.unlockAskAt > 20000) { relay.unlockAskAt = Date.now(); onChange('unlock-mic'); } }
     else if (!need && relay.cap) relayCapStop();
     for (const [k] of relay.rx) { const p = V.peers.get(k); if (!p || Date.now() - (p.relayRxAt || 0) > 5000) relayDrop(k); }
     // ระหว่างได้เสียงทางเซิร์ฟเวอร์ ปิดเสียงทางตรงไว้ (กันเสียงซ้อน)
@@ -514,22 +526,32 @@ registerProcessor('px-play', PxPlay);`;
   }, 500);
   // ---------- ตรวจว่าเสียงไหลจริงไหม (ต่อติดแต่ไม่มีเสียง = สลับไปทางเซิร์ฟเวอร์) ----------
   V.remoteMicOn = () => true;
+  // เรากำลังได้รับเสียงจากคนนี้จริงไหม (ทางตรงหรือทางเซิร์ฟเวอร์)
+  V.rxOk = (p) => !!p && (Date.now() - (p.relayRxAt || 0) < 2500 || (p.state === 'connected' && p.stat && Date.now() - p.stat.at < 5000 && p.stat.rxRate > 800));
+  let fbTick = 0;
   setInterval(async () => {
+    const now = Date.now();
+    fbTick++;
     for (const p of V.peers.values()) {
-      if (p.state !== 'connected') continue;
-      try {
-        const stats = await p.pc.getStats();
-        let rx = 0, tx = 0;
-        stats.forEach((r) => { if (r.kind === 'audio' && r.type === 'inbound-rtp') rx += r.bytesReceived || 0; if (r.kind === 'audio' && r.type === 'outbound-rtp') tx += r.bytesSent || 0; });
-        const now = Date.now();
-        p.stat = { rx, tx, rxRate: p.stat ? (rx - p.stat.rx) / ((now - p.stat.at) / 1000) : 0, txRate: p.stat ? (tx - p.stat.tx) / ((now - p.stat.at) / 1000) : 0, at: now };
-        // เขาเปิดไมค์ เราควรได้ยิน แต่ไม่มีเสียงเข้ามาเลย 8 วิ → ขอให้เขาส่งทางเซิร์ฟเวอร์
-        if (p.playOk && V.remoteMicOn(p.key) && p.stat.rxRate < 50) { p.silentSince = p.silentSince || now; if (now - p.silentSince > 8000 && (!p.askedAt || now - p.askedAt > 60000)) { p.askedAt = now; net.signal(p.key, { relayPlease: 1 }); } }
-        else p.silentSince = 0;
-        // เราเปิดไมค์ แต่ส่งออกไม่ได้เลย → ส่งทางเซิร์ฟเวอร์เอง
-        if (p.allowed && V.mic && V.audioTrack && !V.deaf && p.stat.txRate < 50) { p.txDeadSince = p.txDeadSince || now; if (now - p.txDeadSince > 8000) p.forceRelay = now; }
-        else p.txDeadSince = 0;
-      } catch {}
+      if (p.state === 'connected') {
+        try {
+          const stats = await p.pc.getStats();
+          let rx = 0, tx = 0;
+          stats.forEach((r) => { if (r.kind === 'audio' && r.type === 'inbound-rtp') rx += r.bytesReceived || 0; if (r.kind === 'audio' && r.type === 'outbound-rtp') tx += r.bytesSent || 0; });
+          const t = Date.now();
+          p.stat = { rx, tx, rxRate: p.stat ? (rx - p.stat.rx) / ((t - p.stat.at) / 1000) : 0, txRate: p.stat ? (tx - p.stat.tx) / ((t - p.stat.at) / 1000) : 0, at: t };
+          // เราเปิดไมค์ แต่ส่งออกทางตรงไม่ได้เลย → ส่งทางเซิร์ฟเวอร์เอง
+          if (p.allowed && V.mic && V.audioTrack && !V.deaf && p.stat.txRate < 50) { p.txDeadSince = p.txDeadSince || now; if (now - p.txDeadSince > 8000) p.forceRelay = now; }
+          else p.txDeadSince = 0;
+        } catch {}
+      }
+      // เขาเปิดไมค์ เราควรได้ยิน แต่ไม่มีเสียงมาถึงเลย 6 วิ → ขอให้เขาส่งทางเซิร์ฟเวอร์ (ส่งผ่านเซิร์ฟเวอร์ได้แม้ต่อตรงไม่ติด)
+      if (p.playOk && V.remoteMicOn(p.key) && !V.rxOk(p)) {
+        p.silentSince = p.silentSince || now;
+        if (now - p.silentSince > 6000 && (!p.askedAt || now - p.askedAt > 20000)) { p.askedAt = now; net.signal(p.key, { relayPlease: 1 }); }
+      } else p.silentSince = 0;
+      // บอกเขาทุก ~6 วิ ว่าเราได้ยินเขาไหม (ให้ฝั่งเขารู้ว่าเสียงไปถึงหรือเปล่า)
+      if (fbTick % 3 === 0 && p.playOk && V.remoteMicOn(p.key)) net.signal(p.key, { fb: V.rxOk(p) ? 1 : 0 });
     }
   }, 2000);
   if (net.onRelay) net.onRelay((from, bytes) => V.relayIn(from, bytes));

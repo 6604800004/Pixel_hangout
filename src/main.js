@@ -1440,6 +1440,7 @@ function setupVoice() {
   const V = makeVoice(G.net, (kind, msg) => {
     if (kind === 'error') toast(msg);
     if (kind === 'unlock') toast('แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียงเพื่อน');
+    if (kind === 'unlock-mic' && !G.unlockMicShown) { G.unlockMicShown = true; setTimeout(() => (G.unlockMicShown = false), 20000); toast('👆 แตะหน้าจอ 1 ครั้ง เพื่อให้เสียงของคุณไปถึงเพื่อน', 6000); }
     if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
   });
   G.voice = V;
