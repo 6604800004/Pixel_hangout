@@ -7,7 +7,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const LAND_Q = '(max-height: 500px) and (orientation: landscape)';
 const isLand = () => matchMedia(LAND_Q).matches; // มือถือแนวนอน
 const isMobile = () => matchMedia('(max-width: 760px), ' + LAND_Q).matches;
-const EMOTES = ['👋', '😂', '❤️', '👍', '🎉', '😮', '🔥', '😴', '🥳', '✨'];
+const EMOTES = ['👋', '😂', '❤️', '👍', '🎉', '😮', '🔥', '😴', '🥳', '✨', '🙏'];
 const SPEED = 72;
 
 // ---- ล็อกหน้าเว็บไม่ให้ซูม/เลื่อนทั้งหน้า (Safari บน iPad/iPhone ชอบเลื่อนจน UI ด้านบนไปอยู่ใต้แถบเบราว์เซอร์) ----
@@ -187,6 +187,8 @@ function sitOn(seat) {
   me.x = seat.x; me.y = seat.y; me.dir = seat.dir; me.sit = seat.id;
   pres({ x: me.x, y: me.y, d: me.dir, s: seat.id, m: 0 });
   SFX.sit();
+  // นั่งเบาะกราบหน้าพระ = พนมมือไหว้ 🙏
+  if (seat.pray) setTimeout(() => { if (G.me.sit === seat.id) { pres({ em: { e: '🙏', ts: Date.now() } }); G.emotes.push({ key: 'me', e: '🙏', start: performance.now(), dx: 0 }); toast('🙏 สาธุ', 2000); } }, 400);
 }
 function walkTo(x, y, seat) {
   standUp();

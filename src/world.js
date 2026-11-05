@@ -1,7 +1,7 @@
 // ============================================================================
 // world.js — แผนที่ห้อง พื้น ผนัง หน้าต่างตามเวลาจริง การชน และการหาเส้นทาง
 // ============================================================================
-const W = 512, H = 856, WALL = 58;
+const W = 512, H = 1104, WALL = 58;
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
 const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
@@ -10,16 +10,23 @@ const LOWER2_Y = 600, LOWER2_FLOOR = 630, DIVIDER2_X = 256;
 const DOOR_PUB = { x: 424, w: 32, y: LOWER2_Y, zone: 'pub' };
 const DOOR_KARAOKE = { x: DIVIDER2_X, y: 740, h: 34, zone: 'karaoke', side: true };
 const DANCE = { x: 84, y: 692, w: 88, h: 44 };
+// ชั้นล่างสุด: ห้องไหว้พระ (เต็มความกว้าง) — เข้าทางประตูด้านล่างของผับ
+const LOWER3_Y = 856, LOWER3_FLOOR = 886;
+const DOOR_SHRINE = { x: 352, w: 32, y: LOWER3_Y, zone: 'shrine' };
+const ALTAR = { x: 192, y: LOWER3_FLOOR, w: 128, h: 76 }; // โต๊ะหมู่บูชา + พระพุทธรูป (ส่วนหนึ่งของห้อง ย้ายไม่ได้)
+const PILLARS = [70, 442];
 const ZONES = {
   hall: { id: 'hall', name: 'ห้องรวม', icon: '🏠' },
   meet: { id: 'meet', name: 'ห้องประชุม', icon: '🔒' },
   garden: { id: 'garden', name: 'สวน', icon: '🌿' },
   karaoke: { id: 'karaoke', name: 'ห้องคาราโอเกะ', icon: '🎤' },
   pub: { id: 'pub', name: 'ผับ', icon: '🍻' },
+  shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
 };
 function zoneAt(x, y) {
   if (y < LOWER_Y + 16) return 'hall';
   if (y < LOWER2_Y + 16) return x < DIVIDER_X + 3 ? 'meet' : 'garden';
+  if (y >= LOWER3_Y + 16) return 'shrine';
   return x < DIVIDER2_X + 3 ? 'karaoke' : 'pub';
 }
 const WORK_X = 256;
@@ -60,10 +67,19 @@ const DEFAULT_LAYOUT = [
   { t: 'tv', x: 482, y: 676 }, { t: 'dartboard', x: 496, y: 760 }, { t: 'poolTable', x: 424, y: 800 },
   { t: 'roundTable', x: 304, y: 800 }, { t: 'armchair', x: 278, y: 806, v: 2 }, { t: 'armchair', x: 330, y: 806, v: 5 },
   { t: 'plant', v: 1, x: 498, y: 850 }, { t: 'floorLamp', x: 270, y: 700 },
+  // ---- ห้องไหว้พระ ----
+  { t: 'prayerMat', x: 216, y: 1004 }, { t: 'prayerMat', x: 256, y: 1004 }, { t: 'prayerMat', x: 296, y: 1004 },
+  { t: 'prayerMat', x: 216, y: 1044 }, { t: 'prayerMat', x: 256, y: 1044 }, { t: 'prayerMat', x: 296, y: 1044 },
+  { t: 'flowerVase', x: 170, y: 958 }, { t: 'flowerVase', x: 342, y: 958 },
+  { t: 'templeBell', x: 120, y: 960 }, { t: 'lotusBowl', x: 44, y: 1090 }, { t: 'lotusBowl', x: 468, y: 1090 },
+  { t: 'plant', v: 0, x: 140, y: 1096 }, { t: 'plant', v: 0, x: 372, y: 1096 },
+  { t: 'offeringTable', x: 160, y: 1000 }, { t: 'offeringTable', x: 352, y: 1000 },
+  { t: 'chantTable', x: 96, y: 1040 }, { t: 'chantTable', x: 416, y: 1040 },
 ];
-const LAYOUT_VERSION = 3;
+const LAYOUT_VERSION = 4;
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
+const LAYOUT_V4_FROM = 73; // def73 ขึ้นไปมาในเวอร์ชัน 4 (ห้องไหว้พระ)
 
 // ---------- ท้องฟ้าตามเวลาจริงของคนดู ----------
 function skyAt(date) {
@@ -243,9 +259,74 @@ function buildBackground() {
   }
   // ผนังกั้นคาราโอเกะ | ผับ (มีประตูตรงกลาง)
   const k = DOOR_KARAOKE;
-  P(DIVIDER2_X, LOWER2_Y, 6, k.y - LOWER2_Y, '#231d47'); P(DIVIDER2_X, k.y + k.h, 6, H - k.y - k.h, '#231d47');
-  P(DIVIDER2_X, LOWER2_Y, 1, k.y - LOWER2_Y, '#3a2f6e'); P(DIVIDER2_X, k.y + k.h, 1, H - k.y - k.h, '#3a2f6e');
+  P(DIVIDER2_X, LOWER2_Y, 6, k.y - LOWER2_Y, '#231d47'); P(DIVIDER2_X, k.y + k.h, 6, LOWER3_Y - k.y - k.h, '#231d47');
+  P(DIVIDER2_X, LOWER2_Y, 1, k.y - LOWER2_Y, '#3a2f6e'); P(DIVIDER2_X, k.y + k.h, 1, LOWER3_Y - k.y - k.h, '#3a2f6e');
   P(DIVIDER2_X - 1, k.y - 2, 8, 2, '#ff8fab'); P(DIVIDER2_X - 1, k.y + k.h, 8, 2, '#ff8fab');
+  // ================= ห้องไหว้พระ =================
+  // พื้นไม้สักขัดเงา
+  for (let y = LOWER3_FLOOR, row = 0; y < H; y += 6, row++) {
+    let x = -((row * 23) % 40);
+    while (x < W) {
+      const len = 30 + Math.floor(rnd() * 24);
+      P(Math.max(0, x), y, len, 6, ['#b5763f', '#a96c38', '#bd7f46'][Math.floor(rnd() * 3)]);
+      P(Math.max(0, x), y, len, 1, '#c98d55'); P(x + len - 1, y, 1, 6, '#8a5428');
+      x += len;
+    }
+  }
+  // พรมแดงทางเดินตรงกลาง (จากหน้าโต๊ะหมู่ลงมา) + พรมจากประตู
+  P(232, ALTAR.y + ALTAR.h, 48, H - ALTAR.y - ALTAR.h, '#a8242e'); P(234, ALTAR.y + ALTAR.h, 44, H - ALTAR.y - ALTAR.h, '#c02f38');
+  P(232, ALTAR.y + ALTAR.h, 2, H - ALTAR.y - ALTAR.h, '#e0b04a'); P(278, ALTAR.y + ALTAR.h, 2, H - ALTAR.y - ALTAR.h, '#e0b04a');
+  P(DOOR_SHRINE.x, LOWER3_FLOOR, DOOR_SHRINE.w, 18, '#c02f38'); P(DOOR_SHRINE.x, LOWER3_FLOOR + 16, DOOR_SHRINE.w, 2, '#e0b04a');
+  // ผนังขาวครีมขอบทอง ลายกนกเรียบๆ (เว้นประตู)
+  for (let x = 0; x < W; x++) {
+    if (x >= DOOR_SHRINE.x && x < DOOR_SHRINE.x + DOOR_SHRINE.w) continue;
+    P(x, LOWER3_Y, 1, 6, '#6b3a1f'); P(x, LOWER3_Y, 1, 1, '#8a5428');
+    P(x, LOWER3_Y + 6, 1, LOWER3_FLOOR - LOWER3_Y - 6, '#f4ead2');
+    P(x, LOWER3_Y + 8, 1, 2, '#d9a441'); P(x, LOWER3_FLOOR - 6, 1, 2, '#d9a441'); P(x, LOWER3_FLOOR - 4, 1, 4, '#8a5428');
+    const k2 = x % 10; if (k2 < 5) P(x, LOWER3_Y + 12 + Math.abs(2 - k2), 1, 1, '#d9a441');
+  }
+  // ประตูเข้าห้องไหว้พระ (กรอบทอง)
+  { const d = DOOR_SHRINE;
+    for (let y = LOWER3_Y; y < LOWER3_FLOOR; y += 4) for (let x = d.x; x < d.x + d.w; x += 4) P(x, y, 4, 4, ((x + y) / 4 | 0) % 2 ? '#b5763f' : '#bd7f46');
+    P(d.x - 2, LOWER3_Y, 2, LOWER3_FLOOR - LOWER3_Y, '#d9a441'); P(d.x + d.w, LOWER3_Y, 2, LOWER3_FLOOR - LOWER3_Y, '#d9a441');
+    P(d.x + 3, LOWER3_Y - 9, d.w - 6, 7, '#d9a441'); P(d.x + 4, LOWER3_Y - 8, d.w - 8, 5, '#f4d27a');
+  }
+  // เสาแดงหัวเสาทอง
+  for (const px of PILLARS) {
+    P(px - 7, LOWER3_FLOOR - 6, 14, 84, '#8f1d26'); P(px - 7, LOWER3_FLOOR - 6, 3, 84, '#b02a33'); P(px + 4, LOWER3_FLOOR - 6, 3, 84, '#6e141b');
+    P(px - 9, LOWER3_FLOOR - 8, 18, 6, '#d9a441'); P(px - 9, LOWER3_FLOOR + 72, 18, 6, '#d9a441'); P(px - 8, LOWER3_FLOOR + 6, 16, 2, '#d9a441');
+  }
+  // ---- โต๊ะหมู่บูชา + พระพุทธรูป ----
+  { const cx = 256, top = LOWER3_FLOOR;
+    // ฉากหลังแดงขอบทอง
+    P(cx - 52, top - 22, 104, 58, '#d9a441'); P(cx - 50, top - 20, 100, 55, '#7a1f24'); P(cx - 46, top - 16, 92, 47, '#8f2a2f');
+    for (let i = 0; i < 9; i++) P(cx - 44 + i * 11, top - 14, 2, 2, '#d9a441');
+    // โต๊ะหมู่ 3 ชั้น
+    const tier = (y, w, h) => { P(cx - w / 2, y, w, h, '#d9a441'); P(cx - w / 2, y, w, 2, '#f4d27a'); P(cx - w / 2, y + h - 2, w, 2, '#a8752a'); P(cx - w / 2 + 3, y + 3, w - 6, h - 6, '#c98f35'); };
+    tier(top + 34, 84, 10); tier(top + 44, 106, 12); tier(top + 56, 126, 14);
+    for (const lx of [cx - 60, cx + 56]) P(lx, top + 70, 4, 6, '#a8752a');
+    // พระพุทธรูปปางสมาธิ (สีทอง)
+    const G1 = '#f0c75a', G2 = '#e0ac3c', G3 = '#b98425';
+    P(cx - 18, top + 28, 36, 6, G2); P(cx - 18, top + 28, 36, 1, G1); // ฐานบัว
+    for (let i = 0; i < 6; i++) P(cx - 17 + i * 6, top + 31, 4, 3, i % 2 ? G3 : G1);
+    P(cx - 17, top + 20, 34, 9, G2); P(cx - 17, top + 20, 34, 2, G1);    // ขัดสมาธิ
+    P(cx - 12, top + 4, 24, 18, G2); P(cx - 12, top + 4, 4, 18, G1);     // องค์
+    P(cx - 4, top + 6, 2, 14, G3);                                       // จีวรเฉียง
+    P(cx - 6, top + 18, 12, 4, G1); P(cx - 2, top + 18, 4, 2, G3);       // พระหัตถ์ประสาน
+    P(cx - 6, top - 9, 12, 13, G1); P(cx - 7, top - 6, 1, 7, G2); P(cx + 6, top - 6, 1, 7, G2); // พระเศียร
+    P(cx - 6, top - 9, 12, 3, G3);                                        // พระเกศา
+    P(cx - 2, top - 13, 4, 4, G2); P(cx - 1, top - 17, 2, 4, G1);        // พระเกตุมาลา
+    P(cx - 4, top - 3, 3, 1, G3); P(cx + 1, top - 3, 3, 1, G3); P(cx - 1, top + 1, 2, 1, G3); // หลับตาสงบ
+    P(cx - 3, top + 3, 6, 2, G2);                                         // พระศอ
+    // แจกัน พวงมาลัย บนชั้นกลาง
+    for (const fx of [cx - 46, cx + 42]) { P(fx, top + 48, 4, 6, '#f4ead2'); P(fx - 1, top + 44, 6, 4, '#ffb03a'); P(fx, top + 43, 1, 1, '#ffd34d'); P(fx + 3, top + 44, 1, 1, '#ff8f2a'); }
+    // เชิงเทียน 2 ข้าง + กระถางธูป (เปลวไฟ/ควันวาดแบบเคลื่อนไหว)
+    for (const kx of [cx - 32, cx + 30]) { P(kx - 1, top + 41, 4, 3, '#d9a441'); P(kx, top + 32, 2, 9, '#fff6e0'); }
+    P(cx - 6, top + 48, 12, 6, '#7a4a2a'); P(cx - 7, top + 47, 14, 2, '#a8752a');
+    for (const ix of [cx - 3, cx, cx + 3]) P(ix, top + 40, 1, 8, '#b0413a');
+    // พวงมาลัยห้อยหน้าโต๊ะ
+    for (let i = 0; i < 12; i++) P(cx - 60 + i * 10 + 3, top + 72 + (i % 2), 4, 3, i % 3 ? '#fff6e0' : '#ff9a3a');
+  }
   // ---- ขอบห้อง ----
   P(0, 0, 3, H, '#3a2c3f'); P(W - 3, 0, 3, H, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f');
   return c;
@@ -293,6 +374,24 @@ function drawLiveWall(ctx, now, t) {
     ctx.fillRect(DANCE.x + gx, DANCE.y + gy, 10, 10);
   }
   ctx.globalAlpha = 1;
+  // ---- ห้องไหว้พระ: รัศมีทอง + เปลวเทียน + ควันธูป ----
+  { const cx = 256, top = LOWER3_FLOOR;
+    const glow = ctx.createRadialGradient(cx, top - 2, 2, cx, top - 2, 26);
+    glow.addColorStop(0, `rgba(255,226,140,${0.45 + 0.08 * Math.sin(t * 1.5)})`); glow.addColorStop(1, 'rgba(255,226,140,0)');
+    ctx.fillStyle = glow; ctx.fillRect(cx - 26, top - 28, 52, 52);
+    for (const [i, kx] of [[0, cx - 32], [1, cx + 30]]) {
+      const f = Math.sin(t * 9 + i * 2) > 0 ? 1 : 0;
+      ctx.fillStyle = '#ffb03a'; ctx.fillRect(kx, top + 29 - f, 2, 3 + f);
+      ctx.fillStyle = '#fff2a8'; ctx.fillRect(kx, top + 30, 1, 2);
+      ctx.fillStyle = 'rgba(255,200,90,0.18)'; ctx.fillRect(kx - 3, top + 25, 8, 9);
+    }
+    ctx.fillStyle = '#ff5a2a'; for (const ix of [cx - 3, cx, cx + 3]) ctx.fillRect(ix, top + 39, 1, 1);
+    for (let i = 0; i < 3; i++) {
+      const ph = (t * 0.35 + i / 3) % 1;
+      ctx.fillStyle = `rgba(230,225,215,${0.5 * (1 - ph)})`;
+      ctx.fillRect(Math.round(cx + Math.sin(ph * 7 + i) * 3) - 1, Math.round(top + 38 - ph * 26), 2, 2);
+    }
+  }
   // ---- ผับ: ป้ายนีออน PUB ----
   ctx.fillStyle = Math.floor(t * 1.3) % 7 ? '#ffb86b' : '#7a4e34';
   const px = 470, py = LOWER2_Y + 10;
@@ -330,7 +429,12 @@ function solidRects(furniture) {
   list.push({ x: 0, y: LOWER2_Y - 2, w: DOOR_PUB.x, h: LOWER2_FLOOR - LOWER2_Y + 2 });
   list.push({ x: DOOR_PUB.x + DOOR_PUB.w, y: LOWER2_Y - 2, w: W - DOOR_PUB.x - DOOR_PUB.w, h: LOWER2_FLOOR - LOWER2_Y + 2 });
   list.push({ x: DIVIDER2_X - 1, y: LOWER2_Y - 2, w: 8, h: DOOR_KARAOKE.y - LOWER2_Y + 2 });
-  list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: H - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
+  list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: LOWER3_Y - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
+  // ผนังห้องไหว้พระ (เว้นประตู) + โต๊ะหมู่บูชา + เสา
+  list.push({ x: 0, y: LOWER3_Y - 2, w: DOOR_SHRINE.x, h: LOWER3_FLOOR - LOWER3_Y + 2 });
+  list.push({ x: DOOR_SHRINE.x + DOOR_SHRINE.w, y: LOWER3_Y - 2, w: W - DOOR_SHRINE.x - DOOR_SHRINE.w, h: LOWER3_FLOOR - LOWER3_Y + 2 });
+  list.push({ x: ALTAR.x - 4, y: LOWER3_FLOOR, w: ALTAR.w + 8, h: ALTAR.h });
+  for (const px of PILLARS) list.push({ x: px - 9, y: LOWER3_FLOOR, w: 18, h: 78 });
   return list;
 }
 function hitsRects(rects, x, y) {
@@ -426,7 +530,7 @@ function allSeats(furniture) {
   for (const it of furniture) {
     const d = FURN[it.t];
     if (!d || !d.seats) continue;
-    d.seats(it.f || 0).forEach((s, i) => seats.push({ id: `${it.id}:${i}`, x: it.x + s.dx, y: it.y + s.dy, dir: s.dir, kind: 'furn', over: !!s.over, itemY: it.y }));
+    d.seats(it.f || 0).forEach((s, i) => seats.push({ id: `${it.id}:${i}`, x: it.x + s.dx, y: it.y + s.dy, dir: s.dir, kind: 'furn', over: !!s.over, itemY: it.y, pray: it.t === 'prayerMat' }));
   }
   for (const s of DESK_SLOTS) seats.push({ id: `desk:${s.id}`, x: s.x, y: s.y + CHAIR_DY - 3, dir: 'up', kind: 'desk', slot: s.id, over: true, itemY: s.y + CHAIR_DY });
   return seats;

@@ -22,6 +22,7 @@ const ZONE_TIPS = {
   garden: 'ได้ยินทุกคนในสวน',
   karaoke: 'ห้องส่วนตัว — ร้องเพลงได้เต็มที่ คนข้างนอกไม่ได้ยิน',
   pub: 'ห้องส่วนตัว — ได้ยินทุกคนในผับ คนข้างนอกไม่ได้ยิน',
+  shrine: 'ห้องส่วนตัว เงียบสงบ — ได้ยินเฉพาะคนในห้อง · นั่งเบาะกราบเพื่อไหว้พระ 🙏',
 };
 const peerRange = (p) => clamp(Number(p.mr) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
 const peerRingColor = (p) => MIC_COLORS[Number.isInteger(p.mc) && p.mc >= 0 && p.mc < MIC_COLORS.length ? p.mc : 0];
@@ -84,7 +85,7 @@ function drawHearingRange(b, t) {
 function drawDoorLabels(c, camX, camY, scale) {
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = '500 11px Mitr, sans-serif';
-  for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE]) {
+  for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE, DOOR_SHRINE]) {
     const Z = ZONES[d.zone];
     const sx = d.side ? (d.x + 44 - camX) * scale : (d.x + d.w / 2 - camX) * scale;
     const sy = d.side ? (d.y + d.h / 2 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
@@ -239,7 +240,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       if (G.furnDocs.some((d) => d.id === id)) continue;
