@@ -4296,10 +4296,10 @@ function paintVoiceSettings() {
   mr.append(colRow);
   const rl = el('div', 'vbtns'); rl.style.alignItems = 'center';
   const rangeLabel = el('span', 'tip', '');
-  const paintR = () => (rangeLabel.textContent = `ระยะ ${G.micSet.r <= 90 ? 'กระซิบ' : G.micSet.r <= 150 ? 'ปกติ' : G.micSet.r <= 210 ? 'ดัง' : 'ตะโกน'} (${G.micSet.r})`);
-  const rr = el('input'); rr.type = 'range'; rr.min = String(MIC_R_MIN); rr.max = String(MIC_R_MAX); rr.step = '5'; rr.value = String(G.micSet.r);
+  const paintR = () => (rangeLabel.textContent = `ระยะ ${micRangeName(G.micSet.r)}${G.micSet.r < MIC_R_WHOLE ? ` (${G.micSet.r})` : ' — ทุกคนในห้องรวมได้ยิน'}`);
+  const rr = el('input'); rr.type = 'range'; rr.min = String(MIC_R_MIN); rr.max = String(MIC_SLIDER_MAX); rr.step = '5'; rr.value = String(micToSlider(G.micSet.r));
   rr.style.accentColor = MIC_COLORS[G.micSet.c];
-  rr.oninput = () => { setMic({ r: Number(rr.value) }); paintR(); };
+  rr.oninput = () => { setMic({ r: micFromSlider(rr.value) }); paintR(); };
   paintR();
   mr.append(rr); rl.append(rangeLabel); mr.append(rl);
   right.append(mr);
@@ -4507,10 +4507,17 @@ function othersInZone(z) {
 }
 // ห้องรวม: เสียงไปได้ไกลตาม "รัศมีไมค์" ของแต่ละคน (ปรับเองได้) ไกลเกินจะไม่ได้ยินเลย
 // ห้องประชุม / สวน: ได้ยินทุกคนในห้องเดียวกัน
-const MIC_R_MIN = 60, MIC_R_MAX = 260, MIC_R_DEFAULT = 130, MIC_HYST = 20;
+// รัศมีไมค์ในห้องรวม: 60–260 = ได้ยินเฉพาะคนใกล้ๆ · WHOLE = ได้ยินทั้งห้องรวม (ค่าเริ่มต้นใหม่)
+const MIC_R_MIN = 60, MIC_R_MAX = 260, MIC_R_WHOLE = 999, MIC_R_DEFAULT = MIC_R_WHOLE, MIC_HYST = 20;
+const MIC_SLIDER_MAX = 280; // เลื่อนสุด = ทั้งห้อง
+const micFromSlider = (v) => (Number(v) >= MIC_SLIDER_MAX ? MIC_R_WHOLE : Number(v));
+const micToSlider = (r) => (r >= MIC_R_WHOLE ? MIC_SLIDER_MAX : r);
+const clampMic = (r) => { const n = Number(r); if (!n) return MIC_R_DEFAULT; return n >= MIC_R_WHOLE ? MIC_R_WHOLE : clamp(n, MIC_R_MIN, MIC_R_MAX); };
 const MIC_COLORS = ['#3fd07a', '#ff8fab', '#7d9cf0', '#ffe07a', '#b48cf0', '#6cc6d9', '#ffb86b', '#ffffff', '#e8505b'];
 G.micSet = Object.assign({ r: MIC_R_DEFAULT, c: 0 }, lsGet('pixel.mic', {}));
-G.micSet.r = clamp(Number(G.micSet.r) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
+// เดิมค่าเริ่มต้นคือ 130 (ได้ยินแค่คนใกล้ๆ) ทำให้คนในห้องรวมไม่ได้ยินกัน → ปรับเป็นทั้งห้อง
+if (G.micSet.v !== 2) { if (Number(G.micSet.r) === 130 || !G.micSet.r) G.micSet.r = MIC_R_WHOLE; G.micSet.v = 2; lsSet('pixel.mic', G.micSet); }
+G.micSet.r = clampMic(G.micSet.r);
 if (!(G.micSet.c >= 0 && G.micSet.c < MIC_COLORS.length)) G.micSet.c = 0;
 G.audible = new Set(); G.sendTo = new Set();
 const ZONE_TIPS = {
@@ -4522,11 +4529,11 @@ const ZONE_TIPS = {
   shrine: 'ห้องส่วนตัว เงียบสงบ — ได้ยินเฉพาะคนในห้อง · นั่งเบาะกราบเพื่อไหว้พระ 🙏',
   cinema: 'ห้องส่วนตัว — แตะจอใหญ่เพื่อฉายหนังจาก YouTube แล้วเลือกที่นั่ง ธรรมดา / VIP / เตียง VVIP 🍿',
 };
-const peerRange = (p) => clamp(Number(p.mr) || MIC_R_DEFAULT, MIC_R_MIN, MIC_R_MAX);
+const peerRange = (p) => clampMic(p.mr);
 const peerRingColor = (p) => MIC_COLORS[Number.isInteger(p.mc) && p.mc >= 0 && p.mc < MIC_COLORS.length ? p.mc : 0];
 function setMic(patch) {
   Object.assign(G.micSet, patch);
-  G.micSet.r = clamp(Math.round(G.micSet.r), MIC_R_MIN, MIC_R_MAX);
+  G.micSet.r = clampMic(Math.round(G.micSet.r));
   lsSet('pixel.mic', G.micSet);
   pres({ mr: G.micSet.r, mc: G.micSet.c });
 }
@@ -4545,7 +4552,8 @@ function updateZones() {
     if (d < myR + (G.sendTo.has(rt.key) ? MIC_HYST : 0)) send.add(rt.key);
     if (d < theirR + (G.audible.has(rt.key) ? MIC_HYST : 0)) {
       hear.add(rt.key);
-      if (G.voice) G.voice.setVolume(rt.key, clamp(1 - (d - theirR * 0.55) / (theirR * 0.45 + MIC_HYST), 0.2, 1) * peerVol(rt).v);
+      const fall = theirR >= MIC_R_WHOLE ? 1 : clamp(1 - (d - theirR * 0.55) / (theirR * 0.45 + MIC_HYST), 0.2, 1);
+      if (G.voice) G.voice.setVolume(rt.key, fall * peerVol(rt).v);
     }
   }
   G.audible = hear; G.sendTo = send;
@@ -4573,11 +4581,11 @@ function ring(b, x, y, r, color, alpha, t) {
 function drawHearingRange(b, t) {
   if (!G.voice || G.zone !== 'hall') return;
   for (const rt of G.others.values()) {
-    if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== 'hall' || !G.voice.speaking(rt.key)) continue;
+    if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== 'hall' || !G.voice.speaking(rt.key) || peerRange(rt.p) >= MIC_R_WHOLE) continue;
     ring(b, rt.x, rt.y, peerRange(rt.p), peerRingColor(rt.p), 0.35, t);
   }
   const editing = G.voicePanelOpen || !$('#micPop').classList.contains('hidden');
-  if (G.voice.mic || editing) ring(b, G.me.x, G.me.y, G.micSet.r, MIC_COLORS[G.micSet.c], editing ? 0.95 : 0.7, t);
+  if ((G.voice.mic || editing) && G.micSet.r < MIC_R_WHOLE) ring(b, G.me.x, G.me.y, G.micSet.r, MIC_COLORS[G.micSet.c], editing ? 0.95 : 0.7, t);
 }
 
 // วาดป้ายชื่อห้องที่ประตู (บนจอ)
@@ -5253,7 +5261,7 @@ $('#scrHide').onclick = () => { if (SHARE.sel) SHARE.hidden.add(SHARE.sel); sync
 $('#scrVideo').ondblclick = () => $('#scrPanel').classList.toggle('big');
 
 // ---------- แผงรัศมีไมค์แบบเล็ก (แตะป้ายห้อง) — เห็นวงรอบตัวละครระหว่างปรับ ----------
-function micRangeName(r) { return r <= 90 ? 'กระซิบ' : r <= 150 ? 'ปกติ' : r <= 210 ? 'ดัง' : 'ตะโกน'; }
+function micRangeName(r) { return r >= MIC_R_WHOLE ? 'ทั้งห้อง' : r <= 90 ? 'กระซิบ' : r <= 150 ? 'ปกติ' : r <= 210 ? 'ดัง' : 'ตะโกน'; }
 function paintMicPop() {
   const body = $('#micPopBody');
   body.innerHTML = '';
@@ -5265,12 +5273,12 @@ function paintMicPop() {
     row.append(b);
   });
   const lab = el('p', 'tip', '');
-  const paint = () => (lab.textContent = `ระยะ: ${micRangeName(G.micSet.r)} (${G.micSet.r}) — ${G.zone === 'hall' ? 'ใช้อยู่ตอนนี้' : 'มีผลเฉพาะในห้องรวม'}`);
-  const r = el('input'); r.type = 'range'; r.min = String(MIC_R_MIN); r.max = String(MIC_R_MAX); r.step = '5'; r.value = String(G.micSet.r);
+  const paint = () => (lab.textContent = `ระยะ: ${micRangeName(G.micSet.r)}${G.micSet.r < MIC_R_WHOLE ? ` (${G.micSet.r})` : ' — ทุกคนในห้องรวมได้ยิน'} · ${G.zone === 'hall' ? 'ใช้อยู่ตอนนี้' : 'มีผลเฉพาะในห้องรวม'}`);
+  const r = el('input'); r.type = 'range'; r.min = String(MIC_R_MIN); r.max = String(MIC_SLIDER_MAX); r.step = '5'; r.value = String(micToSlider(G.micSet.r));
   r.style.accentColor = MIC_COLORS[G.micSet.c];
-  r.oninput = () => { setMic({ r: Number(r.value) }); paint(); };
+  r.oninput = () => { setMic({ r: micFromSlider(r.value) }); paint(); };
   paint();
-  body.append(row, r, lab, el('p', 'tip', 'เสียงคุณไปถึงเฉพาะคนในวงนี้ · ห้องประชุมและสวนได้ยินทั้งห้องเสมอ'));
+  body.append(row, r, lab, el('p', 'tip', 'เลื่อนสุดขวา = ทั้งห้องรวมได้ยิน · ลดลง = ได้ยินเฉพาะคนในวง · ห้องอื่นได้ยินทั้งห้องเสมอ'));
 }
 function setMicPop(open) {
   $('#micPop').classList.toggle('hidden', !open);

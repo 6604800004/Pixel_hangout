@@ -1550,10 +1550,10 @@ function paintVoiceSettings() {
   mr.append(colRow);
   const rl = el('div', 'vbtns'); rl.style.alignItems = 'center';
   const rangeLabel = el('span', 'tip', '');
-  const paintR = () => (rangeLabel.textContent = `ระยะ ${G.micSet.r <= 90 ? 'กระซิบ' : G.micSet.r <= 150 ? 'ปกติ' : G.micSet.r <= 210 ? 'ดัง' : 'ตะโกน'} (${G.micSet.r})`);
-  const rr = el('input'); rr.type = 'range'; rr.min = String(MIC_R_MIN); rr.max = String(MIC_R_MAX); rr.step = '5'; rr.value = String(G.micSet.r);
+  const paintR = () => (rangeLabel.textContent = `ระยะ ${micRangeName(G.micSet.r)}${G.micSet.r < MIC_R_WHOLE ? ` (${G.micSet.r})` : ' — ทุกคนในห้องรวมได้ยิน'}`);
+  const rr = el('input'); rr.type = 'range'; rr.min = String(MIC_R_MIN); rr.max = String(MIC_SLIDER_MAX); rr.step = '5'; rr.value = String(micToSlider(G.micSet.r));
   rr.style.accentColor = MIC_COLORS[G.micSet.c];
-  rr.oninput = () => { setMic({ r: Number(rr.value) }); paintR(); };
+  rr.oninput = () => { setMic({ r: micFromSlider(rr.value) }); paintR(); };
   paintR();
   mr.append(rr); rl.append(rangeLabel); mr.append(rl);
   right.append(mr);
