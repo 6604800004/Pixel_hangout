@@ -99,6 +99,7 @@ function makeVoice(net, onChange) {
     if (p && !!p.userMuted !== !!m) { p.userMuted = !!m; apply(p); }
   };
   V.setVolume = (key, v) => {
+    const rx = relay.rx.get(key); if (rx) rx.gain.gain.value = v;
     const p = V.peers.get(key);
     if (p && Math.abs((p.vol ?? 1) - v) > 0.04) { p.vol = v; try { p.audioEl.volume = v; } catch {} }
   };
@@ -122,7 +123,7 @@ function makeVoice(net, onChange) {
     screenEl.autoplay = true; screenEl.muted = true; screenEl.playsInline = true; screenEl.setAttribute('playsinline', '');
     sink.append(audioEl, videoEl, screenEl);
     if (V.settings && V.settings.spkId && audioEl.setSinkId) audioEl.setSinkId(V.settings.spkId).catch(() => {});
-    const peer = { key, pc, initiator, audioEl, videoEl, screenEl, audioTx: null, videoTx: null, screenTx: null, hasVideo: false, hasScreen: false, state: 'new', allowed: V.audience.has(key), playOk: V.playAud.has(key), screenOk: V.screenAudience.has(key) };
+    const peer = { created: Date.now(), key, pc, initiator, audioEl, videoEl, screenEl, audioTx: null, videoTx: null, screenTx: null, hasVideo: false, hasScreen: false, state: 'new', allowed: V.audience.has(key), playOk: V.playAud.has(key), screenOk: V.screenAudience.has(key) };
     V.peers.set(key, peer);
     pc.onicecandidate = (e) => e.candidate && net.signal(key, { candidate: e.candidate });
     pc.ontrack = (e) => {
@@ -199,6 +200,7 @@ function makeVoice(net, onChange) {
     p.audioEl.remove(); p.videoEl.remove(); p.screenEl.remove();
     const m = V.meters.get(key); if (m) { try { m.src.disconnect(); } catch {} V.meters.delete(key); }
     chains.delete(key);
+    relayDrop(key);
   }
   V.syncPeers = (keys) => {
     for (const k of keys) {
@@ -398,5 +400,108 @@ function makeVoice(net, onChange) {
   V.devices = async () => {
     try { return await navigator.mediaDevices.enumerateDevices(); } catch { return []; }
   };
+  // ================= สำรอง: ส่งเสียงผ่านเซิร์ฟเวอร์ของเราเอง =================
+  // ใช้เมื่อต่อตรงไม่ได้ (เน็ตมือถือ/บริษัทบล็อก) และไม่มี TURN — เสียง 16kHz μ-law ~16KB/วินาที ต่อคน
+  const relay = { cap: null, capBuf: [], rx: new Map(), mod: null, rate: 16000, frame: 320 };
+  V.relayActive = (p) => !!p && p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000);
+  const WORKLET = `
+class PxCap extends AudioWorkletProcessor { process(i) { const c = i[0] && i[0][0]; if (c) this.port.postMessage(c.slice(0)); return true; } }
+registerProcessor('px-cap', PxCap);
+class PxPlay extends AudioWorkletProcessor {
+  constructor() { super(); this.q = []; this.off = 0; this.n = 0; this.go = false;
+    this.port.onmessage = (e) => { this.q.push(e.data); this.n += e.data.length;
+      while (this.n > sampleRate * 0.35 && this.q.length > 1) { this.n -= this.q[0].length - this.off; this.q.shift(); this.off = 0; } }; }
+  process(_, o) { const out = o[0][0]; if (!out) return true;
+    if (!this.go && this.n < sampleRate * 0.08) { out.fill(0); return true; } this.go = true;
+    let i = 0; while (i < out.length && this.q.length) { const b = this.q[0], k = Math.min(out.length - i, b.length - this.off);
+      out.set(b.subarray(this.off, this.off + k), i); i += k; this.off += k; this.n -= k; if (this.off >= b.length) { this.q.shift(); this.off = 0; } }
+    if (i < out.length) { out.fill(0, i); this.go = false; } return true; }
+}
+registerProcessor('px-play', PxPlay);`;
+  function relayModule() {
+    const ctx = ensureCtx();
+    if (!ctx || !ctx.audioWorklet) return Promise.reject(new Error('no-worklet'));
+    if (!relay.mod) relay.mod = ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+    return relay.mod;
+  }
+  const mulawEnc = (x) => { let s = Math.max(-1, Math.min(1, x)) * 32635; const sign = s < 0 ? 0x80 : 0; if (s < 0) s = -s; s += 132; let e = 7; for (let m = 0x4000; (s & m) === 0 && e > 0; m >>= 1) e--; const mant = (s >> (e + 3)) & 0x0f; return ~(sign | (e << 4) | mant) & 0xff; };
+  const MULAW = new Float32Array(256);
+  for (let i = 0; i < 256; i++) { const u = ~i & 0xff, sign = u & 0x80, e = (u >> 4) & 7, m = u & 0x0f; const s = (((m << 3) + 132) << e) - 132; MULAW[i] = (sign ? -s : s) / 32768; }
+  function relayTargets() {
+    if (!V.audioTrack || !V.mic || V.deaf || V.bgMute) return [];
+    return [...V.peers.values()].filter((p) => p.allowed && V.relayActive(p)).map((p) => p.key);
+  }
+  async function relayCapStart() {
+    if (relay.cap || relay.starting) return;
+    relay.starting = true;
+    try {
+      await relayModule();
+      const ctx = V.actx;
+      const src = ctx.createMediaStreamSource(new MediaStream([V.audioTrack]));
+      const node = new AudioWorkletNode(ctx, 'px-cap');
+      const sinkGain = ctx.createGain(); sinkGain.gain.value = 0;
+      src.connect(node); node.connect(sinkGain).connect(ctx.destination);
+      const ratio = ctx.sampleRate / relay.rate;
+      let acc = [], pos = 0;
+      node.port.onmessage = (e) => {
+        const inp = e.data;
+        // ลดอัตราสุ่มเป็น 16kHz (เฉลี่ยช่วง)
+        for (; pos < inp.length; pos += ratio) { const a = Math.floor(pos), b = Math.min(inp.length - 1, Math.floor(pos + ratio - 1)); let sum = 0; for (let k = a; k <= b; k++) sum += inp[k]; acc.push(sum / (b - a + 1)); }
+        pos -= inp.length;
+        while (acc.length >= relay.frame) {
+          const fr = acc.splice(0, relay.frame);
+          const to = relayTargets();
+          if (!to.length) continue;
+          const bytes = new Uint8Array(fr.length); for (let k = 0; k < fr.length; k++) bytes[k] = mulawEnc(fr[k]);
+          net.relaySend && net.relaySend(to, bytes);
+        }
+      };
+      relay.cap = { src, node, sinkGain, track: V.audioTrack };
+    } catch {} finally { relay.starting = false; }
+  }
+  function relayCapStop() {
+    const c = relay.cap; if (!c) return;
+    try { c.src.disconnect(); c.node.disconnect(); c.sinkGain.disconnect(); c.node.port.onmessage = null; } catch {}
+    relay.cap = null;
+  }
+  function relayDrop(key) {
+    const rx = relay.rx.get(key); if (!rx) return;
+    try { rx.node.disconnect(); rx.gain.disconnect(); } catch {}
+    relay.rx.delete(key);
+    const m = V.meters.get(key); if (m && m.relay) V.meters.delete(key);
+  }
+  async function relayRx(key) {
+    let rx = relay.rx.get(key);
+    if (rx) return rx;
+    await relayModule();
+    if (relay.rx.has(key)) return relay.rx.get(key);
+    const ctx = V.actx;
+    const node = new AudioWorkletNode(ctx, 'px-play', { outputChannelCount: [1] });
+    const gain = ctx.createGain(); const p = V.peers.get(key); gain.gain.value = p && p.vol != null ? p.vol : 1;
+    const an = ctx.createAnalyser(); an.fftSize = 512;
+    node.connect(gain).connect(ctx.destination); gain.connect(an);
+    rx = { node, gain, ratio: ctx.sampleRate / relay.rate };
+    relay.rx.set(key, rx);
+    const old = V.meters.get(key); if (old) { try { old.src.disconnect(); } catch {} }
+    V.meters.set(key, { src: gain, an, buf: new Float32Array(512), lvl: 0, hold: 0, relay: true });
+    return rx;
+  }
+  V.relayIn = async (from, bytes) => {
+    const p = V.peers.get(from);
+    if (!p || p.state === 'connected' || !p.playOk || V.deaf || V.bgMute || p.userMuted) return;
+    let rx; try { rx = await relayRx(from); } catch { return; }
+    // ขยายกลับเป็นอัตราของเครื่อง (linear)
+    const n = bytes.length, outN = Math.round(n * rx.ratio), out = new Float32Array(outN);
+    for (let i = 0; i < outN; i++) { const x = i / rx.ratio, a = Math.floor(x), b = Math.min(n - 1, a + 1), f = x - a; out[i] = MULAW[bytes[a]] * (1 - f) + MULAW[bytes[b]] * f; }
+    rx.node.port.postMessage(out, [out.buffer]);
+  };
+  // ตรวจทุกครึ่งวินาที: ต้องส่งผ่านเซิร์ฟเวอร์ไหม
+  setInterval(() => {
+    const need = relayTargets().length > 0;
+    if (need && (!relay.cap || relay.cap.track !== V.audioTrack)) { relayCapStop(); relayCapStart(); }
+    else if (!need && relay.cap) relayCapStop();
+    for (const [k] of relay.rx) { const p = V.peers.get(k); if (!p || p.state === 'connected') relayDrop(k); }
+  }, 500);
+  if (net.onRelay) net.onRelay((from, bytes) => V.relayIn(from, bytes));
   return V;
 }

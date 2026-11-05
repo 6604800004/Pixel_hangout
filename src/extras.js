@@ -994,11 +994,12 @@ function voiceStatus(rt) {
   if (pv.m || pv.v === 0) return '🔇 คุณปิดเสียงคนนี้ไว้';
   const peer = V.peers.get(rt.key);
   const st = peer ? peer.state : 'new';
-  if (st === 'failed') return G.net.hasTurn ? '🔴 เชื่อมต่อเสียงไม่ได้ (เน็ตไม่เสถียร กำลังลองใหม่)' : '🔴 เชื่อมเสียงไม่ได้ — เน็ตมือถือ/บริษัทบล็อก ต้องตั้ง TURN';
-  if (st !== 'connected') return '🟡 กำลังเชื่อมต่อเสียง…';
+  const viaServer = V.relayActive && V.relayActive(peer);
+  if (!viaServer && st !== 'connected') return '🟡 กำลังเชื่อมต่อเสียง…';
   if (rt.p.mic !== 1) return '🎙️ เขาปิดไมค์อยู่';
   if (V.deaf) return '🔇 คุณปิดหูฟังอยู่';
   if (!G.audible.has(rt.key)) return '📏 อยู่ไกลเกินรัศมีไมค์ของเขา เดินเข้าไปใกล้ๆ';
+  if (viaServer) return V.actx && V.actx.state !== 'running' ? '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง' : '🟢 ได้ยินอยู่ (ส่งผ่านเซิร์ฟเวอร์ · ไม่มีวิดีโอ)';
   if (peer.audioEl && peer.audioEl.paused) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
   return '🟢 ได้ยินอยู่';
 }
@@ -1011,10 +1012,9 @@ setInterval(() => {
   const V = G.voice; if (!V || !G.joined) return;
   for (const rt of G.others.values()) {
     const peer = V.peers.get(rt.key);
-    if (peer && peer.failedAt && Date.now() - peer.failedAt > 12000 && !G.warnedFail.has(rt.key)) {
+    if (peer && V.relayActive && V.relayActive(peer) && !G.warnedFail.has(rt.key)) {
       G.warnedFail.add(rt.key);
-      const msg = G.net.hasTurn ? `เชื่อมเสียงกับ ${rt.p.n || 'เพื่อน'} ไม่ได้ — ลองให้เขารีเฟรช หรือสลับ Wi-Fi/4G` : `เชื่อมเสียงกับ ${rt.p.n || 'เพื่อน'} ไม่ได้ — มักเกิดกับเน็ตมือถือ 4G/5G ต้องให้เจ้าของห้องตั้ง TURN`;
-      addSys('🔴 ' + msg); toast(msg, 6000);
+      addSys(`🛰️ ต่อเสียงกับ ${rt.p.n || 'เพื่อน'} โดยตรงไม่ได้ (มักเป็นเน็ตมือถือ) — สลับไปส่งเสียงผ่านเซิร์ฟเวอร์ให้แล้ว (เสียงอย่างเดียว ไม่มีวิดีโอ)`);
     }
   }
 }, 2000);

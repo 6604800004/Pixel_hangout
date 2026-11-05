@@ -175,7 +175,23 @@ wss.on('connection', (ws) => {
   ws.alive = true;
   ws.on('pong', () => (ws.alive = true));
   let key = null;
-  ws.on('message', (raw) => {
+  let relayWin = 0, relayCount = 0;
+  ws.on('message', (raw, isBinary) => {
+    if (isBinary) {
+      // เสียงสำรอง: [1][จำนวนผู้รับ]([ยาว][คีย์])...[เสียง] → ส่งต่อให้ผู้รับแต่ละคน [1][ยาว][คีย์ผู้ส่ง][เสียง]
+      if (!key || raw.length > 4096 || raw[0] !== 1) return;
+      const now = Date.now();
+      if (now - relayWin > 1000) { relayWin = now; relayCount = 0; }
+      if (++relayCount > 120) return;
+      let o = 2; const to = [];
+      for (let i = 0; i < raw[1] && o < raw.length; i++) { const l = raw[o++]; to.push(raw.toString('latin1', o, o + l)); o += l; }
+      if (o >= raw.length) return;
+      const audio = raw.subarray(o);
+      const head = Buffer.from([1, key.length]);
+      const out = Buffer.concat([head, Buffer.from(key, 'latin1'), audio]);
+      for (const k of to) { const c = peers.get(k); if (c && c.ws.readyState === 1 && c.ws.bufferedAmount < 256000) c.ws.send(out, { binary: true }); }
+      return;
+    }
     let m;
     try { m = JSON.parse(raw); } catch { return; }
     if (!m || typeof m.t !== 'string') return;

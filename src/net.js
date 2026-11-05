@@ -88,7 +88,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [] };
+  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [], relay: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -110,9 +110,19 @@ function makeWsNet(cfg) {
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws`);
+    ws.binaryType = 'arraybuffer';
     const me = ws;
     ws.onopen = () => send({ t: 'hello', uid, p: myPresence, password: net.password || '' });
     ws.onmessage = (ev) => {
+      if (ev.data instanceof ArrayBuffer) {
+        // เสียงสำรองผ่านเซิร์ฟเวอร์: [1][ยาวคีย์][คีย์ผู้ส่ง][เสียง μ-law]
+        const u = new Uint8Array(ev.data);
+        if (u[0] !== 1 || u.length < 3) return;
+        const kl = u[1], from = String.fromCharCode(...u.subarray(2, 2 + kl));
+        const audio = u.slice(2 + kl);
+        L.relay.forEach((f) => f(from, audio));
+        return;
+      }
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.t === 'welcome') {
         retry = 0;
@@ -179,6 +189,15 @@ function makeWsNet(cfg) {
     onChatDel(cb) { L.chatdel.push(cb); },
     onUpdate(cb) { L.update.push(cb); },
     onPoke(cb) { L.poke.push(cb); },
+    onRelay(cb) { L.relay.push(cb); },
+    relaySend(keys, audio) {
+      if (!ws || ws.readyState !== 1 || ws.bufferedAmount > 64000) return; // เน็ตช้า: ทิ้งเฟรมดีกว่าดีเลย์สะสม
+      const ks = keys.slice(0, 16).map((k) => String(k).slice(0, 40));
+      let len = 2 + audio.length; for (const k of ks) len += 1 + k.length;
+      const b = new Uint8Array(len); b[0] = 1; b[1] = ks.length; let o = 2;
+      for (const k of ks) { b[o++] = k.length; for (let i = 0; i < k.length; i++) b[o++] = k.charCodeAt(i) & 0x7f; }
+      b.set(audio, o); ws.send(b);
+    },
     poke(name, key) { send({ t: 'poke', name, key }); },
     admin(cmd, key, arg, ban) { send({ t: 'admin', cmd, key, arg, ban: ban || 0 }); },
     onWriteDenied() {},
