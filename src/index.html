@@ -107,11 +107,16 @@
     <b id="ytTitle">📺 จอ</b>
     <div class="ytbtns">
       <button id="ytToggle" title="เล่น/หยุด ให้ทุกคน">⏯️</button>
+      <button id="ytVolBtn" title="ปรับเสียงในเครื่องฉัน">🔊</button>
       <button id="ytMin" title="ย่อ (ฟังอย่างเดียว ไม่ต้องเห็นภาพ)">➖</button>
       <button id="ytBig" title="ขยาย">⤢</button>
       <button id="ytHide" title="ซ่อน (เฉพาะเรา)">✕</button>
     </div>
   </header>
+  <div class="ytvol hidden" id="ytVolRow">
+    <span>เสียงในเครื่องฉัน</span><input type="range" id="ytVol" min="0" max="100" step="1" /><b id="ytVolNum">100</b>
+    <button id="ytMute" title="ปิดเสียงในเครื่องฉัน">🔇</button>
+  </div>
   <div class="ytbox"><div id="ytPlayer"></div><button class="pbtn pink hidden" id="ytTap">▶ แตะเพื่อดูด้วยกัน</button></div>
 </section>
 </div>

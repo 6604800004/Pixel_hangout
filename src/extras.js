@@ -503,7 +503,7 @@ async function ensurePlayer(doc) {
     YT.player = new window.YT.Player('ytPlayer', {
       videoId: doc.v, width: '100%', height: '100%',
       playerVars: { playsinline: 1, rel: 0, modestbranding: 1, start: Math.floor(screenExpected(doc)) },
-      events: { onReady: () => { YT.ready = true; res(); }, onStateChange: onYTState },
+      events: { onReady: () => { YT.ready = true; applyMyVolume(true); res(); }, onStateChange: onYTState },
     });
   });
 }
@@ -555,6 +555,7 @@ async function syncScreens() {
     ytCall(() => (act.doc.playing ? YT.player.loadVideoById({ videoId: act.doc.v, startSeconds: expected }) : YT.player.cueVideoById({ videoId: act.doc.v, startSeconds: expected })));
     return;
   }
+  applyMyVolume();
   const S = window.YT.PlayerState;
   const st = YT.player.getPlayerState();
   const pos = YT.player.getCurrentTime();
@@ -623,6 +624,17 @@ function openScreenModal(it) {
       foot.append(show);
     }
     const close = el('button', 'pbtn', 'ปิด'); close.onclick = closeModal;
+    const mv = el('div', 'opt'); mv.style.marginTop = '12px';
+    mv.append(el('span', null, '🔊 เสียงในเครื่องฉัน (คนอื่นไม่เปลี่ยน)'));
+    const mvRow = el('div', 'vbtns'); mvRow.style.alignItems = 'center';
+    const mr = el('input'); mr.type = 'range'; mr.min = '0'; mr.max = '100'; mr.value = String(G.myVol.v); mr.style.flex = '1';
+    const mn = el('span', 'tip', `${G.myVol.v}`);
+    mr.oninput = () => { setMyVolume(Number(mr.value)); mn.textContent = mr.value; };
+    const mm = el('button', 'pbtn sm', G.myVol.muted ? '🔈 เปิดเสียง' : '🔇 ปิดเสียง');
+    mm.onclick = () => { setMyVolume(null, !G.myVol.muted); mm.textContent = G.myVol.muted ? '🔈 เปิดเสียง' : '🔇 ปิดเสียง'; };
+    mvRow.append(mr, mn, mm); mv.append(mvRow);
+    if (isIOS) mv.append(el('p', 'tip', 'iPhone/iPad: ใช้ปุ่มข้างเครื่องปรับความดัง (ปุ่มปิดเสียงใช้ได้)'));
+    card.append(mv);
     const play = el('button', 'pbtn pink', spk ? '▶ เปิดเพลง' : '▶ เล่นบนจอ');
     play.onclick = async () => {
       const y = parseYouTube(inp.value);
@@ -882,3 +894,34 @@ function pokeByName(name) {
   G.net.poke(name);
   try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {}); } catch {}
 }
+
+// ---------- ปรับเสียงคลิป/ลำโพงเฉพาะเครื่องฉัน (คนอื่นไม่เปลี่ยน) ----------
+G.myVol = { v: Number(lsGet('pixel.ytVol', 100)), muted: !!lsGet('pixel.ytMute', false) };
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function applyMyVolume(force) {
+  if (!YT.ready || !YT.player || !YT.player.setVolume) return;
+  const key = G.myVol.v + ':' + G.myVol.muted;
+  if (!force && YT.volKey === key) return;
+  YT.volKey = key;
+  try { YT.player.setVolume(G.myVol.v); if (G.myVol.muted || G.myVol.v === 0) YT.player.mute(); else YT.player.unMute(); } catch {}
+}
+function paintMyVolume() {
+  $('#ytVol').value = String(G.myVol.v);
+  $('#ytVolNum').textContent = G.myVol.muted ? '0' : String(G.myVol.v);
+  $('#ytMute').classList.toggle('on', G.myVol.muted);
+  $('#ytMute').textContent = G.myVol.muted ? '🔈' : '🔇';
+  $('#ytMute').title = G.myVol.muted ? 'เปิดเสียง' : 'ปิดเสียงในเครื่องฉัน';
+  $('#ytVolBtn').textContent = G.myVol.muted || G.myVol.v === 0 ? '🔇' : G.myVol.v < 50 ? '🔉' : '🔊';
+}
+function setMyVolume(v, muted) {
+  if (v != null) G.myVol.v = Math.max(0, Math.min(100, Math.round(v)));
+  if (muted != null) G.myVol.muted = muted;
+  if (v != null && v > 0 && muted == null) G.myVol.muted = false;
+  lsSet('pixel.ytVol', G.myVol.v); lsSet('pixel.ytMute', G.myVol.muted);
+  paintMyVolume(); applyMyVolume(true);
+}
+$('#ytVolBtn').onclick = () => $('#ytVolRow').classList.toggle('hidden');
+$('#ytVol').oninput = () => setMyVolume(Number($('#ytVol').value));
+$('#ytMute').onclick = () => setMyVolume(null, !G.myVol.muted);
+if (isIOS) $('#ytVolRow').append(el('p', 'tip', 'iPhone/iPad: แถบนี้ปิด/เปิดเสียงได้ แต่ความดังต้องใช้ปุ่มข้างเครื่อง (Safari ไม่ให้เว็บปรับระดับเสียง)'));
+paintMyVolume();
