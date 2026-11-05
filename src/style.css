@@ -321,3 +321,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .yt.dragging { opacity: .92; box-shadow: 0 10px 24px rgba(0,0,0,.35); }
 .yt.dragging header { cursor: grabbing; }
 .yt.dragging iframe { pointer-events: none; }
+
+/* ---------- ลำโพง ---------- */
+.yt.spk header b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spk-tap { display: block; width: calc(100% - 12px); margin: 0 6px 6px; padding: 8px; border: 2px solid var(--ink); border-radius: 10px; background: var(--yellow); font: inherit; font-size: 13px; }
+.spk-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 180px; overflow-y: auto; }
+.spk-list li { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 8px; font-size: 13px; }
+.spk-list li.cur { background: var(--pink2); font-weight: 600; }
+.spk-list li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spk-list li button { border: 0; background: var(--paper2); border-radius: 6px; padding: 3px 7px; font-size: 12px; }
+.spk-ctrl { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.spk-ctrl .pbtn { min-width: 52px; font-size: 18px; }
+.radio-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.radio-grid button { border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 4px 8px; font: inherit; font-size: 12px; }
+.spk-row { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.spk-row input[type=url], .spk-row input[type=text] { flex: 1; min-width: 0; }
+.spk-row input[type=range] { flex: 1; }

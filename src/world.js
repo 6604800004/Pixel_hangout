@@ -77,10 +77,13 @@ const DEFAULT_LAYOUT = [
   { t: 'plant', v: 0, x: 140, y: -10 }, { t: 'plant', v: 0, x: 372, y: -10 },
   { t: 'offeringTable', x: 160, y: -88 }, { t: 'offeringTable', x: 352, y: -88 },
   { t: 'chantTable', x: 96, y: -48 }, { t: 'chantTable', x: 416, y: -48 },
+  // ---- ลำโพงเปิดเพลง (ห้องรวม + ผับ) ----
+  { t: 'speaker', x: 490, y: 262 }, { t: 'speaker', x: 440, y: 676 },
 ];
-const LAYOUT_VERSION = 5;
+const LAYOUT_VERSION = 6;
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
+const LAYOUT_V6_FROM = 90; // def90 ขึ้นไปมาในเวอร์ชัน 6 (ลำโพงในห้องรวม/ผับ)
 const LAYOUT_V4_FROM = 73; // def73 ขึ้นไปมาในเวอร์ชัน 4–5 (ห้องไหว้พระ — v5 ย้ายขึ้นไปอยู่บนสุด)
 
 // ---------- ท้องฟ้าตามเวลาจริงของคนดู ----------

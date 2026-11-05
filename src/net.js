@@ -4,7 +4,7 @@
 //   ws     : เปิดจากเซิร์ฟเวอร์ Node ของเราเอง (มีเสียง/กล้อง)
 //   solo   : เล่นคนเดียว (เช่นตอนยังไม่ได้ล็อกอิน)
 // ============================================================================
-const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
+const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens', 'speakers'];
 
 function randomId(n = 10) {
   const a = 'abcdefghijkmnpqrstuvwxyz23456789';
@@ -194,6 +194,11 @@ function makeWsNet(cfg) {
     // กระดานแนบรูป (มีเฉพาะเวอร์ชันเซิร์ฟเวอร์)
     timeOffset: 0, now() { return Date.now() + (net.timeOffset || 0); }, youtube: true,
     board: true, boardMax: cfg.boardMax || 20, boardTtl: cfg.boardTtl || 86400000, spotifyClientId: cfg.spotifyClientId || '', lastfm: !!cfg.lastfm,
+    async uploadMusic(file) {
+      const r = await fetch('/api/music', { method: 'POST', body: file, headers: { 'Content-Type': file.type || 'audio/mpeg', 'X-Room-Password': net.password || '' } });
+      if (!r.ok) { let e = {}; try { e = await r.json(); } catch {} const err = new Error(e.error || 'upload'); err.code = e.error || r.status; throw err; }
+      return (await r.json()).url;
+    },
     async uploadBoard(boardId, blob, meta) {
       const r = await fetch(`/api/board/${encodeURIComponent(boardId)}`, {
         method: 'POST', body: blob,
