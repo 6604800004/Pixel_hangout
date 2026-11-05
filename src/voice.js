@@ -81,8 +81,8 @@ function makeVoice(net, onChange) {
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
     peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
     const play = !!peer.playOk;
-    peer.audioEl.muted = V.deaf || V.bgMute || !play;
-    if (play && !V.deaf && !V.bgMute) peer.audioEl.play().catch(() => {});
+    peer.audioEl.muted = V.deaf || V.bgMute || !play || !!peer.userMuted;
+    if (play && !V.deaf && !V.bgMute && !peer.userMuted) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
   V.screenAudience = new Set();
@@ -92,6 +92,11 @@ function makeVoice(net, onChange) {
       const ok = keys.has(p.key);
       if (ok !== p.screenOk) { p.screenOk = ok; p.screenTx?.sender.replaceTrack(ok && V.screenTrack ? V.screenTrack : null).catch(() => {}); }
     }
+  };
+  // ปิดเสียงเฉพาะคน (ใช้ได้ทุกเครื่องรวม iPhone ที่ปรับระดับเสียงจากเว็บไม่ได้)
+  V.setUserMuted = (key, m) => {
+    const p = V.peers.get(key);
+    if (p && !!p.userMuted !== !!m) { p.userMuted = !!m; apply(p); }
   };
   V.setVolume = (key, v) => {
     const p = V.peers.get(key);

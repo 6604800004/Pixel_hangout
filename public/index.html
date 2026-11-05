@@ -355,6 +355,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .yt.onscreen header button { width: 26px; height: 22px; font-size: 12px; }
 .yt.onscreen .ytvol { background: rgba(29,31,46,.86); }
 
+/* ปรับเสียงเพื่อนทีละคน */
+.people li.pvol-li { padding: 0 6px 8px 49px; }
+.pvol { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; background: var(--paper2); border-radius: 10px; padding: 6px 8px; }
+.pvol input[type=range] { flex: 1; min-width: 80px; accent-color: var(--pink); }
+.pvol span { font-size: 12px; width: 34px; text-align: right; }
+.pvol small { flex-basis: 100%; font-size: 11px; color: var(--ink2); }
+
 </style>
 </head>
 <body>
@@ -2259,8 +2266,8 @@ function makeVoice(net, onChange) {
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
     peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
     const play = !!peer.playOk;
-    peer.audioEl.muted = V.deaf || V.bgMute || !play;
-    if (play && !V.deaf && !V.bgMute) peer.audioEl.play().catch(() => {});
+    peer.audioEl.muted = V.deaf || V.bgMute || !play || !!peer.userMuted;
+    if (play && !V.deaf && !V.bgMute && !peer.userMuted) peer.audioEl.play().catch(() => {});
   }
   V.audience = new Set();
   V.screenAudience = new Set();
@@ -2270,6 +2277,11 @@ function makeVoice(net, onChange) {
       const ok = keys.has(p.key);
       if (ok !== p.screenOk) { p.screenOk = ok; p.screenTx?.sender.replaceTrack(ok && V.screenTrack ? V.screenTrack : null).catch(() => {}); }
     }
+  };
+  // ปิดเสียงเฉพาะคน (ใช้ได้ทุกเครื่องรวม iPhone ที่ปรับระดับเสียงจากเว็บไม่ได้)
+  V.setUserMuted = (key, m) => {
+    const p = V.peers.get(key);
+    if (p && !!p.userMuted !== !!m) { p.userMuted = !!m; apply(p); }
   };
   V.setVolume = (key, v) => {
     const p = V.peers.get(key);
@@ -3762,7 +3774,14 @@ function renderPeople() {
       go.onclick = () => { walkTo(r.rt.x + 14, r.rt.y + 4); $('#people').classList.add('hidden'); };
       const pk = document.createElement('button'); pk.className = 'pbtn sm'; pk.textContent = '👉'; pk.title = 'สะกิด';
       pk.onclick = () => pokeByName(r.n || '');
-      li.append(pk, go);
+      // ปรับเสียงคนนี้เฉพาะในเครื่องเรา
+      const vb = document.createElement('button'); vb.className = 'pbtn sm'; vb.textContent = peerVolIcon(r.rt); vb.title = 'ปรับเสียงคนนี้ (เฉพาะเรา)';
+      const id = peerId(r.rt);
+      vb.onclick = () => { G.peopleVolOpen = G.peopleVolOpen === id ? null : id; G.peopleSig = ''; renderPeople(); };
+      li.append(vb, pk, go);
+      ul.append(li);
+      if (G.peopleVolOpen === id) { const vli = document.createElement('li'); vli.className = 'pvol-li'; vli.append(peerVolRow(r.rt, vb)); ul.append(vli); }
+      continue;
     }
     ul.append(li);
   }
@@ -4350,13 +4369,14 @@ function updateZones() {
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
     if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== z) continue;
-    if (z !== 'hall') { hear.add(rt.key); send.add(rt.key); if (G.voice) G.voice.setVolume(rt.key, 1); continue; }
+    if (G.voice) G.voice.setUserMuted(rt.key, peerVol(rt).m || peerVol(rt).v === 0);
+    if (z !== 'hall') { hear.add(rt.key); send.add(rt.key); if (G.voice) G.voice.setVolume(rt.key, peerVol(rt).v); continue; }
     const d = Math.hypot(rt.x - G.me.x, rt.y - G.me.y);
     const theirR = peerRange(rt.p), myR = G.micSet.r;
     if (d < myR + (G.sendTo.has(rt.key) ? MIC_HYST : 0)) send.add(rt.key);
     if (d < theirR + (G.audible.has(rt.key) ? MIC_HYST : 0)) {
       hear.add(rt.key);
-      if (G.voice) G.voice.setVolume(rt.key, clamp(1 - (d - theirR * 0.55) / (theirR * 0.45 + MIC_HYST), 0.2, 1));
+      if (G.voice) G.voice.setVolume(rt.key, clamp(1 - (d - theirR * 0.55) / (theirR * 0.45 + MIC_HYST), 0.2, 1) * peerVol(rt).v);
     }
   }
   G.audible = hear; G.sendTo = send;
@@ -5265,6 +5285,32 @@ function placeCinemaPanel(camX, camY, scale) {
   panel.style.left = Math.round(x) + 'px'; panel.style.top = Math.round(y) + 'px';
   panel.style.width = Math.round(198 * scale) + 'px';
   panel.style.setProperty('--sh', Math.round(58 * scale) + 'px');
+}
+
+// ---------- ปรับเสียงเพื่อนทีละคน (เฉพาะในเครื่องเรา · จำไว้ตามตัวคน) ----------
+G.peerVols = lsGet('pixel.peerVol', {}) || {};
+const peerId = (rt) => String(rt.by || rt.key);
+function peerVol(rt) { const o = G.peerVols[peerId(rt)]; return { v: o && Number.isFinite(o.v) ? o.v : 1, m: !!(o && o.m) }; }
+function setPeerVol(rt, patch) {
+  const id = peerId(rt);
+  const o = { ...peerVol(rt), ...patch };
+  if (o.v >= 0.99 && !o.m) delete G.peerVols[id]; else G.peerVols[id] = { v: Math.round(o.v * 100) / 100, m: o.m };
+  lsSet('pixel.peerVol', G.peerVols);
+  updateZones();
+}
+function peerVolIcon(rt) { const o = peerVol(rt); return o.m || o.v === 0 ? '🔇' : o.v < 0.5 ? '🔈' : o.v < 0.99 ? '🔉' : '🔊'; }
+function peerVolRow(rt, iconBtn) {
+  const row = document.createElement('div'); row.className = 'pvol';
+  const o = peerVol(rt);
+  const r = document.createElement('input'); r.type = 'range'; r.min = '0'; r.max = '100'; r.value = String(Math.round(o.v * 100));
+  const num = document.createElement('span'); num.textContent = o.m ? 'ปิด' : `${Math.round(o.v * 100)}%`;
+  const mb = document.createElement('button'); mb.className = 'pbtn sm'; mb.textContent = o.m ? '🔈 เปิด' : '🔇 ปิด';
+  const paint = () => { const p = peerVol(rt); num.textContent = p.m ? 'ปิด' : `${Math.round(p.v * 100)}%`; mb.textContent = p.m ? '🔈 เปิด' : '🔇 ปิด'; iconBtn.textContent = peerVolIcon(rt); };
+  r.oninput = () => { setPeerVol(rt, { v: Number(r.value) / 100, m: false }); paint(); };
+  mb.onclick = () => { setPeerVol(rt, { m: !peerVol(rt).m }); paint(); };
+  row.append(r, num, mb);
+  if (typeof isIOS !== 'undefined' && isIOS) { const t = document.createElement('small'); t.textContent = 'iPhone/iPad: เลื่อนระดับเสียงไม่ได้ ใช้ปุ่มปิดเสียงแทน'; row.append(t); }
+  return row;
 }
 
 })();

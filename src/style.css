@@ -338,3 +338,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .yt.onscreen header { background: rgba(29,31,46,.86); border-radius: 0 0 10px 10px; padding: 3px 8px; font-size: 12px; }
 .yt.onscreen header button { width: 26px; height: 22px; font-size: 12px; }
 .yt.onscreen .ytvol { background: rgba(29,31,46,.86); }
+
+/* ปรับเสียงเพื่อนทีละคน */
+.people li.pvol-li { padding: 0 6px 8px 49px; }
+.pvol { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; background: var(--paper2); border-radius: 10px; padding: 6px 8px; }
+.pvol input[type=range] { flex: 1; min-width: 80px; accent-color: var(--pink); }
+.pvol span { font-size: 12px; width: 34px; text-align: right; }
+.pvol small { flex-basis: 100%; font-size: 11px; color: var(--ink2); }

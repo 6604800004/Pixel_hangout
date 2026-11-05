@@ -41,13 +41,14 @@ function updateZones() {
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
     if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== z) continue;
-    if (z !== 'hall') { hear.add(rt.key); send.add(rt.key); if (G.voice) G.voice.setVolume(rt.key, 1); continue; }
+    if (G.voice) G.voice.setUserMuted(rt.key, peerVol(rt).m || peerVol(rt).v === 0);
+    if (z !== 'hall') { hear.add(rt.key); send.add(rt.key); if (G.voice) G.voice.setVolume(rt.key, peerVol(rt).v); continue; }
     const d = Math.hypot(rt.x - G.me.x, rt.y - G.me.y);
     const theirR = peerRange(rt.p), myR = G.micSet.r;
     if (d < myR + (G.sendTo.has(rt.key) ? MIC_HYST : 0)) send.add(rt.key);
     if (d < theirR + (G.audible.has(rt.key) ? MIC_HYST : 0)) {
       hear.add(rt.key);
-      if (G.voice) G.voice.setVolume(rt.key, clamp(1 - (d - theirR * 0.55) / (theirR * 0.45 + MIC_HYST), 0.2, 1));
+      if (G.voice) G.voice.setVolume(rt.key, clamp(1 - (d - theirR * 0.55) / (theirR * 0.45 + MIC_HYST), 0.2, 1) * peerVol(rt).v);
     }
   }
   G.audible = hear; G.sendTo = send;
@@ -956,4 +957,30 @@ function placeCinemaPanel(camX, camY, scale) {
   panel.style.left = Math.round(x) + 'px'; panel.style.top = Math.round(y) + 'px';
   panel.style.width = Math.round(198 * scale) + 'px';
   panel.style.setProperty('--sh', Math.round(58 * scale) + 'px');
+}
+
+// ---------- ปรับเสียงเพื่อนทีละคน (เฉพาะในเครื่องเรา · จำไว้ตามตัวคน) ----------
+G.peerVols = lsGet('pixel.peerVol', {}) || {};
+const peerId = (rt) => String(rt.by || rt.key);
+function peerVol(rt) { const o = G.peerVols[peerId(rt)]; return { v: o && Number.isFinite(o.v) ? o.v : 1, m: !!(o && o.m) }; }
+function setPeerVol(rt, patch) {
+  const id = peerId(rt);
+  const o = { ...peerVol(rt), ...patch };
+  if (o.v >= 0.99 && !o.m) delete G.peerVols[id]; else G.peerVols[id] = { v: Math.round(o.v * 100) / 100, m: o.m };
+  lsSet('pixel.peerVol', G.peerVols);
+  updateZones();
+}
+function peerVolIcon(rt) { const o = peerVol(rt); return o.m || o.v === 0 ? '🔇' : o.v < 0.5 ? '🔈' : o.v < 0.99 ? '🔉' : '🔊'; }
+function peerVolRow(rt, iconBtn) {
+  const row = document.createElement('div'); row.className = 'pvol';
+  const o = peerVol(rt);
+  const r = document.createElement('input'); r.type = 'range'; r.min = '0'; r.max = '100'; r.value = String(Math.round(o.v * 100));
+  const num = document.createElement('span'); num.textContent = o.m ? 'ปิด' : `${Math.round(o.v * 100)}%`;
+  const mb = document.createElement('button'); mb.className = 'pbtn sm'; mb.textContent = o.m ? '🔈 เปิด' : '🔇 ปิด';
+  const paint = () => { const p = peerVol(rt); num.textContent = p.m ? 'ปิด' : `${Math.round(p.v * 100)}%`; mb.textContent = p.m ? '🔈 เปิด' : '🔇 ปิด'; iconBtn.textContent = peerVolIcon(rt); };
+  r.oninput = () => { setPeerVol(rt, { v: Number(r.value) / 100, m: false }); paint(); };
+  mb.onclick = () => { setPeerVol(rt, { m: !peerVol(rt).m }); paint(); };
+  row.append(r, num, mb);
+  if (typeof isIOS !== 'undefined' && isIOS) { const t = document.createElement('small'); t.textContent = 'iPhone/iPad: เลื่อนระดับเสียงไม่ได้ ใช้ปุ่มปิดเสียงแทน'; row.append(t); }
+  return row;
 }

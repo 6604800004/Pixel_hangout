@@ -1189,7 +1189,14 @@ function renderPeople() {
       go.onclick = () => { walkTo(r.rt.x + 14, r.rt.y + 4); $('#people').classList.add('hidden'); };
       const pk = document.createElement('button'); pk.className = 'pbtn sm'; pk.textContent = '👉'; pk.title = 'สะกิด';
       pk.onclick = () => pokeByName(r.n || '');
-      li.append(pk, go);
+      // ปรับเสียงคนนี้เฉพาะในเครื่องเรา
+      const vb = document.createElement('button'); vb.className = 'pbtn sm'; vb.textContent = peerVolIcon(r.rt); vb.title = 'ปรับเสียงคนนี้ (เฉพาะเรา)';
+      const id = peerId(r.rt);
+      vb.onclick = () => { G.peopleVolOpen = G.peopleVolOpen === id ? null : id; G.peopleSig = ''; renderPeople(); };
+      li.append(vb, pk, go);
+      ul.append(li);
+      if (G.peopleVolOpen === id) { const vli = document.createElement('li'); vli.className = 'pvol-li'; vli.append(peerVolRow(r.rt, vb)); ul.append(vli); }
+      continue;
     }
     ul.append(li);
   }
