@@ -19,7 +19,7 @@ const PUBLIC = path.join(__dirname, 'public');
 // เวอร์ชันของหน้าเว็บ: ถ้า deploy ใหม่ เครื่องที่เปิดค้างไว้จะรู้และขึ้นปุ่มให้โหลดใหม่
 let BUILD = 'dev';
 try { BUILD = crypto.createHash('sha1').update(fs.readFileSync(path.join(PUBLIC, 'index.html'))).digest('hex').slice(0, 10); } catch {}
-const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens', 'speakers'];
+const COLS = ['furniture', 'desks', 'chat', 'settings', 'board', 'screens'];
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
 // แอดมิน: คนที่รู้รหัสนี้ใช้คำสั่งในแชตได้ (admin <รหัส> แล้ว kick all / kick ชื่อ)
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
@@ -34,13 +34,6 @@ const BOARD_DIR = path.join(DATA_DIR, 'board');
 const BOARD_MAX = Number(process.env.BOARD_MAX) || 20;      // รูปสูงสุดต่อกระดาน
 const BOARD_TTL = 24 * 60 * 60 * 1000;
 const BOARD_MAX_BYTES = 3 * 1024 * 1024;
-// ลำโพง: ไฟล์เพลงที่อัปโหลด (เก็บไว้ 7 วัน / สูงสุด 60 ไฟล์)
-const MUSIC_DIR = path.join(DATA_DIR, 'music');
-const MUSIC_MAX_BYTES = 25 * 1024 * 1024;
-const MUSIC_MAX_FILES = 60;
-const MUSIC_TTL = 7 * 24 * 60 * 60 * 1000;
-const AUDIO_EXT = { 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/webm': 'webm', 'audio/flac': 'flac' };
-const AUDIO_MIME = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', wav: 'audio/wav', webm: 'audio/webm', flac: 'audio/flac' };
 
 const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
 if (process.env.TURN_URL) {
@@ -129,46 +122,6 @@ const server = http.createServer((req, res) => {
       });
     });
     return;
-  }
-  // ---- ลำโพง: อัปโหลดไฟล์เพลง ----
-  if (url.pathname === '/api/music' && req.method === 'POST') {
-    if (ROOM_PASSWORD && req.headers['x-room-password'] !== ROOM_PASSWORD) { res.writeHead(403); return res.end('{"error":"password"}'); }
-    const ext = AUDIO_EXT[String(req.headers['content-type'] || '').split(';')[0].trim()];
-    if (!ext) { res.writeHead(415); return res.end('{"error":"type"}'); }
-    const chunks = []; let size = 0, tooBig = false;
-    req.on('data', (c) => { size += c.length; if (size > MUSIC_MAX_BYTES) { tooBig = true; res.writeHead(413); res.end('{"error":"big"}'); req.destroy(); } else chunks.push(c); });
-    req.on('end', () => {
-      if (tooBig) return;
-      const id = 'm' + crypto.randomBytes(8).toString('hex');
-      fs.mkdir(MUSIC_DIR, { recursive: true }, () => {
-        fs.writeFile(path.join(MUSIC_DIR, `${id}.${ext}`), Buffer.concat(chunks), (err) => {
-          if (err) { res.writeHead(500); return res.end('{"error":"save"}'); }
-          sweepMusic();
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ url: `/music/${id}.${ext}` }));
-        });
-      });
-    });
-    return;
-  }
-  // ---- ลำโพง: เล่นไฟล์เพลง (รองรับ Range — Safari ต้องใช้) ----
-  const mus = url.pathname.match(/^\/music\/(m[0-9a-f]{16})\.(mp3|m4a|aac|ogg|wav|webm|flac)$/);
-  if (mus) {
-    const fp = path.join(MUSIC_DIR, `${mus[1]}.${mus[2]}`);
-    return fs.stat(fp, (err, st) => {
-      if (err) { res.writeHead(404); return res.end(); }
-      const type = AUDIO_MIME[mus[2]];
-      const m = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
-      if (m) {
-        let start = m[1] === '' ? Math.max(0, st.size - Number(m[2])) : Number(m[1]);
-        let end = m[1] !== '' && m[2] !== '' ? Math.min(Number(m[2]), st.size - 1) : st.size - 1;
-        if (start >= st.size || start > end) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); return res.end(); }
-        res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1, 'Cache-Control': 'public, max-age=86400' });
-        return fs.createReadStream(fp, { start, end }).pipe(res);
-      }
-      res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=86400' });
-      fs.createReadStream(fp).pipe(res);
-    });
   }
   const img = url.pathname.match(/^\/board\/(i[0-9a-f]{16})\.(jpg|png|webp|gif)$/);
   if (img) {
@@ -363,17 +316,6 @@ function sweepBoard() {
 }
 sweepBoard();
 setInterval(sweepBoard, 5 * 60 * 1000);
-// ลบไฟล์เพลงที่เก่าเกิน 7 วัน หรือเกินจำนวนสูงสุด (ลบเก่าสุดก่อน)
-function sweepMusic() {
-  fs.readdir(MUSIC_DIR, (err, names) => {
-    if (err) return;
-    const files = names.filter((n) => /^m[0-9a-f]{16}\./.test(n)).map((n) => { try { return { n, t: fs.statSync(path.join(MUSIC_DIR, n)).mtimeMs }; } catch { return null; } }).filter(Boolean).sort((a, b) => a.t - b.t);
-    const now = Date.now();
-    files.forEach((f, i) => { if (now - f.t > MUSIC_TTL || files.length - i > MUSIC_MAX_FILES) fs.unlink(path.join(MUSIC_DIR, f.n), () => {}); });
-  });
-}
-sweepMusic();
-setInterval(sweepMusic, 60 * 60 * 1000);
 
 setInterval(() => {
   for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; ws.ping(); }

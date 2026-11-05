@@ -672,7 +672,6 @@ canvas.addEventListener('pointerdown', (e) => {
   // แตะที่นั่ง/โต๊ะ = เดินไปนั่ง
   let target = null;
   const it = itemAt(w.x, w.y);
-  if (it && SPEAKER_TYPES.has(it.t)) { openSpeaker(it); return; }
   if (it && SCREEN_TYPES.has(it.t)) {
     if (nearScreen(it)) openScreenModal(it);
     else { walkTo(it.x, it.y + 14); G.me.pendingScreen = it.id; }
@@ -1066,8 +1065,6 @@ function updateActions() {
     if (bd) acts.push(['🖼️ เปิดกระดาน', 'board:' + bd.id]);
     const sc = G.furniture.find((it) => SCREEN_TYPES.has(it.t) && nearScreen(it));
     if (sc) acts.push(['📺 YouTube บนจอ', 'screen:' + sc.id]);
-    const sp = G.furniture.find((it) => SPEAKER_TYPES.has(it.t) && Math.abs(me.x - it.x) < 30 && me.y > it.y - 6 && me.y < it.y + 40);
-    if (sp) acts.push(['🔊 เปิดเพลงที่ลำโพง', 'speaker:' + sp.id]);
   }
   if (!G.edit) {
     if (me.sit) {
@@ -1102,7 +1099,6 @@ function updateActions() {
       if (act === 'stand') standUp();
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
-      else if (act.startsWith('speaker:')) { const it = G.furniture.find((f) => f.id === act.slice(8)); if (it) openSpeaker(it); }
       else if (act.startsWith('screen:')) { const it = G.furniture.find((f) => f.id === act.slice(7)); if (it) openScreenModal(it); }
       else if (act.startsWith('board:')) { const it = G.furniture.find((f) => f.id === act.slice(6)); if (it) openBoard(it); }
       else if (act.startsWith('sit:')) { const s = G.seats.find((x) => x.id === act.slice(4)); if (s) sitOn(s); }
@@ -1211,7 +1207,7 @@ function openModal(build) {
   build(card);
   $('#modal').classList.remove('hidden');
 }
-function closeModal() { $('#modal').classList.add('hidden'); G.previewLoop = null; G.voicePanelOpen = false; G.boardOpen = null; G.musicOpen = false; G.spkOpen = null; }
+function closeModal() { $('#modal').classList.add('hidden'); G.previewLoop = null; G.voicePanelOpen = false; G.boardOpen = null; G.musicOpen = false; }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function optRow(label, items, isSel, onPick, kind = 'chip') {
   const o = el('div', 'opt');
@@ -1611,7 +1607,6 @@ async function join() {
   buildPalette(); buildTrays();
   if (net.mode === 'ws') { setupVoice(); net.start(); }
   if (net.mode === 'ws' && G.bgAudio) keepAlive(true); // ต้องเริ่มจากการกดปุ่ม (iOS)
-  if (net.mode === 'ws') spkUnlock();
   G.net.setPresence(fullPresence());
   G.presLast = performance.now();
   G.zone = zoneAt(G.me.x, G.me.y);
@@ -1687,7 +1682,6 @@ function frame(ms) {
     try { const cfg = await (await fetch('/config')).json(); net.needPassword = cfg.needPassword; if (cfg.roomName) $('#roomName').textContent = cfg.roomName; document.title = cfg.roomName + ' · Pixel Hangout'; } catch {}
   }
   rebuildWorld();
-  net.watch('speakers', (docs) => onSpeakers(docs));
   net.watch('furniture', (docs) => { G.furnDocs = docs; if (!G.drag) rebuildWorld(); maybeMigrateLayout(); });
   net.watch('desks', (docs) => {
     G.desks = new Map(docs.map((d) => [d.id, d]));
