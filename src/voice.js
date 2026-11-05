@@ -138,6 +138,10 @@ function makeVoice(net, onChange) {
       peer.state = pc.connectionState;
       if (peer.state === 'connected') tune(peer);
       if (peer.state === 'failed' && initiator) { try { pc.restartIce(); } catch {} offer(peer, true); }
+      // หลุดชั่วคราว (เน็ตสลับ Wi-Fi/4G): ถ้าไม่กลับมาใน 6 วิ ให้เริ่มเชื่อมใหม่
+      clearTimeout(peer.dcTimer);
+      if (peer.state === 'disconnected') peer.dcTimer = setTimeout(() => { if (peer.state === 'disconnected' && initiator) { try { pc.restartIce(); } catch {} offer(peer, true); } }, 6000);
+      if (peer.state === 'failed') peer.failedAt = peer.failedAt || Date.now(); else if (peer.state === 'connected') peer.failedAt = 0;
       onChange('peers');
     };
     if (initiator) {

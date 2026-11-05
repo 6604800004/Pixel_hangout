@@ -116,7 +116,7 @@ function makeWsNet(cfg) {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.t === 'welcome') {
         retry = 0;
-        net.myKey = m.key;
+        net.hasTurn = !!m.turn; net.myKey = m.key;
         if (m.v) { if (net.build && net.build !== m.v) L.update.forEach((f) => f()); net.build = net.build || m.v; }
         if (Number.isFinite(m.now)) net.timeOffset = m.now - Date.now();
         net.iceServers = m.ice || net.iceServers;

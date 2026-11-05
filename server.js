@@ -39,6 +39,24 @@ const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:1
 if (process.env.TURN_URL) {
   ICE.push({ urls: process.env.TURN_URL.split(',').map((s) => s.trim()), username: process.env.TURN_USER || '', credential: process.env.TURN_PASS || '' });
 }
+// TURN ฟรีจาก Metered (สมัครฟรี 20GB/เดือน): ช่วยให้คนที่ใช้เน็ตมือถือ/เน็ตบริษัทได้ยินเสียงกัน
+// ตั้ง METERED_APP (ชื่อแอป เช่น pixelhangout) และ METERED_API_KEY ใน Render
+let meteredIce = [];
+async function refreshMetered() {
+  const app = process.env.METERED_APP, key = process.env.METERED_API_KEY;
+  if (!app || !key) return;
+  try {
+    const host = app.includes('.') ? app : `${app}.metered.live`;
+    const r = await fetch(`https://${host}/api/v1/turn/credentials?apiKey=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(8000) });
+    const j = await r.json();
+    if (Array.isArray(j) && j.length) { meteredIce = j.filter((x) => x && x.urls); console.log(`TURN: ได้ ${meteredIce.length} เซิร์ฟเวอร์จาก Metered`); }
+    else console.warn('TURN: Metered ตอบกลับไม่ถูกต้อง', JSON.stringify(j).slice(0, 200));
+  } catch (e) { console.warn('TURN: ดึงจาก Metered ไม่ได้', e.message); }
+}
+refreshMetered();
+setInterval(refreshMetered, 6 * 60 * 60 * 1000);
+const iceServers = () => [...ICE, ...meteredIce];
+const hasTurn = () => meteredIce.length > 0 || !!process.env.TURN_URL;
 
 // ---------- ข้อมูลที่ต้องจำ ----------
 const store = Object.fromEntries(COLS.map((c) => [c, {}]));
@@ -172,7 +190,7 @@ wss.on('connection', (ws) => {
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
       peers.set(key, { ws, uid, p });
       send(ws, {
-        t: 'welcome', key, ice: ICE, roomName: ROOM_NAME, now: Date.now(), v: BUILD,
+        t: 'welcome', key, ice: iceServers(), turn: hasTurn(), roomName: ROOM_NAME, now: Date.now(), v: BUILD,
         peers: [...peers].filter(([k]) => k !== key).map(([k, c]) => ({ key: k, uid: c.uid, p: c.p })),
         cols: Object.fromEntries(COLS.map((c) => [c, list(c)])),
       });

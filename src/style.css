@@ -347,3 +347,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pvol input[type=range] { flex: 1; min-width: 80px; accent-color: var(--pink); }
 .pvol span { font-size: 12px; width: 34px; text-align: right; }
 .pvol small { flex-basis: 100%; font-size: 11px; color: var(--ink2); }
+
+.people .who small.vstat { margin-top: 2px; font-size: 11.5px; color: #6a5a7e; }

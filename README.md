@@ -64,6 +64,7 @@ npm start          # รวมไฟล์ใน src/ แล้วเปิด�
 | `SPOTIFY_CLIENT_ID` | (ไม่มี) | เปิดปุ่มเชื่อม Spotify |
 | `LASTFM_API_KEY` | (ไม่มี) | ดึงเพลงที่ฟังอยู่ผ่าน Last.fm — **ไม่ต้องมี Spotify Premium** (สร้างคีย์ฟรีที่ last.fm/api/account/create · แต่ละคนเชื่อม Spotify เข้ากับ Last.fm แล้วใส่ชื่อผู้ใช้ Last.fm ในเกมครั้งเดียว) |
 | `ADMIN_KEY` | (ไม่มี) | รหัสแอดมิน: พิมพ์ในแชต `admin <รหัส>` ครั้งเดียว แล้วใช้ `kick all` / `kick ชื่อ` (เข้าใหม่ได้ทันที) / `ชื่อ kick delay 1m` (ห้ามเข้าตามเวลา: 30s, 5m, 1h) / `clear chat` และกด ✕ ที่ข้อความเพื่อลบ |
+| `METERED_APP` + `METERED_API_KEY` | (ไม่มี) | TURN ฟรีจาก Metered (20GB/เดือน) ให้คนที่ใช้เน็ตมือถือ 4G/5G หรือเน็ตบริษัทได้ยินเสียงกัน — สมัครที่ dashboard.metered.ca/signup |
 | `TURN_URL` `TURN_USER` `TURN_PASS` | (ไม่มี) | TURN server สำหรับเน็ตที่ต่อเสียงตรงไม่ได้ |
 
 ## โครงสร้างโค้ด

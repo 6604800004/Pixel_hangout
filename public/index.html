@@ -364,6 +364,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pvol span { font-size: 12px; width: 34px; text-align: right; }
 .pvol small { flex-basis: 100%; font-size: 11px; color: var(--ink2); }
 
+.people .who small.vstat { margin-top: 2px; font-size: 11.5px; color: #6a5a7e; }
+
 </style>
 </head>
 <body>
@@ -2029,7 +2031,7 @@ function makeWsNet(cfg) {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.t === 'welcome') {
         retry = 0;
-        net.myKey = m.key;
+        net.hasTurn = !!m.turn; net.myKey = m.key;
         if (m.v) { if (net.build && net.build !== m.v) L.update.forEach((f) => f()); net.build = net.build || m.v; }
         if (Number.isFinite(m.now)) net.timeOffset = m.now - Date.now();
         net.iceServers = m.ice || net.iceServers;
@@ -2325,6 +2327,10 @@ function makeVoice(net, onChange) {
       peer.state = pc.connectionState;
       if (peer.state === 'connected') tune(peer);
       if (peer.state === 'failed' && initiator) { try { pc.restartIce(); } catch {} offer(peer, true); }
+      // หลุดชั่วคราว (เน็ตสลับ Wi-Fi/4G): ถ้าไม่กลับมาใน 6 วิ ให้เริ่มเชื่อมใหม่
+      clearTimeout(peer.dcTimer);
+      if (peer.state === 'disconnected') peer.dcTimer = setTimeout(() => { if (peer.state === 'disconnected' && initiator) { try { pc.restartIce(); } catch {} offer(peer, true); } }, 6000);
+      if (peer.state === 'failed') peer.failedAt = peer.failedAt || Date.now(); else if (peer.state === 'connected') peer.failedAt = 0;
       onChange('peers');
     };
     if (initiator) {
@@ -3756,7 +3762,8 @@ function renderPeople() {
   const ul = $('#peopleList');
   const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk, z: zoneAt(G.me.x, G.me.y), mu: currentMusic() }];
   for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest, z: zoneAt(rt.p.x, rt.p.y), mu: rt.p.mu });
-  const sig = JSON.stringify(rows.map((r) => [r.n, r.l, r.st, r.desk, r.z, r.mu && r.mu.t, r.guest, !!r.me]));
+  for (const r of rows) if (r.rt) r.vs = voiceStatus(r.rt);
+  const sig = JSON.stringify(rows.map((r) => [r.n, r.l, r.st, r.desk, r.z, r.mu && r.mu.t, r.guest, !!r.me, r.vs || '']));
   if (sig === G.peopleSig && ul.children.length) return;
   G.peopleSig = sig;
   ul.innerHTML = '';
@@ -3770,6 +3777,7 @@ function renderPeople() {
     const stl = STATUSES.find((s) => s[0] === r.st);
     sm.textContent = [`${ZONES[r.z].icon} ${ZONES[r.z].name}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
     who.append(b, sm);
+    if (r.vs) { const vs = document.createElement('small'); vs.className = 'vstat'; vs.textContent = r.vs; who.append(vs); }
     li.append(cv, who);
     if (r.rt) {
       const go = document.createElement('button'); go.className = 'pbtn sm'; go.textContent = '🚶 ไปหา';
@@ -5315,6 +5323,40 @@ function peerVolRow(rt, iconBtn) {
   if (typeof isIOS !== 'undefined' && isIOS) { const t = document.createElement('small'); t.textContent = 'iPhone/iPad: เลื่อนระดับเสียงไม่ได้ ใช้ปุ่มปิดเสียงแทน'; row.append(t); }
   return row;
 }
+
+// ---------- ทำไมไม่ได้ยินคนนี้? บอกสถานะเสียงของแต่ละคน ----------
+function voiceStatus(rt) {
+  const V = G.voice;
+  if (!V) return '';
+  if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== zoneAt(G.me.x, G.me.y)) return '🚪 อยู่คนละห้อง (ไม่ได้ยินกัน)';
+  const pv = peerVol(rt);
+  if (pv.m || pv.v === 0) return '🔇 คุณปิดเสียงคนนี้ไว้';
+  const peer = V.peers.get(rt.key);
+  const st = peer ? peer.state : 'new';
+  if (st === 'failed') return G.net.hasTurn ? '🔴 เชื่อมต่อเสียงไม่ได้ (เน็ตไม่เสถียร กำลังลองใหม่)' : '🔴 เชื่อมเสียงไม่ได้ — เน็ตมือถือ/บริษัทบล็อก ต้องตั้ง TURN';
+  if (st !== 'connected') return '🟡 กำลังเชื่อมต่อเสียง…';
+  if (rt.p.mic !== 1) return '🎙️ เขาปิดไมค์อยู่';
+  if (V.deaf) return '🔇 คุณปิดหูฟังอยู่';
+  if (!G.audible.has(rt.key)) return '📏 อยู่ไกลเกินรัศมีไมค์ของเขา เดินเข้าไปใกล้ๆ';
+  if (peer.audioEl && peer.audioEl.paused) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
+  return '🟢 ได้ยินอยู่';
+}
+// iPhone/Android บางทีไม่ยอมเล่นเสียงเพื่อนจนกว่าจะแตะจอ — แตะตรงไหนก็ได้แล้วเปิดเสียงทุกคนใหม่
+document.addEventListener('pointerdown', () => { if (G.voice && G.voice.resumeAudio) G.voice.resumeAudio(); }, { passive: true, capture: true });
+// รีเฟรชสถานะในรายชื่อทุก 2 วิ (ตอนเปิดอยู่) + เตือนถ้าเชื่อมเสียงกับใครไม่ได้นานๆ
+G.warnedFail = new Set();
+setInterval(() => {
+  if (!$('#people').classList.contains('hidden')) renderPeople();
+  const V = G.voice; if (!V || !G.joined) return;
+  for (const rt of G.others.values()) {
+    const peer = V.peers.get(rt.key);
+    if (peer && peer.failedAt && Date.now() - peer.failedAt > 12000 && !G.warnedFail.has(rt.key)) {
+      G.warnedFail.add(rt.key);
+      const msg = G.net.hasTurn ? `เชื่อมเสียงกับ ${rt.p.n || 'เพื่อน'} ไม่ได้ — ลองให้เขารีเฟรช หรือสลับ Wi-Fi/4G` : `เชื่อมเสียงกับ ${rt.p.n || 'เพื่อน'} ไม่ได้ — มักเกิดกับเน็ตมือถือ 4G/5G ต้องให้เจ้าของห้องตั้ง TURN`;
+      addSys('🔴 ' + msg); toast(msg, 6000);
+    }
+  }
+}, 2000);
 
 })();
 </script>

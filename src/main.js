@@ -1169,7 +1169,8 @@ function renderPeople() {
   const ul = $('#peopleList');
   const rows = [{ me: true, n: G.me.nick, l: G.me.look, st: G.me.st, desk: G.myDesk, z: zoneAt(G.me.x, G.me.y), mu: currentMusic() }];
   for (const rt of G.others.values()) if (Number.isFinite(rt.p.x)) rows.push({ rt, n: rt.p.n, l: rt.p.l, st: rt.p.st, desk: rt.p.dk && rt.p.dk.slot, guest: rt.guest, z: zoneAt(rt.p.x, rt.p.y), mu: rt.p.mu });
-  const sig = JSON.stringify(rows.map((r) => [r.n, r.l, r.st, r.desk, r.z, r.mu && r.mu.t, r.guest, !!r.me]));
+  for (const r of rows) if (r.rt) r.vs = voiceStatus(r.rt);
+  const sig = JSON.stringify(rows.map((r) => [r.n, r.l, r.st, r.desk, r.z, r.mu && r.mu.t, r.guest, !!r.me, r.vs || '']));
   if (sig === G.peopleSig && ul.children.length) return;
   G.peopleSig = sig;
   ul.innerHTML = '';
@@ -1183,6 +1184,7 @@ function renderPeople() {
     const stl = STATUSES.find((s) => s[0] === r.st);
     sm.textContent = [`${ZONES[r.z].icon} ${ZONES[r.z].name}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
     who.append(b, sm);
+    if (r.vs) { const vs = document.createElement('small'); vs.className = 'vstat'; vs.textContent = r.vs; who.append(vs); }
     li.append(cv, who);
     if (r.rt) {
       const go = document.createElement('button'); go.className = 'pbtn sm'; go.textContent = '🚶 ไปหา';
