@@ -1675,6 +1675,14 @@ function frame(ms) {
     addSys((m.kind === 'info' ? '' : '🛡️ ') + m.message); toast(m.message, 4000);
   });
   if (net.onUpdate) net.onUpdate(() => {
+    // มีเวอร์ชันใหม่: ถ้าไม่ได้กำลังพิมพ์/เปิดหน้าต่างอยู่ โหลดใหม่แล้วเข้าห้องให้เองเลย (จำว่าเปิดไมค์อยู่ไหม)
+    const busy = () => isTyping() || !$('#modal').classList.contains('hidden') || G.edit;
+    const go = () => {
+      try { sessionStorage.setItem('pixel.autojoin', JSON.stringify({ mic: !!(G.voice && G.voice.mic), at: Date.now() })); } catch {}
+      location.reload();
+    };
+    const tryGo = () => { if (!busy()) go(); else setTimeout(tryGo, 3000); };
+    setTimeout(tryGo, 1500 + Math.random() * 2500);
     const b = $('#banner');
     b.textContent = '🔄 มีอัปเดตใหม่ — แตะตรงนี้เพื่อโหลดใหม่'; b.classList.remove('hidden');
     b.style.pointerEvents = 'auto'; b.style.cursor = 'pointer'; b.style.zIndex = '30'; b.onclick = () => location.reload();
@@ -1743,6 +1751,17 @@ function frame(ms) {
   $('#loading').classList.add('hidden');
   spHandleRedirect();
   openCreator(true);
+  // กลับเข้าห้องอัตโนมัติหลังอัปเดต
+  try {
+    const aj = JSON.parse(sessionStorage.getItem('pixel.autojoin') || 'null');
+    sessionStorage.removeItem('pixel.autojoin');
+    if (aj && Date.now() - aj.at < 60000) setTimeout(() => {
+      const btn = document.querySelector('#card .foot .pbtn.pink');
+      if (btn && !$('#modal').classList.contains('hidden')) btn.click();
+      toast('🔄 อัปเดตแล้ว กลับเข้าห้องให้อัตโนมัติ', 3000);
+      if (aj.mic) setTimeout(() => { if (G.voice && !G.voice.mic) G.voice.toggleMic().catch(() => {}); setTimeout(() => { if (G.voice && !G.voice.mic) toast('กดปุ่มไมค์อีกครั้งเพื่อเปิดไมค์', 5000); }, 2500); }, 1200);
+    }, 400);
+  } catch {}
   try { if (sessionStorage.getItem('pixel.left')) { sessionStorage.removeItem('pixel.left'); toast('👋 ออกจากห้องแล้ว — กดเข้าห้องเพื่อกลับมาได้ทุกเมื่อ', 4000); } } catch {}
   try { const k = sessionStorage.getItem('pixel.kicked'); if (k) { sessionStorage.removeItem('pixel.kicked'); toast('👢 ' + k, 6000); } } catch {}
   requestAnimationFrame(frame);

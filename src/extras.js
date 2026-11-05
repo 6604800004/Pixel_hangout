@@ -19,7 +19,8 @@ const clampMic = (r) => { const n = Number(r); if (!n) return MIC_R_DEFAULT; ret
 const MIC_COLORS = ['#3fd07a', '#ff8fab', '#7d9cf0', '#ffe07a', '#b48cf0', '#6cc6d9', '#ffb86b', '#ffffff', '#e8505b'];
 G.micSet = Object.assign({ r: MIC_R_DEFAULT, c: 0 }, lsGet('pixel.mic', {}));
 // เดิมค่าเริ่มต้นคือ 130 (ได้ยินแค่คนใกล้ๆ) ทำให้คนในห้องรวมไม่ได้ยินกัน → ปรับเป็นทั้งห้อง
-if (G.micSet.v !== 2) { if (Number(G.micSet.r) === 130 || !G.micSet.r) G.micSet.r = MIC_R_WHOLE; G.micSet.v = 2; lsSet('pixel.mic', G.micSet); }
+// ครั้งเดียว: ทุกคนเริ่มที่ "ทั้งห้อง" (เคยตั้งกระซิบ/ปกติไว้ทำให้คนในห้องรวมไม่ได้ยิน)
+if (G.micSet.v !== 3) { G.micSet.r = MIC_R_WHOLE; G.micSet.v = 3; lsSet('pixel.mic', G.micSet); }
 G.micSet.r = clampMic(G.micSet.r);
 if (!(G.micSet.c >= 0 && G.micSet.c < MIC_COLORS.length)) G.micSet.c = 0;
 G.audible = new Set(); G.sendTo = new Set();
@@ -1006,7 +1007,7 @@ function voiceStatus(rt) {
   if (!viaServer && st !== 'connected') return '🟡 กำลังเชื่อมต่อเสียง…';
   if (rt.p.mic !== 1) return '🎙️ เขาปิดไมค์อยู่';
   if (V.deaf) return '🔇 คุณปิดหูฟังอยู่';
-  if (!G.audible.has(rt.key)) return '📏 อยู่ไกลเกินรัศมีไมค์ของเขา เดินเข้าไปใกล้ๆ';
+  if (!G.audible.has(rt.key)) return `📏 เขาตั้งไมค์ระยะ "${micRangeName(peerRange(rt.p))}" — เดินเข้าไปใกล้ๆ หรือให้เขาเลื่อนระยะไมค์เป็น "ทั้งห้อง"`;
   if (viaServer) return V.actx && V.actx.state !== 'running' ? '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง' : '🟢 ได้ยินอยู่ (ส่งผ่านเซิร์ฟเวอร์ · ไม่มีวิดีโอ)';
   if (peer.audioEl && peer.audioEl.paused) return '👆 แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียง';
   return '🟢 ได้ยินอยู่';
