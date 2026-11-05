@@ -1193,7 +1193,8 @@ function renderPeople() {
       const vb = document.createElement('button'); vb.className = 'pbtn sm'; vb.textContent = peerVolIcon(r.rt); vb.title = 'ปรับเสียงคนนี้ (เฉพาะเรา)';
       const id = peerId(r.rt);
       vb.onclick = () => { G.peopleVolOpen = G.peopleVolOpen === id ? null : id; G.peopleSig = ''; renderPeople(); };
-      li.append(vb, pk, go);
+      const acts = document.createElement('div'); acts.className = 'acts';
+      acts.append(vb, pk, go); who.append(acts);
       ul.append(li);
       if (G.peopleVolOpen === id) { const vli = document.createElement('li'); vli.className = 'pvol-li'; vli.append(peerVolRow(r.rt, vb)); ul.append(vli); }
       continue;
