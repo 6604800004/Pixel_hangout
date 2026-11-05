@@ -892,6 +892,8 @@ function setBgAudio(on, quiet) {
 }
 document.addEventListener('visibilitychange', () => {
   if (!G.joined) return;
+  // บอกเพื่อนว่าเราพับจอ/สลับแอปอยู่ (มือถือจะหยุดกล้องตอนนี้ → เพื่อนจะได้รู้ว่าทำไมภาพดำ) — ส่งทันที ไม่รอเฟรมถัดไป
+  try { G.net.setPresence({ hid: document.hidden ? 1 : null }); } catch {}
   if (document.hidden) {
     if (G.bgAudio) { keepAlive(true); return; }
     if (G.voice) G.voice.setBgMute(true);

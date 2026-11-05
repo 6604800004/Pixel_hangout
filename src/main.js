@@ -1039,10 +1039,11 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       if (ch === G.me) { c.translate(cx, cy); c.scale(-1, 1); c.drawImage(vid, -vw * k / 2, -vh * k / 2, vw * k, vh * k); }
       else c.drawImage(vid, cx - vw * k / 2, cy - vh * k / 2, vw * k, vh * k);
       c.restore();
-      if (ch !== G.me && isBlackVideo(key, vid)) {
+      if (ch !== G.me && (isBlackVideo(key, vid) || p.hid)) {
         c.fillStyle = 'rgba(46,34,53,.85)'; rrect(c, cx - r, cy - r, r * 2, r * 2, 8); c.fill();
         c.fillStyle = '#fff7ec'; c.font = `500 ${isMobile() ? 9 : 10}px Mitr, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText('📷 กำลัง', cx, cy - 6); c.fillText('โหลดภาพ…', cx, cy + 7);
+        if (p.hid) { c.fillText('📱 พับจอ', cx, cy - 6); c.fillText('อยู่', cx, cy + 7); }
+        else { c.fillText('⚫ ภาพดำ', cx, cy - 6); c.fillText('แตะดูสาเหตุ', cx, cy + 7); }
       }
       c.strokeStyle = speaking ? '#3fd07a' : '#2e2235'; c.lineWidth = 3;
       rrect(c, cx - r, cy - r, r * 2, r * 2, 8); c.stroke();
@@ -1705,8 +1706,19 @@ function openFocus(key) {
 // ภาพขยาย: ถ้าเขาปิดกล้อง/ภาพหยุด ให้ปิดหน้าต่างเอง (ไม่ค้างจอดำ)
 setInterval(() => {
   if ($('#focus').classList.contains('hidden') || !G.focusKey) return;
-  if (G.focusKey !== G.net.myKey && !(G.voice && G.voice.videoFor(G.focusKey))) { $('#focus').classList.add('hidden'); $('#focusVideo').srcObject = null; G.focusKey = null; }
+  if (G.focusKey !== G.net.myKey && !(G.voice && G.voice.videoFor(G.focusKey))) { $('#focus').classList.add('hidden'); $('#focusVideo').srcObject = null; G.focusKey = null; return; }
+  const cap = $('#focusCap'), msg = camProblem(G.focusKey);
+  cap.textContent = msg; cap.classList.toggle('hidden', !msg);
 }, 500);
+// ทำไมภาพกล้องเพื่อนดำ (ใช้ทั้งในวงกลมเหนือหัวและหน้าขยาย)
+function camProblem(key) {
+  const rt = G.others.get(key);
+  if (!rt) return '';
+  if (rt.p.hid) return '📱 เขาพับจอ/ล็อกจอ/สลับแอปอยู่ — มือถือจะหยุดกล้องจนกว่าจะกลับมาเปิดหน้าเว็บ';
+  const st = G.blackSt && G.blackSt.get(key);
+  if (st && st.black) return '⚫ ภาพที่ส่งมาจากเครื่องเขาเป็นสีดำ — ให้เขาเปิดหน้าเว็บค้างไว้ (อย่าล็อกจอ) เปิดผ่าน Safari/Chrome (ไม่ใช่ในแอป LINE/IG) แล้วปิด-เปิดกล้องใหม่';
+  return '';
+}
 // ตรวจว่าภาพกล้องเพื่อนดำล้วนไหม (สุ่มดูภาพเล็กๆ ทุก 0.7 วิ) — ดำนานเกิน 2 วิ = ขอภาพใหม่จากเครื่องเขา
 const blackCv = mkCanvas(8, 8), blackCtx = blackCv.getContext('2d', { willReadFrequently: true });
 function isBlackVideo(key, vid) {
