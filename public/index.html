@@ -1232,7 +1232,9 @@ const STATUSES = [['', 'ไม่มี'], ['💻', 'ทำงาน'], ['🎧',
 // ============================================================================
 // world.js — แผนที่ห้อง พื้น ผนัง หน้าต่างตามเวลาจริง การชน และการหาเส้นทาง
 // ============================================================================
-const W = 512, H = 1104, WALL = 58;
+const W = 512, H = 856, WALL = 58;
+// ห้องไหว้พระอยู่ "ข้างบนสุด" เหนือห้องรวม (พิกัด y ติดลบ) — พระต้องอยู่สูงสุดในบ้าน
+const TOP = -232;
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
 const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
@@ -1241,10 +1243,10 @@ const LOWER2_Y = 600, LOWER2_FLOOR = 630, DIVIDER2_X = 256;
 const DOOR_PUB = { x: 424, w: 32, y: LOWER2_Y, zone: 'pub' };
 const DOOR_KARAOKE = { x: DIVIDER2_X, y: 740, h: 34, zone: 'karaoke', side: true };
 const DANCE = { x: 84, y: 692, w: 88, h: 44 };
-// ชั้นล่างสุด: ห้องไหว้พระ (เต็มความกว้าง) — เข้าทางประตูด้านล่างของผับ
-const LOWER3_Y = 856, LOWER3_FLOOR = 886;
-const DOOR_SHRINE = { x: 352, w: 32, y: LOWER3_Y, zone: 'shrine' };
-const ALTAR = { x: 192, y: LOWER3_FLOOR, w: 128, h: 76 }; // โต๊ะหมู่บูชา + พระพุทธรูป (ส่วนหนึ่งของห้อง ย้ายไม่ได้)
+// ห้องไหว้พระ: อยู่บนสุด เข้าทางประตูที่ผนังด้านบนของห้องรวม
+const SHRINE_FLOOR = TOP + 30;
+const DOOR_SHRINE = { x: 224, w: 32, y: 0, zone: 'shrine', up: true };
+const ALTAR = { x: 192, y: SHRINE_FLOOR, w: 128, h: 76 }; // โต๊ะหมู่บูชา + พระพุทธรูป (ส่วนหนึ่งของห้อง ย้ายไม่ได้)
 const PILLARS = [70, 442];
 const ZONES = {
   hall: { id: 'hall', name: 'ห้องรวม', icon: '🏠' },
@@ -1255,9 +1257,9 @@ const ZONES = {
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
 };
 function zoneAt(x, y) {
+  if (y < 0) return 'shrine';
   if (y < LOWER_Y + 16) return 'hall';
   if (y < LOWER2_Y + 16) return x < DIVIDER_X + 3 ? 'meet' : 'garden';
-  if (y >= LOWER3_Y + 16) return 'shrine';
   return x < DIVIDER2_X + 3 ? 'karaoke' : 'pub';
 }
 const WORK_X = 256;
@@ -1298,19 +1300,19 @@ const DEFAULT_LAYOUT = [
   { t: 'tv', x: 482, y: 676 }, { t: 'dartboard', x: 496, y: 760 }, { t: 'poolTable', x: 424, y: 800 },
   { t: 'roundTable', x: 304, y: 800 }, { t: 'armchair', x: 278, y: 806, v: 2 }, { t: 'armchair', x: 330, y: 806, v: 5 },
   { t: 'plant', v: 1, x: 498, y: 850 }, { t: 'floorLamp', x: 270, y: 700 },
-  // ---- ห้องไหว้พระ ----
-  { t: 'prayerMat', x: 216, y: 1004 }, { t: 'prayerMat', x: 256, y: 1004 }, { t: 'prayerMat', x: 296, y: 1004 },
-  { t: 'prayerMat', x: 216, y: 1044 }, { t: 'prayerMat', x: 256, y: 1044 }, { t: 'prayerMat', x: 296, y: 1044 },
-  { t: 'flowerVase', x: 170, y: 958 }, { t: 'flowerVase', x: 342, y: 958 },
-  { t: 'templeBell', x: 120, y: 960 }, { t: 'lotusBowl', x: 44, y: 1090 }, { t: 'lotusBowl', x: 468, y: 1090 },
-  { t: 'plant', v: 0, x: 140, y: 1096 }, { t: 'plant', v: 0, x: 372, y: 1096 },
-  { t: 'offeringTable', x: 160, y: 1000 }, { t: 'offeringTable', x: 352, y: 1000 },
-  { t: 'chantTable', x: 96, y: 1040 }, { t: 'chantTable', x: 416, y: 1040 },
+  // ---- ห้องไหว้พระ (ข้างบนสุด) ----
+  { t: 'prayerMat', x: 216, y: -84 }, { t: 'prayerMat', x: 256, y: -84 }, { t: 'prayerMat', x: 296, y: -84 },
+  { t: 'prayerMat', x: 216, y: -44 }, { t: 'prayerMat', x: 256, y: -44 }, { t: 'prayerMat', x: 296, y: -44 },
+  { t: 'flowerVase', x: 170, y: -130 }, { t: 'flowerVase', x: 342, y: -130 },
+  { t: 'templeBell', x: 120, y: -128 }, { t: 'lotusBowl', x: 44, y: -14 }, { t: 'lotusBowl', x: 468, y: -14 },
+  { t: 'plant', v: 0, x: 140, y: -10 }, { t: 'plant', v: 0, x: 372, y: -10 },
+  { t: 'offeringTable', x: 160, y: -88 }, { t: 'offeringTable', x: 352, y: -88 },
+  { t: 'chantTable', x: 96, y: -48 }, { t: 'chantTable', x: 416, y: -48 },
 ];
-const LAYOUT_VERSION = 4;
+const LAYOUT_VERSION = 5;
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
-const LAYOUT_V4_FROM = 73; // def73 ขึ้นไปมาในเวอร์ชัน 4 (ห้องไหว้พระ)
+const LAYOUT_V4_FROM = 73; // def73 ขึ้นไปมาในเวอร์ชัน 4–5 (ห้องไหว้พระ — v5 ย้ายขึ้นไปอยู่บนสุด)
 
 // ---------- ท้องฟ้าตามเวลาจริงของคนดู ----------
 function skyAt(date) {
@@ -1325,11 +1327,12 @@ function skyAt(date) {
 const WINDOWS = [{ x: 74, y: 10, w: 38, h: 30 }, { x: 302, y: 10, w: 38, h: 30 }, { x: 382, y: 10, w: 38, h: 30 }];
 // หน้าต่างในห้องประชุม (บนผนังด้านหน้าห้อง)
 const LOWER_WINDOWS = [{ x: 256, y: 360, w: 26, h: 16 }];
-const CLOCK = { x: 238, y: 26 };
+const CLOCK = { x: 176, y: 26 };
 
 function buildBackground() {
-  const c = mkCanvas(W, H);
+  const c = mkCanvas(W, H - TOP);
   const g = c.getContext('2d');
+  g.translate(0, -TOP); // วาดด้วยพิกัดโลก (รวมส่วนที่ y ติดลบของห้องไหว้พระ)
   const P = painter(g);
   let seed = 11;
   const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
@@ -1490,12 +1493,12 @@ function buildBackground() {
   }
   // ผนังกั้นคาราโอเกะ | ผับ (มีประตูตรงกลาง)
   const k = DOOR_KARAOKE;
-  P(DIVIDER2_X, LOWER2_Y, 6, k.y - LOWER2_Y, '#231d47'); P(DIVIDER2_X, k.y + k.h, 6, LOWER3_Y - k.y - k.h, '#231d47');
-  P(DIVIDER2_X, LOWER2_Y, 1, k.y - LOWER2_Y, '#3a2f6e'); P(DIVIDER2_X, k.y + k.h, 1, LOWER3_Y - k.y - k.h, '#3a2f6e');
+  P(DIVIDER2_X, LOWER2_Y, 6, k.y - LOWER2_Y, '#231d47'); P(DIVIDER2_X, k.y + k.h, 6, H - k.y - k.h, '#231d47');
+  P(DIVIDER2_X, LOWER2_Y, 1, k.y - LOWER2_Y, '#3a2f6e'); P(DIVIDER2_X, k.y + k.h, 1, H - k.y - k.h, '#3a2f6e');
   P(DIVIDER2_X - 1, k.y - 2, 8, 2, '#ff8fab'); P(DIVIDER2_X - 1, k.y + k.h, 8, 2, '#ff8fab');
   // ================= ห้องไหว้พระ =================
   // พื้นไม้สักขัดเงา
-  for (let y = LOWER3_FLOOR, row = 0; y < H; y += 6, row++) {
+  for (let y = SHRINE_FLOOR, row = 0; y < 0; y += 6, row++) {
     let x = -((row * 23) % 40);
     while (x < W) {
       const len = 30 + Math.floor(rnd() * 24);
@@ -1505,30 +1508,33 @@ function buildBackground() {
     }
   }
   // พรมแดงทางเดินตรงกลาง (จากหน้าโต๊ะหมู่ลงมา) + พรมจากประตู
-  P(232, ALTAR.y + ALTAR.h, 48, H - ALTAR.y - ALTAR.h, '#a8242e'); P(234, ALTAR.y + ALTAR.h, 44, H - ALTAR.y - ALTAR.h, '#c02f38');
-  P(232, ALTAR.y + ALTAR.h, 2, H - ALTAR.y - ALTAR.h, '#e0b04a'); P(278, ALTAR.y + ALTAR.h, 2, H - ALTAR.y - ALTAR.h, '#e0b04a');
-  P(DOOR_SHRINE.x, LOWER3_FLOOR, DOOR_SHRINE.w, 18, '#c02f38'); P(DOOR_SHRINE.x, LOWER3_FLOOR + 16, DOOR_SHRINE.w, 2, '#e0b04a');
+  P(232, ALTAR.y + ALTAR.h, 48, 0 - ALTAR.y - ALTAR.h, '#a8242e'); P(234, ALTAR.y + ALTAR.h, 44, 0 - ALTAR.y - ALTAR.h, '#c02f38');
+  P(232, ALTAR.y + ALTAR.h, 2, 0 - ALTAR.y - ALTAR.h, '#e0b04a'); P(278, ALTAR.y + ALTAR.h, 2, 0 - ALTAR.y - ALTAR.h, '#e0b04a');
   // ผนังขาวครีมขอบทอง ลายกนกเรียบๆ (เว้นประตู)
   for (let x = 0; x < W; x++) {
-    if (x >= DOOR_SHRINE.x && x < DOOR_SHRINE.x + DOOR_SHRINE.w) continue;
-    P(x, LOWER3_Y, 1, 6, '#6b3a1f'); P(x, LOWER3_Y, 1, 1, '#8a5428');
-    P(x, LOWER3_Y + 6, 1, LOWER3_FLOOR - LOWER3_Y - 6, '#f4ead2');
-    P(x, LOWER3_Y + 8, 1, 2, '#d9a441'); P(x, LOWER3_FLOOR - 6, 1, 2, '#d9a441'); P(x, LOWER3_FLOOR - 4, 1, 4, '#8a5428');
-    const k2 = x % 10; if (k2 < 5) P(x, LOWER3_Y + 12 + Math.abs(2 - k2), 1, 1, '#d9a441');
+    P(x, TOP, 1, 6, '#6b3a1f'); P(x, TOP, 1, 1, '#8a5428');
+    P(x, TOP + 6, 1, SHRINE_FLOOR - TOP - 6, '#f4ead2');
+    P(x, TOP + 8, 1, 2, '#d9a441'); P(x, SHRINE_FLOOR - 6, 1, 2, '#d9a441'); P(x, SHRINE_FLOOR - 4, 1, 4, '#8a5428');
+    const k2 = x % 10; if (k2 < 5) P(x, TOP + 12 + Math.abs(2 - k2), 1, 1, '#d9a441');
   }
+  // ขอบล่างห้องไหว้พระ (ด้านบนของผนังห้องรวม)
+  P(0, -4, W, 4, '#6b3a1f'); P(0, -4, W, 1, '#8a5428');
   // ประตูเข้าห้องไหว้พระ (กรอบทอง)
+  // ประตูขึ้นห้องไหว้พระ: เจาะผนังด้านบนของห้องรวม (บันไดไม้ + กรอบทอง)
   { const d = DOOR_SHRINE;
-    for (let y = LOWER3_Y; y < LOWER3_FLOOR; y += 4) for (let x = d.x; x < d.x + d.w; x += 4) P(x, y, 4, 4, ((x + y) / 4 | 0) % 2 ? '#b5763f' : '#bd7f46');
-    P(d.x - 2, LOWER3_Y, 2, LOWER3_FLOOR - LOWER3_Y, '#d9a441'); P(d.x + d.w, LOWER3_Y, 2, LOWER3_FLOOR - LOWER3_Y, '#d9a441');
-    P(d.x + 3, LOWER3_Y - 9, d.w - 6, 7, '#d9a441'); P(d.x + 4, LOWER3_Y - 8, d.w - 8, 5, '#f4d27a');
+    P(d.x, -4, d.w, WALL + 4, '#a96c38');
+    for (let y = -2; y < WALL; y += 6) { P(d.x, y, d.w, 1, '#c98d55'); P(d.x, y + 5, d.w, 1, '#8a5428'); }
+    P(d.x + 10, -4, 12, WALL + 4, '#c02f38'); P(d.x + 10, -4, 1, WALL + 4, '#e0b04a'); P(d.x + 21, -4, 1, WALL + 4, '#e0b04a');
+    P(d.x - 3, -4, 3, WALL + 4, '#d9a441'); P(d.x + d.w, -4, 3, WALL + 4, '#d9a441');
+    P(d.x - 3, -4, 1, WALL + 4, '#f4d27a'); P(d.x + d.w + 2, -4, 1, WALL + 4, '#a8752a');
   }
   // เสาแดงหัวเสาทอง
   for (const px of PILLARS) {
-    P(px - 7, LOWER3_FLOOR - 6, 14, 84, '#8f1d26'); P(px - 7, LOWER3_FLOOR - 6, 3, 84, '#b02a33'); P(px + 4, LOWER3_FLOOR - 6, 3, 84, '#6e141b');
-    P(px - 9, LOWER3_FLOOR - 8, 18, 6, '#d9a441'); P(px - 9, LOWER3_FLOOR + 72, 18, 6, '#d9a441'); P(px - 8, LOWER3_FLOOR + 6, 16, 2, '#d9a441');
+    P(px - 7, SHRINE_FLOOR - 6, 14, 84, '#8f1d26'); P(px - 7, SHRINE_FLOOR - 6, 3, 84, '#b02a33'); P(px + 4, SHRINE_FLOOR - 6, 3, 84, '#6e141b');
+    P(px - 9, SHRINE_FLOOR - 8, 18, 6, '#d9a441'); P(px - 9, SHRINE_FLOOR + 72, 18, 6, '#d9a441'); P(px - 8, SHRINE_FLOOR + 6, 16, 2, '#d9a441');
   }
   // ---- โต๊ะหมู่บูชา + พระพุทธรูป ----
-  { const cx = 256, top = LOWER3_FLOOR;
+  { const cx = 256, top = SHRINE_FLOOR;
     // ฉากหลังแดงขอบทอง
     P(cx - 52, top - 22, 104, 58, '#d9a441'); P(cx - 50, top - 20, 100, 55, '#7a1f24'); P(cx - 46, top - 16, 92, 47, '#8f2a2f');
     for (let i = 0; i < 9; i++) P(cx - 44 + i * 11, top - 14, 2, 2, '#d9a441');
@@ -1559,7 +1565,7 @@ function buildBackground() {
     for (let i = 0; i < 12; i++) P(cx - 60 + i * 10 + 3, top + 72 + (i % 2), 4, 3, i % 3 ? '#fff6e0' : '#ff9a3a');
   }
   // ---- ขอบห้อง ----
-  P(0, 0, 3, H, '#3a2c3f'); P(W - 3, 0, 3, H, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f');
+  P(0, TOP, 3, H - TOP, '#3a2c3f'); P(W - 3, TOP, 3, H - TOP, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f'); P(0, TOP, W, 3, '#3a2c3f');
   return c;
 }
 
@@ -1606,7 +1612,7 @@ function drawLiveWall(ctx, now, t) {
   }
   ctx.globalAlpha = 1;
   // ---- ห้องไหว้พระ: รัศมีทอง + เปลวเทียน + ควันธูป ----
-  { const cx = 256, top = LOWER3_FLOOR;
+  { const cx = 256, top = SHRINE_FLOOR;
     const glow = ctx.createRadialGradient(cx, top - 2, 2, cx, top - 2, 26);
     glow.addColorStop(0, `rgba(255,226,140,${0.45 + 0.08 * Math.sin(t * 1.5)})`); glow.addColorStop(1, 'rgba(255,226,140,0)');
     ctx.fillStyle = glow; ctx.fillRect(cx - 26, top - 28, 52, 52);
@@ -1660,25 +1666,25 @@ function solidRects(furniture) {
   list.push({ x: 0, y: LOWER2_Y - 2, w: DOOR_PUB.x, h: LOWER2_FLOOR - LOWER2_Y + 2 });
   list.push({ x: DOOR_PUB.x + DOOR_PUB.w, y: LOWER2_Y - 2, w: W - DOOR_PUB.x - DOOR_PUB.w, h: LOWER2_FLOOR - LOWER2_Y + 2 });
   list.push({ x: DIVIDER2_X - 1, y: LOWER2_Y - 2, w: 8, h: DOOR_KARAOKE.y - LOWER2_Y + 2 });
-  list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: LOWER3_Y - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
-  // ผนังห้องไหว้พระ (เว้นประตู) + โต๊ะหมู่บูชา + เสา
-  list.push({ x: 0, y: LOWER3_Y - 2, w: DOOR_SHRINE.x, h: LOWER3_FLOOR - LOWER3_Y + 2 });
-  list.push({ x: DOOR_SHRINE.x + DOOR_SHRINE.w, y: LOWER3_Y - 2, w: W - DOOR_SHRINE.x - DOOR_SHRINE.w, h: LOWER3_FLOOR - LOWER3_Y + 2 });
-  list.push({ x: ALTAR.x - 4, y: LOWER3_FLOOR, w: ALTAR.w + 8, h: ALTAR.h });
-  for (const px of PILLARS) list.push({ x: px - 9, y: LOWER3_FLOOR, w: 18, h: 78 });
+  list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: H - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
+  // ผนังด้านบนของห้องรวม = ผนังกั้นห้องไหว้พระ (เว้นประตู) + โต๊ะหมู่บูชา + เสา
+  list.push({ x: 0, y: -6, w: DOOR_SHRINE.x, h: WALL + 6 });
+  list.push({ x: DOOR_SHRINE.x + DOOR_SHRINE.w, y: -6, w: W - DOOR_SHRINE.x - DOOR_SHRINE.w, h: WALL + 6 });
+  list.push({ x: ALTAR.x - 4, y: SHRINE_FLOOR, w: ALTAR.w + 8, h: ALTAR.h });
+  for (const px of PILLARS) list.push({ x: px - 9, y: SHRINE_FLOOR, w: 18, h: 78 });
   return list;
 }
 function hitsRects(rects, x, y) {
-  if (x < 9 || x > W - 9 || y < WALL + 5 || y > H - 5) return true;
+  if (x < 9 || x > W - 9 || y < SHRINE_FLOOR + 5 || y > H - 5) return true;
   for (const r of rects) if (x + 5 > r.x && x - 5 < r.x + r.w && y + 2 > r.y && y - 3 < r.y + r.h) return true;
   return false;
 }
 
 // ---------- หาเส้นทาง (A* บนตาราง 4px) ----------
-const CELL = 4, GW = W / CELL, GH = H / CELL;
+const CELL = 4, GW = W / CELL, GH = (H - TOP) / CELL; // แถวที่ 0 = y TOP
 function buildGrid(rects) {
   const grid = new Uint8Array(GW * GH);
-  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) grid[gy * GW + gx] = hitsRects(rects, gx * CELL + 2, gy * CELL + 2) ? 1 : 0;
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) grid[gy * GW + gx] = hitsRects(rects, gx * CELL + 2, gy * CELL + 2 + TOP) ? 1 : 0;
   return grid;
 }
 function findPath(grid, sx, sy, tx, ty) {
@@ -1694,15 +1700,15 @@ function findPath(grid, sx, sy, tx, ty) {
     }
     return best;
   };
-  let s = toCell(sy, GH) * GW + toCell(sx, GW);
-  let goal = toCell(ty, GH) * GW + toCell(tx, GW);
+  let s = toCell(sy - TOP, GH) * GW + toCell(sx, GW);
+  let goal = toCell(ty - TOP, GH) * GW + toCell(tx, GW);
   const prefix = [];
   if (grid[s]) {
     // เริ่มจากในเฟอร์นิเจอร์ (เช่นเพิ่งลุกจากโซฟา): ออกไปช่องว่างใกล้สุดก่อน
     const f = nearestFree(s);
     if (f < 0) return null;
     s = f;
-    prefix.push({ x: (f % GW) * CELL + 2, y: ((f / GW) | 0) * CELL + 2 });
+    prefix.push({ x: (f % GW) * CELL + 2, y: ((f / GW) | 0) * CELL + 2 + TOP });
   }
   if (grid[goal]) {
     // เป้าหมายอยู่ในของ: หาช่องว่างที่ใกล้ที่สุด
@@ -1710,7 +1716,7 @@ function findPath(grid, sx, sy, tx, ty) {
     if (best < 0) return null;
     goal = best;
   }
-  if (s === goal) return prefix.concat([{ x: (goal % GW) * CELL + 2, y: ((goal / GW) | 0) * CELL + 2 }]);
+  if (s === goal) return prefix.concat([{ x: (goal % GW) * CELL + 2, y: ((goal / GW) | 0) * CELL + 2 + TOP }]);
   const N = GW * GH;
   const gScore = new Float32Array(N).fill(Infinity);
   const came = new Int32Array(N).fill(-1);
@@ -1744,7 +1750,7 @@ function findPath(grid, sx, sy, tx, ty) {
   for (let c = goal; c !== -1 && c !== s; c = came[c]) cells.push(c);
   cells.reverse();
   // ลดจุดที่เรียงเป็นเส้นตรง
-  const pts = cells.map((c) => ({ x: (c % GW) * CELL + 2, y: ((c / GW) | 0) * CELL + 2 }));
+  const pts = cells.map((c) => ({ x: (c % GW) * CELL + 2, y: ((c / GW) | 0) * CELL + 2 + TOP }));
   const out = [];
   for (let i = 0; i < pts.length; i++) {
     const a = out[out.length - 1], b = pts[i], n = pts[i + 1];
@@ -2659,7 +2665,7 @@ function updateMe(dt) {
     const inside = hitsRects(G.rects, me.x, me.y);
     if (inside || !hitsRects(G.rects, me.x + vx * step, me.y)) { me.x += vx * step; moved = true; }
     if (inside || !hitsRects(G.rects, me.x, me.y + vy * step)) { me.y += vy * step; moved = true; }
-    me.x = clamp(me.x, 6, W - 6); me.y = clamp(me.y, WALL + 2, H - 4);
+    me.x = clamp(me.x, 6, W - 6); me.y = clamp(me.y, SHRINE_FLOOR + 2, H - 4);
   } else if (me.path && me.path.length) {
     const t = me.path[0];
     const dx = t.x - me.x, dy = t.y - me.y, d = Math.hypot(dx, dy);
@@ -3013,7 +3019,7 @@ function buildPalette() {
     const l = document.createElement('span'); l.textContent = d.label; b.append(l);
     b.onclick = async () => {
       if (!(await materializeDefaults())) return;
-      const it = { id: 'f' + randomId(8), t: type, x: Math.round(clamp(G.me.x, 30, W - 30)), y: Math.round(clamp(G.me.y - 20, WALL + d.h * 0.4, H - 8)), v: 0, f: 0 };
+      const it = { id: 'f' + randomId(8), t: type, x: Math.round(clamp(G.me.x, 30, W - 30)), y: Math.round(clamp(G.me.y - 20, SHRINE_FLOOR + d.h * 0.4, H - 8)), v: 0, f: 0 };
       if (G.furnDocs) G.furnDocs = [...G.furnDocs, it];
       rebuildWorld();
       G.selected = it.id;
@@ -3152,14 +3158,14 @@ canvas.addEventListener('pointermove', (e) => {
     const it = G.furniture.find((f) => f.id === G.drag.id);
     if (!it) return;
     it.x = clamp(Math.round(w.x - G.drag.ox), 10, W - 10);
-    it.y = clamp(Math.round(w.y - G.drag.oy), WALL + 4, H - 4);
+    it.y = clamp(Math.round(w.y - G.drag.oy), SHRINE_FLOOR + 4, H - 4);
     G.drag.moved = true;
     pres({ dr: { id: it.id, x: it.x, y: it.y } });
     updateSelBar();
   } else if (G.pan) {
     G.camManual = true;
     G.cam.mx = clamp(G.pan.mx - (e.clientX - G.pan.sx) / G.scale, 0, W);
-    G.cam.my = clamp(G.pan.my - (e.clientY - G.pan.sy) / G.scale, 0, H);
+    G.cam.my = clamp(G.pan.my - (e.clientY - G.pan.sy) / G.scale, TOP, H);
     G.cam.cx = G.cam.mx; G.cam.cy = G.cam.my;
   } else if (G.holding && performance.now() - holdTimer > 160) {
     holdTimer = performance.now();
@@ -3261,7 +3267,7 @@ function render(t) {
   b.setTransform(scale, 0, 0, scale, -Math.round(camX * scale), -Math.round(camY * scale));
   b.imageSmoothingEnabled = false;
   b.fillStyle = '#2e2235'; b.fillRect(camX, camY, bw, bh);
-  b.drawImage(BG, 0, 0);
+  b.drawImage(BG, 0, TOP);
   const sky = drawLiveWall(b, new Date(), t);
 
   // ชั้นพื้น: พรม, พรมใต้โต๊ะ, ที่นอนแมว
@@ -4038,7 +4044,7 @@ async function join() {
   $('#hud').classList.remove('hidden');
   setChatOpen(G.chatOpen);
   const pos = lsGet('pixel.pos', null);
-  if (pos && pos.y < H && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
+  if (pos && pos.y < H && pos.y > TOP && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
   else { G.me.x = 230 + Math.random() * 40; G.me.y = 318; }
   G.me.pet.x = G.me.x + 12; G.me.pet.y = G.me.y;
   G.me.st = lsGet('pixel.status', '');
@@ -4262,7 +4268,7 @@ function drawDoorLabels(c, camX, camY, scale) {
   for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE, DOOR_SHRINE]) {
     const Z = ZONES[d.zone];
     const sx = d.side ? (d.x + 44 - camX) * scale : (d.x + d.w / 2 - camX) * scale;
-    const sy = d.side ? (d.y + d.h / 2 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
+    const sy = d.side ? (d.y + d.h / 2 - camY) * scale : d.up ? (WALL + 12 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
     const label = `${Z.icon} ${Z.name}`;
     const w = c.measureText(label).width + 14;
     c.fillStyle = 'rgba(46,34,53,.82)';
@@ -4417,10 +4423,15 @@ function maybeMigrateLayout() {
     const from = G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
-      if (G.furnDocs.some((d) => d.id === id)) continue;
+      const ex = G.furnDocs.find((d) => d.id === id);
+      // v4 → v5: ห้องไหว้พระย้ายจากชั้นล่างสุดขึ้นไปอยู่บนสุด — ย้ายของชุดเดิมตามไปด้วย
+      if (ex && i >= LAYOUT_V4_FROM && ex.y > H) { const d = DEFAULT_LAYOUT[i]; try { await G.net.set('furniture', id, { t: d.t, v: d.v || 0, f: d.f || 0, ...ex, x: d.x, y: d.y }); } catch { return; } continue; }
+      if (ex) continue;
       const d = DEFAULT_LAYOUT[i];
       try { await G.net.set('furniture', id, { t: d.t, x: d.x, y: d.y, v: d.v || 0, f: d.f || 0 }); } catch { return; }
     }
+    // ของที่ผู้ใช้วางไว้ในห้องไหว้พระเดิม (ชั้นล่างสุดที่ไม่มีแล้ว) ย้ายขึ้นไปห้องใหม่
+    for (const d of G.furnDocs) if (!String(d.id).startsWith('def') && d.y > H) { try { await G.net.set('furniture', d.id, { ...d, y: -60 }); } catch {} }
     try { await G.net.set('settings', 'layout', { v: LAYOUT_VERSION }); } catch {}
   })();
 }

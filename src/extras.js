@@ -88,7 +88,7 @@ function drawDoorLabels(c, camX, camY, scale) {
   for (const d of [...DOORS, DOOR_PUB, DOOR_KARAOKE, DOOR_SHRINE]) {
     const Z = ZONES[d.zone];
     const sx = d.side ? (d.x + 44 - camX) * scale : (d.x + d.w / 2 - camX) * scale;
-    const sy = d.side ? (d.y + d.h / 2 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
+    const sy = d.side ? (d.y + d.h / 2 - camY) * scale : d.up ? (WALL + 12 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
     const label = `${Z.icon} ${Z.name}`;
     const w = c.measureText(label).width + 14;
     c.fillStyle = 'rgba(46,34,53,.82)';
@@ -243,10 +243,15 @@ function maybeMigrateLayout() {
     const from = G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
-      if (G.furnDocs.some((d) => d.id === id)) continue;
+      const ex = G.furnDocs.find((d) => d.id === id);
+      // v4 → v5: ห้องไหว้พระย้ายจากชั้นล่างสุดขึ้นไปอยู่บนสุด — ย้ายของชุดเดิมตามไปด้วย
+      if (ex && i >= LAYOUT_V4_FROM && ex.y > H) { const d = DEFAULT_LAYOUT[i]; try { await G.net.set('furniture', id, { t: d.t, v: d.v || 0, f: d.f || 0, ...ex, x: d.x, y: d.y }); } catch { return; } continue; }
+      if (ex) continue;
       const d = DEFAULT_LAYOUT[i];
       try { await G.net.set('furniture', id, { t: d.t, x: d.x, y: d.y, v: d.v || 0, f: d.f || 0 }); } catch { return; }
     }
+    // ของที่ผู้ใช้วางไว้ในห้องไหว้พระเดิม (ชั้นล่างสุดที่ไม่มีแล้ว) ย้ายขึ้นไปห้องใหม่
+    for (const d of G.furnDocs) if (!String(d.id).startsWith('def') && d.y > H) { try { await G.net.set('furniture', d.id, { ...d, y: -60 }); } catch {} }
     try { await G.net.set('settings', 'layout', { v: LAYOUT_VERSION }); } catch {}
   })();
 }
