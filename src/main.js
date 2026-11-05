@@ -1037,6 +1037,11 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       if (ch === G.me) { c.translate(cx, cy); c.scale(-1, 1); c.drawImage(vid, -vw * k / 2, -vh * k / 2, vw * k, vh * k); }
       else c.drawImage(vid, cx - vw * k / 2, cy - vh * k / 2, vw * k, vh * k);
       c.restore();
+      if (ch !== G.me && isBlackVideo(key, vid)) {
+        c.fillStyle = 'rgba(46,34,53,.85)'; rrect(c, cx - r, cy - r, r * 2, r * 2, 8); c.fill();
+        c.fillStyle = '#fff7ec'; c.font = `500 ${isMobile() ? 9 : 10}px Mitr, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('📷 กำลัง', cx, cy - 6); c.fillText('โหลดภาพ…', cx, cy + 7);
+      }
       c.strokeStyle = speaking ? '#3fd07a' : '#2e2235'; c.lineWidth = 3;
       rrect(c, cx - r, cy - r, r * 2, r * 2, 8); c.stroke();
       G.bubbleHits.push({ x: cx, y: cy, r, key });
@@ -1497,6 +1502,7 @@ function setupVoice() {
   });
   G.voice = V;
   V.remoteMicOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.mic === 1); };
+  V.remoteCamOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.cam === 1); };
   ['micBtn', 'camBtn', 'deafBtn', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
   $('#voiceSetBtn').onclick = openVoiceSettings;
   if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : V.startScreen()); }
@@ -1656,8 +1662,30 @@ function deviceSelect(kind, current, onPick) {
 function openFocus(key) {
   const v = G.voice && G.voice.videoFor(key);
   if (!v) return;
-  $('#focusVideo').srcObject = v.srcObject;
+  const fv = $('#focusVideo');
+  fv.srcObject = v.srcObject; fv.play().catch(() => {});
+  G.focusKey = key;
   $('#focus').classList.remove('hidden');
+}
+// ภาพขยาย: ถ้าเขาปิดกล้อง/ภาพหยุด ให้ปิดหน้าต่างเอง (ไม่ค้างจอดำ)
+setInterval(() => {
+  if ($('#focus').classList.contains('hidden') || !G.focusKey) return;
+  if (G.focusKey !== G.net.myKey && !(G.voice && G.voice.videoFor(G.focusKey))) { $('#focus').classList.add('hidden'); $('#focusVideo').srcObject = null; G.focusKey = null; }
+}, 500);
+// ตรวจว่าภาพกล้องเพื่อนดำล้วนไหม (สุ่มดูภาพเล็กๆ ทุก 0.7 วิ) — ดำนานเกิน 2 วิ = ขอภาพใหม่จากเครื่องเขา
+const blackCv = mkCanvas(8, 8), blackCtx = blackCv.getContext('2d', { willReadFrequently: true });
+function isBlackVideo(key, vid) {
+  const st = (G.blackSt || (G.blackSt = new Map())).get(key) || { at: 0, since: 0, black: false };
+  const now = performance.now();
+  if (now - st.at > 700) {
+    st.at = now;
+    let mx = 255;
+    try { blackCtx.drawImage(vid, 0, 0, 8, 8); const d = blackCtx.getImageData(0, 0, 8, 8).data; mx = 0; for (let i = 0; i < d.length; i += 4) mx = Math.max(mx, d[i], d[i + 1], d[i + 2]); } catch {}
+    if (mx < 14) { st.since = st.since || now; if (now - st.since > 2000) { st.black = true; G.voice.reportBlack(key); } }
+    else { st.since = 0; st.black = false; }
+    G.blackSt.set(key, st);
+  }
+  return st.black;
 }
 $('#focus').onclick = () => { $('#focus').classList.add('hidden'); $('#focusVideo').srcObject = null; };
 
