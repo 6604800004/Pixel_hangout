@@ -452,7 +452,7 @@ function showHelp() {
     '🚪 ออก — ออกจากห้องหรือออกจากเว็บ (หรือ leave / exit / ปุ่ม 🚪 มุมขวาบน)',
     '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
     '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
-    'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ · คอม: R หัน, E นั่ง, Enter แชต',
+    'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ (นั่งอยู่ก็หันได้ หรือกด 🔄 หัน) · คอม: R หัน, E นั่ง, Enter แชต',
   ];
   if (G.isAdmin) lines.push(
     '',
@@ -680,7 +680,7 @@ window.addEventListener('keydown', (e) => {
   const mv = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
   if (mv.includes(e.code)) { G.keys.add(e.code); e.preventDefault(); G.camManual = false; return; }
   if (e.key === 'Enter') { e.preventDefault(); setChatOpen(true); $('#chatInput').focus(); }
-  if (e.code === 'KeyR' && !G.me.sit) { e.preventDefault(); turnMe(); return; }
+  if (e.code === 'KeyR') { e.preventDefault(); turnMe(); return; }
   if (e.code === 'KeyE' || e.code === 'Space') { e.preventDefault(); $('#actions .pbtn')?.click(); }
   if (e.key === 'Escape') { if (G.edit) setEdit(false); closeTrays(); $('#people').classList.add('hidden'); }
   if (G.edit && G.selected && (e.key === 'Delete' || e.key === 'Backspace')) $('[data-sel="delete"]').click();
@@ -714,8 +714,8 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
   for (const h of G.musicHits) if (e.clientX >= h.x0 && e.clientX <= h.x1 && e.clientY >= h.y0 && e.clientY <= h.y1) { window.open(h.u, '_blank', 'noopener'); return; }
-  // แตะตัวละครของตัวเอง (ตอนยืนอยู่) = หันไปทางถัดไป
-  if (!G.me.sit && !(G.me.path && G.me.path.length) && Math.abs(w.x - G.me.x) < 10 && w.y < G.me.y + 3 && w.y > G.me.y - 34) { turnMe(); return; }
+  // แตะตัวละครของตัวเอง (ยืนหรือนั่งอยู่ก็ได้) = หันไปทางถัดไป
+  if (!(G.me.path && G.me.path.length) && Math.abs(w.x - G.me.x) < 10 && w.y < G.me.y + 3 && w.y > G.me.y - 34) { turnMe(); return; }
   // แตะที่นั่ง/โต๊ะ = เดินไปนั่ง
   let target = null;
   const it = itemAt(w.x, w.y);
@@ -1130,6 +1130,7 @@ function updateActions() {
   if (!G.edit) {
     if (me.sit) {
       acts.push(['ลุกขึ้น', 'stand']);
+      acts.push(['🔄 หัน', 'turn']);
       if (G.myDesk && me.sit === `desk:${G.myDesk}`) acts.push(['🎨 แต่งโต๊ะ', 'deskEdit']);
     } else if (!me.path) {
       let best = null, bd = 22;
@@ -1158,6 +1159,7 @@ function updateActions() {
     btn.textContent = label;
     btn.onclick = () => {
       if (act === 'stand') standUp();
+      if (act === 'turn') turnMe();
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
       else if (act.startsWith('screen:')) { const it = G.furniture.find((f) => f.id === act.slice(7)); if (it) openScreenModal(it); }

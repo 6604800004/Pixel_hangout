@@ -801,7 +801,7 @@ $('#micPopClose').onclick = () => setMicPop(false);
 G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|TikTok/i.test(navigator.userAgent);
 
 // สำหรับทดสอบ: เปิดด้วย #debug
-if (location.hash === '#debug') window.__pixel = { G, walkTo, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
+if (location.hash === '#debug') window.__pixel = { G, walkTo, sitOn, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
 
 // ---------- ลากหน้าต่างคลิป/เพลง/แชร์จอ ไปวางตรงไหนก็ได้ (ลากที่แถบชื่อ) ----------
 // แตะแถบชื่อสองครั้ง = กลับที่เดิม · ตำแหน่งจำไว้ในเครื่องนี้
