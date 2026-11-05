@@ -377,3 +377,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 pre.diag { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; background: #fff; border: 2px dashed #e6d4c2; border-radius: 10px; padding: 10px; margin: 8px 0; font-family: inherit; }
 .leave-row { gap: 8px; justify-content: space-between; }
+.rm .ed { flex: none; font-size: 12px; padding: 2px 4px; border-radius: 6px; opacity: .55; }
+.rm .ed:hover { opacity: 1; background: #fff; }

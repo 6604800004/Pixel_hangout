@@ -389,6 +389,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 pre.diag { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; background: #fff; border: 2px dashed #e6d4c2; border-radius: 10px; padding: 10px; margin: 8px 0; font-family: inherit; }
 .leave-row { gap: 8px; justify-content: space-between; }
+.rm .ed { flex: none; font-size: 12px; padding: 2px 4px; border-radius: 6px; opacity: .55; }
+.rm .ed:hover { opacity: 1; background: #fff; }
 
 </style>
 </head>
@@ -1379,6 +1381,8 @@ const ZONES = {
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
   cinema: { id: 'cinema', name: 'โรงหนัง', icon: '🎬' },
 };
+// ชื่อห้อง: แอดมินตั้งเองได้ (ไม่ตั้ง = ชื่อเดิม)
+const zoneName = (z) => (typeof G !== 'undefined' && G.roomNames && G.roomNames[z]) || ZONES[z].name;
 function zoneAt(x, y) {
   if (x < 0) return 'cinema';
   if (y < 0) return 'shrine';
@@ -1440,8 +1444,11 @@ const DEFAULT_LAYOUT = [
   ...[-240, -210, -180, -112, -82, -52].map((x) => ({ t: 'vipSeat', x, y: 222 })),
   { t: 'vvipBed', x: -214, y: 300 }, { t: 'vvipBed', x: -78, y: 300 },
   { t: 'popcorn', x: -266, y: 344 }, { t: 'speaker', x: -272, y: 92 }, { t: 'speaker', x: -20, y: 92 },
+  // ---- v8: เบาะกราบสีทองหน้าโต๊ะหมู่บูชา (บนพรมแดงกลาง) ----
+  { t: 'prayerMat', v: 1, x: 256, y: -112 },
 ];
-const LAYOUT_VERSION = 7;
+const LAYOUT_VERSION = 8;
+const LAYOUT_V8_FROM = 124; // def124: เบาะกราบทองหน้าพระ
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
 const LAYOUT_V7_FROM = 92; // def92 ขึ้นไปมาในเวอร์ชัน 7 (โรงหนัง)
@@ -2033,7 +2040,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [], relay: [] };
+  const L = { move: [], peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [], relay: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -2088,7 +2095,7 @@ function makeWsNet(cfg) {
       } else if (m.t === 'mv') {
         // ตำแหน่งแบบย่อ: แก้ในวัตถุเดิม (ตัวเกมอ่านค่าเองทุกเฟรม ไม่ต้องสร้างรายชื่อใหม่)
         const pr = peers.get(m.k);
-        if (pr && Number.isFinite(m.x) && Number.isFinite(m.y)) { pr.p.x = m.x; pr.p.y = m.y; if (m.d) pr.p.d = m.d; pr.p.m = m.m ? 1 : 0; }
+        if (pr && Number.isFinite(m.x) && Number.isFinite(m.y)) { pr.p.x = m.x; pr.p.y = m.y; if (m.d) pr.p.d = m.d; pr.p.m = m.m ? 1 : 0; if (Number.isFinite(m.ts)) pr.p.t = m.ts; L.move.forEach((f) => f(m.k, pr.p)); }
       } else if (m.t === 'peer-left') {
         peers.delete(m.key); emitPeers();
       } else if (m.t === 'col') {
@@ -2127,11 +2134,12 @@ function makeWsNet(cfg) {
     setPresence(patch) {
       for (const [k, v] of Object.entries(patch)) { if (v === null) delete myPresence[k]; else myPresence[k] = v; }
       const mine = peers.get(net.myKey);
-      const moveOnly = Object.keys(patch).every((k) => k === 'x' || k === 'y' || k === 'd' || k === 'm');
+      const moveOnly = Object.keys(patch).every((k) => k === 'x' || k === 'y' || k === 'd' || k === 'm' || k === 't');
       if (mine) { mine.p = { ...myPresence }; if (!moveOnly) emitPeers(); }
       send({ t: 'p', patch });
     },
     onPeers(cb) { L.peers.push(cb); },
+    onMove(cb) { L.move.push(cb); },
     onStatus(cb) { L.status.push(cb); },
     onWelcome(cb) { L.welcome.push(cb); },
     onError(cb) { L.error.push(cb); },
@@ -3058,8 +3066,8 @@ function updateMe(dt) {
   if (moved && (vx || vy)) me.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 'left' : 'right') : (vy < 0 ? 'up' : 'down');
   if (moved) { me.ft += dt; me.frame = Math.floor(me.ft * 8) % 4; }
   else { me.frame = 0; me.ft = 0; }
-  if (moved) { pres({ x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 1 }); me.wasMoving = true; }
-  else if (me.wasMoving) { me.wasMoving = false; pres({ x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 0 }); lsSet('pixel.pos', { x: me.x, y: me.y }); }
+  if (moved) { pres({ x: Math.round(me.x * 2) / 2, y: Math.round(me.y * 2) / 2, d: me.dir, m: 1, t: netNow() }); me.wasMoving = true; }
+  else if (me.wasMoving) { me.wasMoving = false; pres({ x: Math.round(me.x * 2) / 2, y: Math.round(me.y * 2) / 2, d: me.dir, m: 0, t: netNow() }); lsSet('pixel.pos', { x: me.x, y: me.y }); }
   me.walking = moved;
 }
 
@@ -3076,22 +3084,63 @@ function updatePet(owner, pet, dt) {
   if (!owner.walking && d <= 2) pet.face = owner.x > pet.x;
 }
 
+// ---- เดินลื่นแบบเกมออนไลน์: เก็บตำแหน่งพร้อมเวลาที่เพื่อนส่ง แล้ววาดย้อนหลังเล็กน้อยระหว่างสองจุด ----
+const netNow = () => (G.net && G.net.now ? G.net.now() : Date.now());
+function addSnap(rt, x, y, d, ts) {
+  const now = netNow();
+  const t = Number.isFinite(ts) ? ts : now - (rt.off || 0);
+  // ประมาณความหน่วง + ความแกว่งของเน็ตของคนนี้ (ปรับตัวเองตลอด)
+  const lag = now - t;
+  if (rt.off == null || lag < rt.off) rt.off = lag; else rt.off += (lag - rt.off) * 0.01;
+  const jit = lag - rt.off;
+  rt.jit = rt.jit == null ? jit : rt.jit + (jit - rt.jit) * (jit > rt.jit ? 0.35 : 0.02);
+  const s = rt.snaps || (rt.snaps = []);
+  const last = s[s.length - 1];
+  if (last && t <= last.t) { if (last.x === x && last.y === y) return; s.length = 0; } // เวลาถอยหลัง (เพื่อนรีโหลด) = เริ่มใหม่
+  if (last && last.x === x && last.y === y && last.d === d) { last.t2 = t; return; }
+  if (last && t - last.t < 600) rt.iv = rt.iv == null ? t - last.t : rt.iv + (t - last.t - rt.iv) * 0.1; // ระยะห่างระหว่างตำแหน่งที่ส่งมา
+  s.push({ t, x, y, d });
+  if (s.length > 40) s.splice(0, s.length - 40);
+}
+function snapPos(rt) {
+  const s = rt.snaps;
+  if (!s || !s.length) return null;
+  const delay = clamp((rt.iv || 100) + (rt.jit || 0) * 2 + 30, 100, 450);
+  const rT = netNow() - (rt.off || 0) - delay;
+  while (s.length > 2 && s[1].t <= rT) s.shift();
+  const a = s[0];
+  if (rT <= a.t || s.length === 1) {
+    // ยังไม่มีจุดถัดไป: ถ้ากำลังเดินอยู่ ไหลต่อไปตามทิศเดิมได้นิดหน่อย (ไม่เกิน 0.15 วิ) แทนการหยุดกึก
+    if (s.length === 1 && rt.vel && rT > a.t && rt.p.m) { const k = Math.min(rT - a.t, 150) / 1000; return { x: a.x + rt.vel.x * k, y: a.y + rt.vel.y * k, d: a.d }; }
+    return { x: a.x, y: a.y, d: a.d };
+  }
+  const b = s[1];
+  if (Math.hypot(b.x - a.x, b.y - a.y) > 120) return { x: b.x, y: b.y, d: b.d }; // วาร์ป (นั่ง/ย้ายห้อง)
+  if (rT > b.t) {
+    // ตำแหน่งถัดไปมาช้า: ไหลต่อตามทิศเดิมได้นิดหน่อย (ไม่เกิน 0.15 วิ) แทนการหยุดกึก
+    if (rt.p.m && rt.vel) { const k = Math.min(rT - b.t, 200) / 1000; return { x: b.x + rt.vel.x * k, y: b.y + rt.vel.y * k, d: b.d }; }
+    return { x: b.x, y: b.y, d: b.d };
+  }
+  const k = clamp((rT - a.t) / Math.max(1, b.t - a.t), 0, 1);
+  const span = Math.max(1, b.t - a.t) / 1000;
+  rt.vel = { x: clamp((b.x - a.x) / span, -SPEED * 2, SPEED * 2), y: clamp((b.y - a.y) / span, -SPEED * 2, SPEED * 2) };
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, d: b.d };
+}
 function updateOthers(dt) {
-  const a = 1 - Math.exp(-dt * 12);
   for (const rt of G.others.values()) {
     const p = rt.p;
     if (!Number.isFinite(p.x)) continue;
-    const d = Math.hypot(p.x - rt.x, p.y - rt.y);
-    if (d > 120) { rt.x = p.x; rt.y = p.y; }
-    else if (d > 0.01) {
-      // เดินด้วยความเร็วเท่าการเดินจริง (ตามทันเร็วขึ้นถ้าห่างมาก) แทนการกระโดดตามทุกครั้งที่ได้ตำแหน่งใหม่
-      // ตามหลังราวหนึ่งจังหวะอัปเดต แล้วเดินด้วยความเร็วคงที่ = ไม่หยุดๆ เดินๆ ระหว่างรอตำแหน่งใหม่
-      const k = d > 40 ? 2 : d > 16 ? 1.25 : d > 5 ? 1 : 0.9;
-      const step = Math.min(d, SPEED * k * dt);
-      rt.x += ((p.x - rt.x) / d) * step; rt.y += ((p.y - rt.y) / d) * step;
-    }
-    rt.walking = !!p.m || d > 1.5;
-    rt.dir = ['up', 'down', 'left', 'right'].includes(p.d) ? p.d : 'down';
+    const ox = rt.x, oy = rt.y;
+    const sp = snapPos(rt);
+    if (sp) {
+      if (Math.hypot(sp.x - rt.x, sp.y - rt.y) > 120) { rt.x = sp.x; rt.y = sp.y; }
+      else { const a = 1 - Math.exp(-dt * 30); rt.x += (sp.x - rt.x) * a; rt.y += (sp.y - rt.y) * a; }
+    } else { rt.x = p.x; rt.y = p.y; }
+    const moved = Math.hypot(rt.x - ox, rt.y - oy) / Math.max(dt, 0.001);
+    rt.walking = moved > 8;
+    const d = (sp && sp.d) || p.d;
+    if (rt.walking && Math.abs(rt.x - ox) + Math.abs(rt.y - oy) > 0.05) rt.dir = Math.abs(rt.x - ox) > Math.abs(rt.y - oy) ? (rt.x > ox ? 'right' : 'left') : (rt.y > oy ? 'down' : 'up');
+    else rt.dir = ['up', 'down', 'left', 'right'].includes(d) ? d : 'down';
     if (rt.walking && !p.s) { rt.ft += dt; rt.frame = Math.floor(rt.ft * 8) % 4; } else { rt.frame = 0; rt.ft = 0; }
     rt.look = cleanLook(p.l);
     updatePet(rt, rt.pet, dt);
@@ -3121,10 +3170,11 @@ function onPeers(list) {
     rt.p = p; rt.by = peer.by; rt.guest = peer.guest;
     rt.look = cleanLook(p.l);
     if ((p.dr && p.dr.id) || prevDr) furnitureMoved = true;
+    if (Number.isFinite(p.x) && Number.isFinite(p.y)) addSnap(rt, p.x, p.y, p.d, p.t);
     if (Number.isFinite(p.x) && !rt.announced) {
       rt.announced = true;
       if (settled) { addSys(`${p.n || 'เพื่อน'} เข้ามาในห้อง`); SFX.join(); }
-      if (isNew || !Number.isFinite(rt.x)) { rt.x = p.x; rt.y = p.y; rt.pet.x = p.x + 10; rt.pet.y = p.y; }
+      if (isNew || !Number.isFinite(rt.x)) { rt.x = p.x; rt.y = p.y; rt.pet.x = p.x + 10; rt.pet.y = p.y; rt.snaps = []; }
     }
     // อีโมตใหม่
     if (p.em && p.em.ts && p.em.ts !== rt.lastEm) {
@@ -3232,6 +3282,7 @@ function showHelp() {
     '👢 kick ชื่อ · kick all — เตะออก (กลับเข้าได้ทันที)',
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
+    '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
     '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
     '🚪 admin off — เลิกเป็นแอดมินในเครื่องนี้',
   );
@@ -4006,7 +4057,7 @@ function renderPeople() {
     const b = document.createElement('b'); b.textContent = (r.n || 'เพื่อน') + (r.me ? ' (คุณ)' : '');
     const sm = document.createElement('small');
     const stl = STATUSES.find((s) => s[0] === r.st);
-    sm.textContent = [`${ZONES[r.z].icon} ${ZONES[r.z].name}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
+    sm.textContent = [`${ZONES[r.z].icon} ${zoneName(r.z)}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
     who.append(b, sm);
     if (r.vs) { const vs = document.createElement('small'); vs.className = 'vstat'; vs.textContent = r.vs; who.append(vs); }
     li.append(cv, who);
@@ -4553,6 +4604,10 @@ function frame(ms) {
     const s = docs.find((d) => d.id === 'room');
     G.settings = s ? { call: typeof s.call === 'string' ? s.call : '' } : {};
     $('#callBtn').classList.toggle('on', !!G.settings.call);
+    const nm = docs.find((d) => d.id === 'names');
+    G.roomNames = {};
+    if (nm) for (const z of Object.keys(ZONES)) if (typeof nm[z] === 'string' && nm[z].trim()) G.roomNames[z] = nm[z].trim().slice(0, 40);
+    G.roomsSig = '';
     const lv = docs.find((d) => d.id === 'layout');
     G.layoutV = lv && Number(lv.v) || 1;
     G.settingsLoaded = true;
@@ -4567,6 +4622,7 @@ function frame(ms) {
     if (G.boardOpen) paintBoard();
   });
   net.onPeers(onPeers);
+  if (net.onMove) net.onMove((key, p) => { const rt = G.others.get(key); if (rt && rt.p === p) addSnap(rt, p.x, p.y, p.d, p.t); else if (rt) { Object.assign(rt.p, { x: p.x, y: p.y, d: p.d, m: p.m, t: p.t }); addSnap(rt, p.x, p.y, p.d, p.t); } });
   // ข้อมูลส่วนตัว (จำตัวละครข้ามเครื่อง)
   const priv = await net.loadPrivate();
   if (priv) {
@@ -4659,11 +4715,11 @@ function updateZones() {
   G.audible = hear; G.sendTo = send;
   if (z !== G.zone) {
     G.zone = z;
-    toast(`${ZONES[z].icon} ${ZONES[z].name}` + (G.voice ? ' — ' + ZONE_TIPS[z] : ''), 3200);
+    toast(`${ZONES[z].icon} ${zoneName(z)}` + (G.voice ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
   const chip = $('#zoneChip');
   const n = othersInZone(z).size + 1;
-  const label = `${ZONES[z].icon} ${ZONES[z].name} · ${G.voice && z === 'hall' ? `ได้ยิน ${hear.size} คน` : `${n} คน`}`;
+  const label = `${ZONES[z].icon} ${zoneName(z)} · ${G.voice && z === 'hall' ? `ได้ยิน ${hear.size} คน` : `${n} คน`}`;
   if (chip.textContent !== label) chip.textContent = label;
   if (G.voice) { G.voice.setAudience(send, hear); G.voice.setScreenAudience(othersInZone(z)); }
 }
@@ -4696,7 +4752,7 @@ function drawDoorLabels(c, camX, camY, scale) {
     const Z = ZONES[d.zone];
     const sx = d.side ? (d.x + (d.left ? 40 : 44) - camX) * scale : (d.x + d.w / 2 - camX) * scale;
     const sy = d.side ? (d.y + d.h / 2 - camY) * scale : d.up ? (WALL + 12 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
-    const label = `${Z.icon} ${Z.name}`;
+    const nm0 = zoneName(d.zone); const label = `${Z.icon} ${nm0.length > 22 ? nm0.slice(0, 21) + '…' : nm0}`;
     const w = c.measureText(label).width + 14;
     c.fillStyle = 'rgba(46,34,53,.82)';
     rrect(c, sx - w / 2, sy - 9, w, 18, 6); c.fill();
@@ -4847,7 +4903,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -4855,6 +4911,11 @@ function maybeMigrateLayout() {
       if (ex && i >= LAYOUT_V4_FROM && ex.y > H) { const d = DEFAULT_LAYOUT[i]; try { await G.net.set('furniture', id, { t: d.t, v: d.v || 0, f: d.f || 0, ...ex, x: d.x, y: d.y }); } catch { return; } continue; }
       if (ex) continue;
       const d = DEFAULT_LAYOUT[i];
+      // มีคนวางเบาะไว้ตรงนั้นเองแล้ว → แค่เปลี่ยนเป็นสีทอง ไม่วางซ้อน
+      if (d.t === 'prayerMat') {
+        const near = G.furnDocs.find((o) => o.t === 'prayerMat' && Math.abs(o.x - d.x) < 14 && Math.abs(o.y - d.y) < 10);
+        if (near) { if ((near.v || 0) !== (d.v || 0)) { try { await G.net.set('furniture', near.id, { ...near, x: d.x, y: d.y, v: d.v }); } catch {} } continue; }
+      }
       try { await G.net.set('furniture', id, { t: d.t, x: d.x, y: d.y, v: d.v || 0, f: d.f || 0 }); } catch { return; }
     }
     // ของที่ผู้ใช้วางไว้ในห้องไหว้พระเดิม (ชั้นล่างสุดที่ไม่มีแล้ว) ย้ายขึ้นไปห้องใหม่
@@ -5151,7 +5212,7 @@ async function syncScreens() {
   const isSpk = act.it.t === 'speaker';
   G.cinemaPlaying = act.it.t === 'projectorScreen' && !!act.doc.playing;
   YT.act = act;
-  $('#ytTitle').textContent = `${isSpk ? '🔊' : '📺'} ${act.doc.title || 'YouTube'} · ${where.name}`;
+  $('#ytTitle').textContent = `${isSpk ? '🔊' : '📺'} ${act.doc.title || 'YouTube'} · ${zoneName(where.id)}`;
   // ลำโพง: ย่อเป็นแถบฟังอย่างเดียวให้เอง (กด 🔼 ถ้าอยากเห็นภาพ)
   if (isSpk && YT.autoMini !== key) {
     YT.autoMini = key; panel.classList.add('mini'); panel.classList.remove('big');
@@ -5210,7 +5271,7 @@ function openScreenModal(it) {
   const doc = G.screens.get(it.id);
   openModal((card) => {
     const spk = it.t === 'speaker';
-    const zn = ZONES[zoneAt(it.x, it.y + 6)].name;
+    const zn = zoneName(zoneAt(it.x, it.y + 6));
     card.append(el('h2', null, spk ? '🔊 ลำโพง: เปิดเพลงจาก YouTube' : `📺 ${FURN[it.t].label}: ดู YouTube ด้วยกัน`));
     card.append(el('p', 'sub', spk
       ? `ทุกคนที่อยู่ใน${zn}จะได้ยินเพลงเดียวกันพร้อมกัน (คนห้องอื่นไม่ได้ยิน) · ขึ้นเป็นแถบเล็กฟังอย่างเดียว กด 🔼 ถ้าอยากดูภาพ · ใครกด เล่น/หยุด ทุกคนก็ตาม`
@@ -5465,7 +5526,7 @@ function keepAlive(on) {
       if (!keepAliveEl) { keepAliveEl = new Audio(silentWav()); keepAliveEl.loop = true; keepAliveEl.setAttribute('playsinline', ''); keepAliveEl.volume = 0.01; }
       keepAliveEl.play().catch(() => {});
       if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({ title: $('#roomName').textContent || 'Pixel Hangout', artist: `${ZONES[G.zone || 'hall'].icon} ${ZONES[G.zone || 'hall'].name}`, album: 'Pixel Hangout' });
+        navigator.mediaSession.metadata = new MediaMetadata({ title: $('#roomName').textContent || 'Pixel Hangout', artist: `${ZONES[G.zone || 'hall'].icon} ${zoneName(G.zone || 'hall')}`, album: 'Pixel Hangout' });
         navigator.mediaSession.playbackState = 'playing';
         try { navigator.mediaSession.setActionHandler('pause', () => setBgAudio(false)); navigator.mediaSession.setActionHandler('play', () => setBgAudio(true)); } catch {}
       }
@@ -5690,11 +5751,11 @@ function roomTarget(z) {
   return null;
 }
 function goToRoom(z) {
-  if (zoneAt(G.me.x, G.me.y) === z) { toast(`${ZONES[z].icon} คุณอยู่ใน${ZONES[z].name}แล้ว`); return; }
+  if (zoneAt(G.me.x, G.me.y) === z) { toast(`${ZONES[z].icon} คุณอยู่ใน${zoneName(z)}แล้ว`); return; }
   const t = roomTarget(z);
   if (!t) { toast('ไปห้องนั้นไม่ได้ตอนนี้'); return; }
   walkTo(t[0], t[1]);
-  toast(`🚶 กำลังเดินไป${ZONES[z].name}`, 1800);
+  toast(`🚶 กำลังเดินไป${zoneName(z)}`, 1800);
   if (isMobile()) setRoomsOpen(false);
 }
 let roomsOpen = lsGet('pixel.rooms', null);
@@ -5724,7 +5785,7 @@ function renderRooms() {
   const by = roomMembers();
   const here = zoneAt(G.me.x, G.me.y);
   const inCall = !!G.voice;
-  const sig = JSON.stringify([here, inCall, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf]))]);
+  const sig = JSON.stringify([here, inCall, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf]))]);
   const list = $('#roomsList');
   if (sig !== G.roomsSig) {
     G.roomsSig = sig;
@@ -5733,9 +5794,19 @@ function renderRooms() {
       const b = document.createElement('button');
       b.className = 'rm' + (z === here ? ' here' : '');
       const spk = document.createElement('span'); spk.className = 'spk'; spk.textContent = '🔊';
-      const n = document.createElement('span'); n.className = 'n'; n.textContent = `${ZONES[z].icon} ${ZONES[z].name}`;
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = `${ZONES[z].icon} ${zoneName(z)}`;
       b.append(spk, n);
       if (by[z].length) { const c = document.createElement('span'); c.className = 'c'; c.textContent = by[z].length; b.append(c); }
+      if (G.isAdmin) {
+        const ed = document.createElement('span'); ed.className = 'ed'; ed.textContent = '✏️'; ed.title = 'ตั้งชื่อห้อง (แอดมิน)';
+        ed.onclick = (e) => {
+          e.stopPropagation();
+          const v = prompt(`ตั้งชื่อ ${ZONES[z].icon} ${zoneName(z)}\n(เว้นว่าง = กลับไปใช้ชื่อเดิม "${ZONES[z].name}")`, (G.roomNames && G.roomNames[z]) || '');
+          if (v === null) return;
+          G.net.admin('rename', lsGet('pixel.admin', '') || '', { z, n: v.trim().slice(0, 40) });
+        };
+        b.append(ed);
+      }
       b.onclick = () => goToRoom(z);
       list.append(b);
       for (const m of by[z]) {

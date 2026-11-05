@@ -169,7 +169,8 @@ function broadcast(m, except) {
   const s = JSON.stringify(m);
   for (const [k, c] of peers) if (k !== except && c.ws.readyState === 1) c.ws.send(s);
 }
-const MOVE_KEYS = new Set(['x', 'y', 'd', 'm']);
+const MOVE_KEYS = new Set(['x', 'y', 'd', 'm', 't']);
+const ZONE_IDS = ['hall', 'meet', 'garden', 'karaoke', 'pub', 'shrine', 'cinema'];
 const okId = (id) => typeof id === 'string' && /^[\w.:-]{1,48}$/.test(id);
 
 wss.on('connection', (ws) => {
@@ -226,7 +227,7 @@ wss.on('connection', (ws) => {
         // แค่เดิน → ส่งแบบย่อ (ไม่ส่งข้อมูลทั้งก้อนซ้ำทุก 0.1 วิ) และข้ามเครื่องที่เน็ตช้าจนคิวค้าง เพื่อไม่ให้ดีเลย์สะสม
         const ks = Object.keys(m.patch);
         if (ks.length && ks.every((k) => MOVE_KEYS.has(k))) {
-          const s = JSON.stringify({ t: 'mv', k: key, x: next.x, y: next.y, d: next.d, m: next.m });
+          const s = JSON.stringify({ t: 'mv', k: key, x: next.x, y: next.y, d: next.d, m: next.m, ts: Number.isFinite(next.t) ? next.t : undefined });
           for (const [k, c] of peers) {
             if (k === key || c.ws.readyState !== 1) continue;
             if (next.m && c.ws.bufferedAmount > 24000) continue; // กำลังเดิน: ทิ้งได้ ตำแหน่งถัดไปจะตามมาเอง (ตอนหยุดส่งเสมอ)
@@ -239,6 +240,7 @@ wss.on('connection', (ws) => {
       }
       case 'set': {
         if (!COLS.includes(m.col) || m.col === 'board' || !okId(m.id) || !m.doc || typeof m.doc !== 'object') break;
+        if (m.col === 'settings' && m.id === 'names') break; // ชื่อห้อง: แอดมินเท่านั้น (ผ่านคำสั่ง rename)
         if (JSON.stringify(m.doc).length > 8192) break;
         if (!store[m.col][m.id] && Object.keys(store[m.col]).length >= (m.col === 'chat' ? 100000 : 200)) break;
         store[m.col][m.id] = m.doc;
@@ -252,6 +254,7 @@ wss.on('connection', (ws) => {
       }
       case 'del': {
         if (!COLS.includes(m.col) || !okId(m.id) || !store[m.col][m.id]) break;
+        if (m.col === 'settings' && m.id === 'names') break;
         if (m.col === 'board') removeImage(m.id);
         else delete store[m.col][m.id];
         broadcast({ t: 'col', col: m.col, id: m.id, doc: null }, key);
@@ -283,6 +286,18 @@ wss.on('connection', (ws) => {
           }
           broadcast({ t: 'chat-del', ids: all ? 'all' : ids });
           if (all) send(ws, { t: 'sys', message: 'ล้างแชตทั้งหมดแล้ว 🧹' });
+          save();
+          break;
+        }
+        if (m.cmd === 'rename') {
+          const a = m.arg && typeof m.arg === 'object' ? m.arg : {};
+          if (!ZONE_IDS.includes(a.z)) break;
+          const n = String(a.n || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 40);
+          const names = { ...(store.settings.names || {}) };
+          delete names.id;
+          if (n) names[a.z] = n; else delete names[a.z];
+          store.settings.names = names;
+          broadcast({ t: 'col', col: 'settings', id: 'names', doc: names });
           save();
           break;
         }

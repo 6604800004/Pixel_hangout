@@ -30,6 +30,8 @@ const ZONES = {
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
   cinema: { id: 'cinema', name: 'โรงหนัง', icon: '🎬' },
 };
+// ชื่อห้อง: แอดมินตั้งเองได้ (ไม่ตั้ง = ชื่อเดิม)
+const zoneName = (z) => (typeof G !== 'undefined' && G.roomNames && G.roomNames[z]) || ZONES[z].name;
 function zoneAt(x, y) {
   if (x < 0) return 'cinema';
   if (y < 0) return 'shrine';
@@ -91,8 +93,11 @@ const DEFAULT_LAYOUT = [
   ...[-240, -210, -180, -112, -82, -52].map((x) => ({ t: 'vipSeat', x, y: 222 })),
   { t: 'vvipBed', x: -214, y: 300 }, { t: 'vvipBed', x: -78, y: 300 },
   { t: 'popcorn', x: -266, y: 344 }, { t: 'speaker', x: -272, y: 92 }, { t: 'speaker', x: -20, y: 92 },
+  // ---- v8: เบาะกราบสีทองหน้าโต๊ะหมู่บูชา (บนพรมแดงกลาง) ----
+  { t: 'prayerMat', v: 1, x: 256, y: -112 },
 ];
-const LAYOUT_VERSION = 7;
+const LAYOUT_VERSION = 8;
+const LAYOUT_V8_FROM = 124; // def124: เบาะกราบทองหน้าพระ
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
 const LAYOUT_V7_FROM = 92; // def92 ขึ้นไปมาในเวอร์ชัน 7 (โรงหนัง)

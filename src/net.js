@@ -88,7 +88,7 @@ function makeWsNet(cfg) {
   const peers = new Map();
   const cols = Object.fromEntries(COLS.map((c) => [c, new Map()]));
   const watchers = Object.fromEntries(COLS.map((c) => [c, []]));
-  const L = { peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [], relay: [] };
+  const L = { move: [], peers: [], status: [], signal: [], welcome: [], error: [], sys: [], chatdel: [], update: [], poke: [], relay: [] };
   let ws = null, myPresence = {}, retry = 0, closedByUser = false, peerFlush = false;
 
   const emitPeers = () => {
@@ -143,7 +143,7 @@ function makeWsNet(cfg) {
       } else if (m.t === 'mv') {
         // ตำแหน่งแบบย่อ: แก้ในวัตถุเดิม (ตัวเกมอ่านค่าเองทุกเฟรม ไม่ต้องสร้างรายชื่อใหม่)
         const pr = peers.get(m.k);
-        if (pr && Number.isFinite(m.x) && Number.isFinite(m.y)) { pr.p.x = m.x; pr.p.y = m.y; if (m.d) pr.p.d = m.d; pr.p.m = m.m ? 1 : 0; }
+        if (pr && Number.isFinite(m.x) && Number.isFinite(m.y)) { pr.p.x = m.x; pr.p.y = m.y; if (m.d) pr.p.d = m.d; pr.p.m = m.m ? 1 : 0; if (Number.isFinite(m.ts)) pr.p.t = m.ts; L.move.forEach((f) => f(m.k, pr.p)); }
       } else if (m.t === 'peer-left') {
         peers.delete(m.key); emitPeers();
       } else if (m.t === 'col') {
@@ -182,11 +182,12 @@ function makeWsNet(cfg) {
     setPresence(patch) {
       for (const [k, v] of Object.entries(patch)) { if (v === null) delete myPresence[k]; else myPresence[k] = v; }
       const mine = peers.get(net.myKey);
-      const moveOnly = Object.keys(patch).every((k) => k === 'x' || k === 'y' || k === 'd' || k === 'm');
+      const moveOnly = Object.keys(patch).every((k) => k === 'x' || k === 'y' || k === 'd' || k === 'm' || k === 't');
       if (mine) { mine.p = { ...myPresence }; if (!moveOnly) emitPeers(); }
       send({ t: 'p', patch });
     },
     onPeers(cb) { L.peers.push(cb); },
+    onMove(cb) { L.move.push(cb); },
     onStatus(cb) { L.status.push(cb); },
     onWelcome(cb) { L.welcome.push(cb); },
     onError(cb) { L.error.push(cb); },

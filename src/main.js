@@ -243,8 +243,8 @@ function updateMe(dt) {
   if (moved && (vx || vy)) me.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 'left' : 'right') : (vy < 0 ? 'up' : 'down');
   if (moved) { me.ft += dt; me.frame = Math.floor(me.ft * 8) % 4; }
   else { me.frame = 0; me.ft = 0; }
-  if (moved) { pres({ x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 1 }); me.wasMoving = true; }
-  else if (me.wasMoving) { me.wasMoving = false; pres({ x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 0 }); lsSet('pixel.pos', { x: me.x, y: me.y }); }
+  if (moved) { pres({ x: Math.round(me.x * 2) / 2, y: Math.round(me.y * 2) / 2, d: me.dir, m: 1, t: netNow() }); me.wasMoving = true; }
+  else if (me.wasMoving) { me.wasMoving = false; pres({ x: Math.round(me.x * 2) / 2, y: Math.round(me.y * 2) / 2, d: me.dir, m: 0, t: netNow() }); lsSet('pixel.pos', { x: me.x, y: me.y }); }
   me.walking = moved;
 }
 
@@ -261,22 +261,63 @@ function updatePet(owner, pet, dt) {
   if (!owner.walking && d <= 2) pet.face = owner.x > pet.x;
 }
 
+// ---- เดินลื่นแบบเกมออนไลน์: เก็บตำแหน่งพร้อมเวลาที่เพื่อนส่ง แล้ววาดย้อนหลังเล็กน้อยระหว่างสองจุด ----
+const netNow = () => (G.net && G.net.now ? G.net.now() : Date.now());
+function addSnap(rt, x, y, d, ts) {
+  const now = netNow();
+  const t = Number.isFinite(ts) ? ts : now - (rt.off || 0);
+  // ประมาณความหน่วง + ความแกว่งของเน็ตของคนนี้ (ปรับตัวเองตลอด)
+  const lag = now - t;
+  if (rt.off == null || lag < rt.off) rt.off = lag; else rt.off += (lag - rt.off) * 0.01;
+  const jit = lag - rt.off;
+  rt.jit = rt.jit == null ? jit : rt.jit + (jit - rt.jit) * (jit > rt.jit ? 0.35 : 0.02);
+  const s = rt.snaps || (rt.snaps = []);
+  const last = s[s.length - 1];
+  if (last && t <= last.t) { if (last.x === x && last.y === y) return; s.length = 0; } // เวลาถอยหลัง (เพื่อนรีโหลด) = เริ่มใหม่
+  if (last && last.x === x && last.y === y && last.d === d) { last.t2 = t; return; }
+  if (last && t - last.t < 600) rt.iv = rt.iv == null ? t - last.t : rt.iv + (t - last.t - rt.iv) * 0.1; // ระยะห่างระหว่างตำแหน่งที่ส่งมา
+  s.push({ t, x, y, d });
+  if (s.length > 40) s.splice(0, s.length - 40);
+}
+function snapPos(rt) {
+  const s = rt.snaps;
+  if (!s || !s.length) return null;
+  const delay = clamp((rt.iv || 100) + (rt.jit || 0) * 2 + 30, 100, 450);
+  const rT = netNow() - (rt.off || 0) - delay;
+  while (s.length > 2 && s[1].t <= rT) s.shift();
+  const a = s[0];
+  if (rT <= a.t || s.length === 1) {
+    // ยังไม่มีจุดถัดไป: ถ้ากำลังเดินอยู่ ไหลต่อไปตามทิศเดิมได้นิดหน่อย (ไม่เกิน 0.15 วิ) แทนการหยุดกึก
+    if (s.length === 1 && rt.vel && rT > a.t && rt.p.m) { const k = Math.min(rT - a.t, 150) / 1000; return { x: a.x + rt.vel.x * k, y: a.y + rt.vel.y * k, d: a.d }; }
+    return { x: a.x, y: a.y, d: a.d };
+  }
+  const b = s[1];
+  if (Math.hypot(b.x - a.x, b.y - a.y) > 120) return { x: b.x, y: b.y, d: b.d }; // วาร์ป (นั่ง/ย้ายห้อง)
+  if (rT > b.t) {
+    // ตำแหน่งถัดไปมาช้า: ไหลต่อตามทิศเดิมได้นิดหน่อย (ไม่เกิน 0.15 วิ) แทนการหยุดกึก
+    if (rt.p.m && rt.vel) { const k = Math.min(rT - b.t, 200) / 1000; return { x: b.x + rt.vel.x * k, y: b.y + rt.vel.y * k, d: b.d }; }
+    return { x: b.x, y: b.y, d: b.d };
+  }
+  const k = clamp((rT - a.t) / Math.max(1, b.t - a.t), 0, 1);
+  const span = Math.max(1, b.t - a.t) / 1000;
+  rt.vel = { x: clamp((b.x - a.x) / span, -SPEED * 2, SPEED * 2), y: clamp((b.y - a.y) / span, -SPEED * 2, SPEED * 2) };
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, d: b.d };
+}
 function updateOthers(dt) {
-  const a = 1 - Math.exp(-dt * 12);
   for (const rt of G.others.values()) {
     const p = rt.p;
     if (!Number.isFinite(p.x)) continue;
-    const d = Math.hypot(p.x - rt.x, p.y - rt.y);
-    if (d > 120) { rt.x = p.x; rt.y = p.y; }
-    else if (d > 0.01) {
-      // เดินด้วยความเร็วเท่าการเดินจริง (ตามทันเร็วขึ้นถ้าห่างมาก) แทนการกระโดดตามทุกครั้งที่ได้ตำแหน่งใหม่
-      // ตามหลังราวหนึ่งจังหวะอัปเดต แล้วเดินด้วยความเร็วคงที่ = ไม่หยุดๆ เดินๆ ระหว่างรอตำแหน่งใหม่
-      const k = d > 40 ? 2 : d > 16 ? 1.25 : d > 5 ? 1 : 0.9;
-      const step = Math.min(d, SPEED * k * dt);
-      rt.x += ((p.x - rt.x) / d) * step; rt.y += ((p.y - rt.y) / d) * step;
-    }
-    rt.walking = !!p.m || d > 1.5;
-    rt.dir = ['up', 'down', 'left', 'right'].includes(p.d) ? p.d : 'down';
+    const ox = rt.x, oy = rt.y;
+    const sp = snapPos(rt);
+    if (sp) {
+      if (Math.hypot(sp.x - rt.x, sp.y - rt.y) > 120) { rt.x = sp.x; rt.y = sp.y; }
+      else { const a = 1 - Math.exp(-dt * 30); rt.x += (sp.x - rt.x) * a; rt.y += (sp.y - rt.y) * a; }
+    } else { rt.x = p.x; rt.y = p.y; }
+    const moved = Math.hypot(rt.x - ox, rt.y - oy) / Math.max(dt, 0.001);
+    rt.walking = moved > 8;
+    const d = (sp && sp.d) || p.d;
+    if (rt.walking && Math.abs(rt.x - ox) + Math.abs(rt.y - oy) > 0.05) rt.dir = Math.abs(rt.x - ox) > Math.abs(rt.y - oy) ? (rt.x > ox ? 'right' : 'left') : (rt.y > oy ? 'down' : 'up');
+    else rt.dir = ['up', 'down', 'left', 'right'].includes(d) ? d : 'down';
     if (rt.walking && !p.s) { rt.ft += dt; rt.frame = Math.floor(rt.ft * 8) % 4; } else { rt.frame = 0; rt.ft = 0; }
     rt.look = cleanLook(p.l);
     updatePet(rt, rt.pet, dt);
@@ -306,10 +347,11 @@ function onPeers(list) {
     rt.p = p; rt.by = peer.by; rt.guest = peer.guest;
     rt.look = cleanLook(p.l);
     if ((p.dr && p.dr.id) || prevDr) furnitureMoved = true;
+    if (Number.isFinite(p.x) && Number.isFinite(p.y)) addSnap(rt, p.x, p.y, p.d, p.t);
     if (Number.isFinite(p.x) && !rt.announced) {
       rt.announced = true;
       if (settled) { addSys(`${p.n || 'เพื่อน'} เข้ามาในห้อง`); SFX.join(); }
-      if (isNew || !Number.isFinite(rt.x)) { rt.x = p.x; rt.y = p.y; rt.pet.x = p.x + 10; rt.pet.y = p.y; }
+      if (isNew || !Number.isFinite(rt.x)) { rt.x = p.x; rt.y = p.y; rt.pet.x = p.x + 10; rt.pet.y = p.y; rt.snaps = []; }
     }
     // อีโมตใหม่
     if (p.em && p.em.ts && p.em.ts !== rt.lastEm) {
@@ -417,6 +459,7 @@ function showHelp() {
     '👢 kick ชื่อ · kick all — เตะออก (กลับเข้าได้ทันที)',
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
+    '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
     '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
     '🚪 admin off — เลิกเป็นแอดมินในเครื่องนี้',
   );
@@ -1191,7 +1234,7 @@ function renderPeople() {
     const b = document.createElement('b'); b.textContent = (r.n || 'เพื่อน') + (r.me ? ' (คุณ)' : '');
     const sm = document.createElement('small');
     const stl = STATUSES.find((s) => s[0] === r.st);
-    sm.textContent = [`${ZONES[r.z].icon} ${ZONES[r.z].name}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
+    sm.textContent = [`${ZONES[r.z].icon} ${zoneName(r.z)}`, stl && stl[0] ? `${stl[0]} ${stl[1]}` : '', r.desk ? `โต๊ะ ${r.desk.slice(1)}` : '', r.mu && typeof r.mu.t === 'string' ? `🎵 ${musicLabel(r.mu)}` : '', r.guest ? 'แขก' : ''].filter(Boolean).join(' · ');
     who.append(b, sm);
     if (r.vs) { const vs = document.createElement('small'); vs.className = 'vstat'; vs.textContent = r.vs; who.append(vs); }
     li.append(cv, who);
@@ -1738,6 +1781,10 @@ function frame(ms) {
     const s = docs.find((d) => d.id === 'room');
     G.settings = s ? { call: typeof s.call === 'string' ? s.call : '' } : {};
     $('#callBtn').classList.toggle('on', !!G.settings.call);
+    const nm = docs.find((d) => d.id === 'names');
+    G.roomNames = {};
+    if (nm) for (const z of Object.keys(ZONES)) if (typeof nm[z] === 'string' && nm[z].trim()) G.roomNames[z] = nm[z].trim().slice(0, 40);
+    G.roomsSig = '';
     const lv = docs.find((d) => d.id === 'layout');
     G.layoutV = lv && Number(lv.v) || 1;
     G.settingsLoaded = true;
@@ -1752,6 +1799,7 @@ function frame(ms) {
     if (G.boardOpen) paintBoard();
   });
   net.onPeers(onPeers);
+  if (net.onMove) net.onMove((key, p) => { const rt = G.others.get(key); if (rt && rt.p === p) addSnap(rt, p.x, p.y, p.d, p.t); else if (rt) { Object.assign(rt.p, { x: p.x, y: p.y, d: p.d, m: p.m, t: p.t }); addSnap(rt, p.x, p.y, p.d, p.t); } });
   // ข้อมูลส่วนตัว (จำตัวละครข้ามเครื่อง)
   const priv = await net.loadPrivate();
   if (priv) {

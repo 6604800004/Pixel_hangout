@@ -63,11 +63,11 @@ function updateZones() {
   G.audible = hear; G.sendTo = send;
   if (z !== G.zone) {
     G.zone = z;
-    toast(`${ZONES[z].icon} ${ZONES[z].name}` + (G.voice ? ' — ' + ZONE_TIPS[z] : ''), 3200);
+    toast(`${ZONES[z].icon} ${zoneName(z)}` + (G.voice ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
   const chip = $('#zoneChip');
   const n = othersInZone(z).size + 1;
-  const label = `${ZONES[z].icon} ${ZONES[z].name} · ${G.voice && z === 'hall' ? `ได้ยิน ${hear.size} คน` : `${n} คน`}`;
+  const label = `${ZONES[z].icon} ${zoneName(z)} · ${G.voice && z === 'hall' ? `ได้ยิน ${hear.size} คน` : `${n} คน`}`;
   if (chip.textContent !== label) chip.textContent = label;
   if (G.voice) { G.voice.setAudience(send, hear); G.voice.setScreenAudience(othersInZone(z)); }
 }
@@ -100,7 +100,7 @@ function drawDoorLabels(c, camX, camY, scale) {
     const Z = ZONES[d.zone];
     const sx = d.side ? (d.x + (d.left ? 40 : 44) - camX) * scale : (d.x + d.w / 2 - camX) * scale;
     const sy = d.side ? (d.y + d.h / 2 - camY) * scale : d.up ? (WALL + 12 - camY) * scale : ((d.y || LOWER_Y) - 16 - camY) * scale;
-    const label = `${Z.icon} ${Z.name}`;
+    const nm0 = zoneName(d.zone); const label = `${Z.icon} ${nm0.length > 22 ? nm0.slice(0, 21) + '…' : nm0}`;
     const w = c.measureText(label).width + 14;
     c.fillStyle = 'rgba(46,34,53,.82)';
     rrect(c, sx - w / 2, sy - 9, w, 18, 6); c.fill();
@@ -251,7 +251,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -259,6 +259,11 @@ function maybeMigrateLayout() {
       if (ex && i >= LAYOUT_V4_FROM && ex.y > H) { const d = DEFAULT_LAYOUT[i]; try { await G.net.set('furniture', id, { t: d.t, v: d.v || 0, f: d.f || 0, ...ex, x: d.x, y: d.y }); } catch { return; } continue; }
       if (ex) continue;
       const d = DEFAULT_LAYOUT[i];
+      // มีคนวางเบาะไว้ตรงนั้นเองแล้ว → แค่เปลี่ยนเป็นสีทอง ไม่วางซ้อน
+      if (d.t === 'prayerMat') {
+        const near = G.furnDocs.find((o) => o.t === 'prayerMat' && Math.abs(o.x - d.x) < 14 && Math.abs(o.y - d.y) < 10);
+        if (near) { if ((near.v || 0) !== (d.v || 0)) { try { await G.net.set('furniture', near.id, { ...near, x: d.x, y: d.y, v: d.v }); } catch {} } continue; }
+      }
       try { await G.net.set('furniture', id, { t: d.t, x: d.x, y: d.y, v: d.v || 0, f: d.f || 0 }); } catch { return; }
     }
     // ของที่ผู้ใช้วางไว้ในห้องไหว้พระเดิม (ชั้นล่างสุดที่ไม่มีแล้ว) ย้ายขึ้นไปห้องใหม่
@@ -555,7 +560,7 @@ async function syncScreens() {
   const isSpk = act.it.t === 'speaker';
   G.cinemaPlaying = act.it.t === 'projectorScreen' && !!act.doc.playing;
   YT.act = act;
-  $('#ytTitle').textContent = `${isSpk ? '🔊' : '📺'} ${act.doc.title || 'YouTube'} · ${where.name}`;
+  $('#ytTitle').textContent = `${isSpk ? '🔊' : '📺'} ${act.doc.title || 'YouTube'} · ${zoneName(where.id)}`;
   // ลำโพง: ย่อเป็นแถบฟังอย่างเดียวให้เอง (กด 🔼 ถ้าอยากเห็นภาพ)
   if (isSpk && YT.autoMini !== key) {
     YT.autoMini = key; panel.classList.add('mini'); panel.classList.remove('big');
@@ -614,7 +619,7 @@ function openScreenModal(it) {
   const doc = G.screens.get(it.id);
   openModal((card) => {
     const spk = it.t === 'speaker';
-    const zn = ZONES[zoneAt(it.x, it.y + 6)].name;
+    const zn = zoneName(zoneAt(it.x, it.y + 6));
     card.append(el('h2', null, spk ? '🔊 ลำโพง: เปิดเพลงจาก YouTube' : `📺 ${FURN[it.t].label}: ดู YouTube ด้วยกัน`));
     card.append(el('p', 'sub', spk
       ? `ทุกคนที่อยู่ใน${zn}จะได้ยินเพลงเดียวกันพร้อมกัน (คนห้องอื่นไม่ได้ยิน) · ขึ้นเป็นแถบเล็กฟังอย่างเดียว กด 🔼 ถ้าอยากดูภาพ · ใครกด เล่น/หยุด ทุกคนก็ตาม`
@@ -869,7 +874,7 @@ function keepAlive(on) {
       if (!keepAliveEl) { keepAliveEl = new Audio(silentWav()); keepAliveEl.loop = true; keepAliveEl.setAttribute('playsinline', ''); keepAliveEl.volume = 0.01; }
       keepAliveEl.play().catch(() => {});
       if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({ title: $('#roomName').textContent || 'Pixel Hangout', artist: `${ZONES[G.zone || 'hall'].icon} ${ZONES[G.zone || 'hall'].name}`, album: 'Pixel Hangout' });
+        navigator.mediaSession.metadata = new MediaMetadata({ title: $('#roomName').textContent || 'Pixel Hangout', artist: `${ZONES[G.zone || 'hall'].icon} ${zoneName(G.zone || 'hall')}`, album: 'Pixel Hangout' });
         navigator.mediaSession.playbackState = 'playing';
         try { navigator.mediaSession.setActionHandler('pause', () => setBgAudio(false)); navigator.mediaSession.setActionHandler('play', () => setBgAudio(true)); } catch {}
       }
@@ -1094,11 +1099,11 @@ function roomTarget(z) {
   return null;
 }
 function goToRoom(z) {
-  if (zoneAt(G.me.x, G.me.y) === z) { toast(`${ZONES[z].icon} คุณอยู่ใน${ZONES[z].name}แล้ว`); return; }
+  if (zoneAt(G.me.x, G.me.y) === z) { toast(`${ZONES[z].icon} คุณอยู่ใน${zoneName(z)}แล้ว`); return; }
   const t = roomTarget(z);
   if (!t) { toast('ไปห้องนั้นไม่ได้ตอนนี้'); return; }
   walkTo(t[0], t[1]);
-  toast(`🚶 กำลังเดินไป${ZONES[z].name}`, 1800);
+  toast(`🚶 กำลังเดินไป${zoneName(z)}`, 1800);
   if (isMobile()) setRoomsOpen(false);
 }
 let roomsOpen = lsGet('pixel.rooms', null);
@@ -1128,7 +1133,7 @@ function renderRooms() {
   const by = roomMembers();
   const here = zoneAt(G.me.x, G.me.y);
   const inCall = !!G.voice;
-  const sig = JSON.stringify([here, inCall, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf]))]);
+  const sig = JSON.stringify([here, inCall, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf]))]);
   const list = $('#roomsList');
   if (sig !== G.roomsSig) {
     G.roomsSig = sig;
@@ -1137,9 +1142,19 @@ function renderRooms() {
       const b = document.createElement('button');
       b.className = 'rm' + (z === here ? ' here' : '');
       const spk = document.createElement('span'); spk.className = 'spk'; spk.textContent = '🔊';
-      const n = document.createElement('span'); n.className = 'n'; n.textContent = `${ZONES[z].icon} ${ZONES[z].name}`;
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = `${ZONES[z].icon} ${zoneName(z)}`;
       b.append(spk, n);
       if (by[z].length) { const c = document.createElement('span'); c.className = 'c'; c.textContent = by[z].length; b.append(c); }
+      if (G.isAdmin) {
+        const ed = document.createElement('span'); ed.className = 'ed'; ed.textContent = '✏️'; ed.title = 'ตั้งชื่อห้อง (แอดมิน)';
+        ed.onclick = (e) => {
+          e.stopPropagation();
+          const v = prompt(`ตั้งชื่อ ${ZONES[z].icon} ${zoneName(z)}\n(เว้นว่าง = กลับไปใช้ชื่อเดิม "${ZONES[z].name}")`, (G.roomNames && G.roomNames[z]) || '');
+          if (v === null) return;
+          G.net.admin('rename', lsGet('pixel.admin', '') || '', { z, n: v.trim().slice(0, 40) });
+        };
+        b.append(ed);
+      }
       b.onclick = () => goToRoom(z);
       list.append(b);
       for (const m of by[z]) {
