@@ -406,6 +406,7 @@ function showHelp() {
     '📖 คำสั่งที่ทุกคนใช้ได้ (พิมพ์ในแชต ไม่ขึ้นให้คนอื่นเห็น)',
     '👉 poke ชื่อ — สะกิดเฉพาะคน (หรือ สะกิด ชื่อ / ชื่อ poke / poke all)',
     '🎧 bg on · bg off — เปิด/ปิด ได้ยินเสียงตอนพับจอหรือสลับแอป',
+    '🩺 ตรวจเสียง — ดูว่าทำไมพูด/ได้ยินใครไม่ได้ (หรือ diag)',
     '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
     '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
     'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ · คอม: R หัน, E นั่ง, Enter แชต',
@@ -425,6 +426,7 @@ function showHelp() {
 function chatCommand(text) {
   if (!G.net) return false;
   if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
+  if (/^\/?(diag|ตรวจเสียง|เช็คเสียง|เช็กเสียง)$/i.test(text)) { openVoiceDiag(); return true; }
   if (/^\/?admin\s+(off|logout|ออก)$/i.test(text)) { lsSet('pixel.admin', null); G.isAdmin = false; scheduleChatRender(); addSys('เลิกเป็นแอดมินในเครื่องนี้แล้ว'); return true; }
   // สะกิด: poke ชื่อ / สะกิด ชื่อ / ชื่อ poke
   let p = text.match(/^\/?(?:poke|สะกิด|สกิด|จิ้ม)\s+(.+)$/i) || text.match(/^(.+?)\s+(?:poke|สะกิด|สกิด)$/i);
@@ -1441,6 +1443,7 @@ function setupVoice() {
     if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
   });
   G.voice = V;
+  V.remoteMicOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.mic === 1); };
   ['micBtn', 'camBtn', 'deafBtn', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
   $('#voiceSetBtn').onclick = openVoiceSettings;
   if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : V.startScreen()); }
@@ -1555,6 +1558,8 @@ function paintVoiceSettings() {
   mr.append(rr); rl.append(rangeLabel); mr.append(rl);
   right.append(mr);
 
+  const dg = el('button', 'pbtn sm', '🩺 ตรวจเสียง (พูด/ได้ยินใครไม่ได้?)'); dg.onclick = () => { G.voicePanelOpen = false; openVoiceDiag(); };
+  right.append(dg);
   const bg = el('div', 'opt');
   bg.append(el('span', null, 'ตอนพับจอ / สลับไปแอปอื่น'));
   const bgl = el('label', 'chk'); const bgc = el('input'); bgc.type = 'checkbox'; bgc.checked = !!G.bgAudio;

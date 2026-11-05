@@ -163,6 +163,7 @@ function makeVoice(net, onChange) {
   }
   async function handleSignal(from, data) {
     let peer = V.peers.get(from);
+    if (data.relayPlease) { if (peer) peer.forceRelay = Date.now(); return; }
     if (data.sdp) {
       const desc = { type: data.sdp.type, sdp: tuneOpus(data.sdp.sdp) };
       if (desc.type === 'offer') {
@@ -229,6 +230,12 @@ function makeVoice(net, onChange) {
     }
     const t = s.getAudioTracks()[0];
     try { t.contentHint = 'speech'; } catch {}
+    t.addEventListener('ended', () => {
+      if (V.audioTrack !== t) return;
+      V.micLost = true;
+      onChange('error', 'ไมค์หลุด — มักเกิดเพราะแอปอื่นแย่งไมค์ไป (เช่น Discord, โทรศัพท์, LINE call) ปิดแอปนั้นแล้วกดเปิดไมค์ใหม่');
+      V.audioTrack = null; V.mic = false; onChange('media');
+    });
     return t;
   }
   function micError(e) {
@@ -403,7 +410,7 @@ function makeVoice(net, onChange) {
   // ================= สำรอง: ส่งเสียงผ่านเซิร์ฟเวอร์ของเราเอง =================
   // ใช้เมื่อต่อตรงไม่ได้ (เน็ตมือถือ/บริษัทบล็อก) และไม่มี TURN — เสียง 16kHz μ-law ~16KB/วินาที ต่อคน
   const relay = { cap: null, capBuf: [], rx: new Map(), mod: null, rate: 16000, frame: 320 };
-  V.relayActive = (p) => !!p && p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000);
+  V.relayActive = (p) => !!p && ((p.forceRelay && Date.now() - p.forceRelay < 120000) || (p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000)));
   const WORKLET = `
 class PxCap extends AudioWorkletProcessor { process(i) { const c = i[0] && i[0][0]; if (c) this.port.postMessage(c.slice(0)); return true; } }
 registerProcessor('px-cap', PxCap);
@@ -488,7 +495,8 @@ registerProcessor('px-play', PxPlay);`;
   }
   V.relayIn = async (from, bytes) => {
     const p = V.peers.get(from);
-    if (!p || p.state === 'connected' || !p.playOk || V.deaf || V.bgMute || p.userMuted) return;
+    if (!p || !p.playOk || V.deaf || V.bgMute || p.userMuted) return;
+    p.relayRxAt = Date.now();
     let rx; try { rx = await relayRx(from); } catch { return; }
     // ขยายกลับเป็นอัตราของเครื่อง (linear)
     const n = bytes.length, outN = Math.round(n * rx.ratio), out = new Float32Array(outN);
@@ -500,8 +508,30 @@ registerProcessor('px-play', PxPlay);`;
     const need = relayTargets().length > 0;
     if (need && (!relay.cap || relay.cap.track !== V.audioTrack)) { relayCapStop(); relayCapStart(); }
     else if (!need && relay.cap) relayCapStop();
-    for (const [k] of relay.rx) { const p = V.peers.get(k); if (!p || p.state === 'connected') relayDrop(k); }
+    for (const [k] of relay.rx) { const p = V.peers.get(k); if (!p || Date.now() - (p.relayRxAt || 0) > 5000) relayDrop(k); }
+    // ระหว่างได้เสียงทางเซิร์ฟเวอร์ ปิดเสียงทางตรงไว้ (กันเสียงซ้อน)
+    for (const p of V.peers.values()) { const viaRelay = Date.now() - (p.relayRxAt || 0) < 1500; if (viaRelay && !p.audioEl.muted) p.audioEl.muted = true; else if (!viaRelay && p.audioEl.muted && p.playOk && !V.deaf && !V.bgMute && !p.userMuted) apply(p); }
   }, 500);
+  // ---------- ตรวจว่าเสียงไหลจริงไหม (ต่อติดแต่ไม่มีเสียง = สลับไปทางเซิร์ฟเวอร์) ----------
+  V.remoteMicOn = () => true;
+  setInterval(async () => {
+    for (const p of V.peers.values()) {
+      if (p.state !== 'connected') continue;
+      try {
+        const stats = await p.pc.getStats();
+        let rx = 0, tx = 0;
+        stats.forEach((r) => { if (r.kind === 'audio' && r.type === 'inbound-rtp') rx += r.bytesReceived || 0; if (r.kind === 'audio' && r.type === 'outbound-rtp') tx += r.bytesSent || 0; });
+        const now = Date.now();
+        p.stat = { rx, tx, rxRate: p.stat ? (rx - p.stat.rx) / ((now - p.stat.at) / 1000) : 0, txRate: p.stat ? (tx - p.stat.tx) / ((now - p.stat.at) / 1000) : 0, at: now };
+        // เขาเปิดไมค์ เราควรได้ยิน แต่ไม่มีเสียงเข้ามาเลย 8 วิ → ขอให้เขาส่งทางเซิร์ฟเวอร์
+        if (p.playOk && V.remoteMicOn(p.key) && p.stat.rxRate < 50) { p.silentSince = p.silentSince || now; if (now - p.silentSince > 8000 && (!p.askedAt || now - p.askedAt > 60000)) { p.askedAt = now; net.signal(p.key, { relayPlease: 1 }); } }
+        else p.silentSince = 0;
+        // เราเปิดไมค์ แต่ส่งออกไม่ได้เลย → ส่งทางเซิร์ฟเวอร์เอง
+        if (p.allowed && V.mic && V.audioTrack && !V.deaf && p.stat.txRate < 50) { p.txDeadSince = p.txDeadSince || now; if (now - p.txDeadSince > 8000) p.forceRelay = now; }
+        else p.txDeadSince = 0;
+      } catch {}
+    }
+  }, 2000);
   if (net.onRelay) net.onRelay((from, bytes) => V.relayIn(from, bytes));
   return V;
 }

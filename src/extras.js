@@ -1018,3 +1018,46 @@ setInterval(() => {
     }
   }
 }, 2000);
+
+// ---------- 🩺 ตรวจเสียง: บอกว่าเครื่องนี้พูด/ได้ยินใครได้บ้าง + คัดลอกผลไปส่งให้คนช่วยดู ----------
+function voiceDiag() {
+  const V = G.voice, lines = [];
+  const ua = navigator.userAgent;
+  const app = G.inAppBrowser ? 'แอปแชต (Messenger/IG/LINE) ⚠️' : /CriOS|Chrome/.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : /Firefox/.test(ua) ? 'Firefox' : 'อื่นๆ';
+  lines.push(`เบราว์เซอร์: ${app}${isIOS ? ' · iPhone/iPad' : /Android/.test(ua) ? ' · Android' : ''}`);
+  if (!V) { lines.push('ระบบเสียงยังไม่เริ่ม'); return lines; }
+  const t = V.audioTrack;
+  const lvl = V.meters.get('me');
+  lines.push(`ไมค์ของฉัน: ${!t ? (V.micLost ? '❌ หลุด (แอปอื่นแย่งไมค์)' : '⭕ ยังไม่เปิด') : t.readyState !== 'live' ? '❌ หยุดทำงาน' : t.muted ? '⚠️ ถูกระบบปิด (แอปอื่นใช้ไมค์อยู่?)' : V.mic ? `🟢 เปิด · ระดับเสียง ${lvl ? Math.round(lvl.lvl * 1000) : 0}` : '🔴 ปิดอยู่ (กดปุ่มไมค์)'}${V.deaf ? ' · 🔇 ปิดหูฟังอยู่' : ''}`);
+  lines.push(`เสียงในเครื่อง: ${V.actx ? V.actx.state : 'ยังไม่เริ่ม'}${V.actx && V.actx.state !== 'running' ? ' ⚠️ แตะหน้าจอ 1 ครั้ง' : ''} · TURN: ${G.net.hasTurn ? 'มี' : 'ไม่มี (ใช้เซิร์ฟเวอร์สำรอง)'}`);
+  for (const rt of G.others.values()) {
+    const p = V.peers.get(rt.key);
+    const relay = p && V.relayActive(p);
+    const mode = !p ? 'ยังไม่เชื่อม' : relay ? '🛰️ ผ่านเซิร์ฟเวอร์' : p.state === 'connected' ? '🔗 ต่อตรง' : `🟡 ${p.state}`;
+    const rx = p && p.stat ? Math.round(p.stat.rxRate / 1000) : '-', tx = p && p.stat ? Math.round(p.stat.txRate / 1000) : '-';
+    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (relayTargetsInfo(p) ? 'กำลังส่ง' : 'ไม่ได้ส่ง') : tx + 'KB/s'} · ${voiceStatus(rt)}`);
+  }
+  return lines;
+}
+function relayTargetsInfo(p) { const V = G.voice; return !!(V && V.audioTrack && V.mic && !V.deaf && p.allowed); }
+function openVoiceDiag() {
+  openModal((card) => {
+    card.append(el('h2', null, '🩺 ตรวจเสียง'));
+    card.append(el('p', 'sub', 'ดูว่าเครื่องนี้พูด/ได้ยินใครได้บ้าง ถ้ายังมีปัญหา กด "คัดลอกผลตรวจ" แล้วส่งให้คนช่วยดู'));
+    const pre = el('pre', 'diag'); card.append(pre);
+    const tips = el('div', 'opt');
+    tips.append(el('span', null, 'วิธีแก้ที่เจอบ่อย'));
+    for (const t of ['เปิดผ่าน Safari/Chrome ไม่ใช่ในแอป IG/Messenger/LINE (กด ⋯ → เปิดในเบราว์เซอร์)', 'ปิดแอปอื่นที่ใช้ไมค์อยู่ เช่น Discord, LINE call, โทรศัพท์ แล้วกดเปิดไมค์ใหม่', 'iPhone: ตั้งค่า → Safari → ไมโครโฟน → อนุญาต · และแตะหน้าจอ 1 ครั้งหลังเข้าห้อง', 'อยู่ห้องเดียวกัน และในห้องรวมต้องอยู่ในวงไมค์ของกันและกัน', 'ยังไม่ได้ → ให้คนนั้นรีเฟรชหน้าเว็บ'])
+      tips.append(el('p', 'tip', '• ' + t));
+    card.append(tips);
+    const foot = el('div', 'foot');
+    const cp = el('button', 'pbtn', '📋 คัดลอกผลตรวจ');
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(voiceDiag().join('\n')); toast('คัดลอกแล้ว'); } catch { toast('คัดลอกไม่ได้ แคปหน้าจอแทนได้'); } };
+    const close = el('button', 'pbtn pink', 'ปิด'); close.onclick = () => { clearInterval(G.diagTimer); closeModal(); };
+    foot.append(cp, close); card.append(foot);
+    const paint = () => { if ($('#modal').classList.contains('hidden')) return clearInterval(G.diagTimer); pre.textContent = voiceDiag().join('\n'); };
+    clearInterval(G.diagTimer); setTimeout(() => { G.diagTimer = setInterval(paint, 1000); paint(); }, 0);
+  });
+}
+// เปิดได้จาก: พิมพ์ "ตรวจเสียง"/"diag" ในแชต · ปุ่มในหน้า ⚙️ · ปุ่มในรายชื่อคน
+$('#diagBtn').onclick = () => { $('#people').classList.add('hidden'); openVoiceDiag(); };

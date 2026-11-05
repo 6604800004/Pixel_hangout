@@ -366,6 +366,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .people .who small.vstat { margin-top: 2px; font-size: 11.5px; color: #6a5a7e; }
 
+pre.diag { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; background: #fff; border: 2px dashed #e6d4c2; border-radius: 10px; padding: 10px; margin: 8px 0; font-family: inherit; }
+.leave-row { gap: 8px; justify-content: space-between; }
+
 </style>
 </head>
 <body>
@@ -401,7 +404,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     <header><b>ใครอยู่ในห้อง</b><button class="x" data-close="people">✕</button></header>
     <ul id="peopleList"></ul>
     <p class="note" id="shareNote"></p>
-    <div class="leave-row"><button class="pbtn sm danger" id="leaveBtn">🚪 ออกจากห้อง</button></div>
+    <div class="leave-row"><button class="pbtn sm" id="diagBtn">🩺 ตรวจเสียง</button><button class="pbtn sm danger" id="leaveBtn">🚪 ออกจากห้อง</button></div>
   </section>
 
   <div class="actions" id="actions"></div>
@@ -2371,6 +2374,7 @@ function makeVoice(net, onChange) {
   }
   async function handleSignal(from, data) {
     let peer = V.peers.get(from);
+    if (data.relayPlease) { if (peer) peer.forceRelay = Date.now(); return; }
     if (data.sdp) {
       const desc = { type: data.sdp.type, sdp: tuneOpus(data.sdp.sdp) };
       if (desc.type === 'offer') {
@@ -2437,6 +2441,12 @@ function makeVoice(net, onChange) {
     }
     const t = s.getAudioTracks()[0];
     try { t.contentHint = 'speech'; } catch {}
+    t.addEventListener('ended', () => {
+      if (V.audioTrack !== t) return;
+      V.micLost = true;
+      onChange('error', 'ไมค์หลุด — มักเกิดเพราะแอปอื่นแย่งไมค์ไป (เช่น Discord, โทรศัพท์, LINE call) ปิดแอปนั้นแล้วกดเปิดไมค์ใหม่');
+      V.audioTrack = null; V.mic = false; onChange('media');
+    });
     return t;
   }
   function micError(e) {
@@ -2611,7 +2621,7 @@ function makeVoice(net, onChange) {
   // ================= สำรอง: ส่งเสียงผ่านเซิร์ฟเวอร์ของเราเอง =================
   // ใช้เมื่อต่อตรงไม่ได้ (เน็ตมือถือ/บริษัทบล็อก) และไม่มี TURN — เสียง 16kHz μ-law ~16KB/วินาที ต่อคน
   const relay = { cap: null, capBuf: [], rx: new Map(), mod: null, rate: 16000, frame: 320 };
-  V.relayActive = (p) => !!p && p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000);
+  V.relayActive = (p) => !!p && ((p.forceRelay && Date.now() - p.forceRelay < 120000) || (p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000)));
   const WORKLET = `
 class PxCap extends AudioWorkletProcessor { process(i) { const c = i[0] && i[0][0]; if (c) this.port.postMessage(c.slice(0)); return true; } }
 registerProcessor('px-cap', PxCap);
@@ -2696,7 +2706,8 @@ registerProcessor('px-play', PxPlay);`;
   }
   V.relayIn = async (from, bytes) => {
     const p = V.peers.get(from);
-    if (!p || p.state === 'connected' || !p.playOk || V.deaf || V.bgMute || p.userMuted) return;
+    if (!p || !p.playOk || V.deaf || V.bgMute || p.userMuted) return;
+    p.relayRxAt = Date.now();
     let rx; try { rx = await relayRx(from); } catch { return; }
     // ขยายกลับเป็นอัตราของเครื่อง (linear)
     const n = bytes.length, outN = Math.round(n * rx.ratio), out = new Float32Array(outN);
@@ -2708,8 +2719,30 @@ registerProcessor('px-play', PxPlay);`;
     const need = relayTargets().length > 0;
     if (need && (!relay.cap || relay.cap.track !== V.audioTrack)) { relayCapStop(); relayCapStart(); }
     else if (!need && relay.cap) relayCapStop();
-    for (const [k] of relay.rx) { const p = V.peers.get(k); if (!p || p.state === 'connected') relayDrop(k); }
+    for (const [k] of relay.rx) { const p = V.peers.get(k); if (!p || Date.now() - (p.relayRxAt || 0) > 5000) relayDrop(k); }
+    // ระหว่างได้เสียงทางเซิร์ฟเวอร์ ปิดเสียงทางตรงไว้ (กันเสียงซ้อน)
+    for (const p of V.peers.values()) { const viaRelay = Date.now() - (p.relayRxAt || 0) < 1500; if (viaRelay && !p.audioEl.muted) p.audioEl.muted = true; else if (!viaRelay && p.audioEl.muted && p.playOk && !V.deaf && !V.bgMute && !p.userMuted) apply(p); }
   }, 500);
+  // ---------- ตรวจว่าเสียงไหลจริงไหม (ต่อติดแต่ไม่มีเสียง = สลับไปทางเซิร์ฟเวอร์) ----------
+  V.remoteMicOn = () => true;
+  setInterval(async () => {
+    for (const p of V.peers.values()) {
+      if (p.state !== 'connected') continue;
+      try {
+        const stats = await p.pc.getStats();
+        let rx = 0, tx = 0;
+        stats.forEach((r) => { if (r.kind === 'audio' && r.type === 'inbound-rtp') rx += r.bytesReceived || 0; if (r.kind === 'audio' && r.type === 'outbound-rtp') tx += r.bytesSent || 0; });
+        const now = Date.now();
+        p.stat = { rx, tx, rxRate: p.stat ? (rx - p.stat.rx) / ((now - p.stat.at) / 1000) : 0, txRate: p.stat ? (tx - p.stat.tx) / ((now - p.stat.at) / 1000) : 0, at: now };
+        // เขาเปิดไมค์ เราควรได้ยิน แต่ไม่มีเสียงเข้ามาเลย 8 วิ → ขอให้เขาส่งทางเซิร์ฟเวอร์
+        if (p.playOk && V.remoteMicOn(p.key) && p.stat.rxRate < 50) { p.silentSince = p.silentSince || now; if (now - p.silentSince > 8000 && (!p.askedAt || now - p.askedAt > 60000)) { p.askedAt = now; net.signal(p.key, { relayPlease: 1 }); } }
+        else p.silentSince = 0;
+        // เราเปิดไมค์ แต่ส่งออกไม่ได้เลย → ส่งทางเซิร์ฟเวอร์เอง
+        if (p.allowed && V.mic && V.audioTrack && !V.deaf && p.stat.txRate < 50) { p.txDeadSince = p.txDeadSince || now; if (now - p.txDeadSince > 8000) p.forceRelay = now; }
+        else p.txDeadSince = 0;
+      } catch {}
+    }
+  }, 2000);
   if (net.onRelay) net.onRelay((from, bytes) => V.relayIn(from, bytes));
   return V;
 }
@@ -3123,6 +3156,7 @@ function showHelp() {
     '📖 คำสั่งที่ทุกคนใช้ได้ (พิมพ์ในแชต ไม่ขึ้นให้คนอื่นเห็น)',
     '👉 poke ชื่อ — สะกิดเฉพาะคน (หรือ สะกิด ชื่อ / ชื่อ poke / poke all)',
     '🎧 bg on · bg off — เปิด/ปิด ได้ยินเสียงตอนพับจอหรือสลับแอป',
+    '🩺 ตรวจเสียง — ดูว่าทำไมพูด/ได้ยินใครไม่ได้ (หรือ diag)',
     '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
     '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
     'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ · คอม: R หัน, E นั่ง, Enter แชต',
@@ -3142,6 +3176,7 @@ function showHelp() {
 function chatCommand(text) {
   if (!G.net) return false;
   if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
+  if (/^\/?(diag|ตรวจเสียง|เช็คเสียง|เช็กเสียง)$/i.test(text)) { openVoiceDiag(); return true; }
   if (/^\/?admin\s+(off|logout|ออก)$/i.test(text)) { lsSet('pixel.admin', null); G.isAdmin = false; scheduleChatRender(); addSys('เลิกเป็นแอดมินในเครื่องนี้แล้ว'); return true; }
   // สะกิด: poke ชื่อ / สะกิด ชื่อ / ชื่อ poke
   let p = text.match(/^\/?(?:poke|สะกิด|สกิด|จิ้ม)\s+(.+)$/i) || text.match(/^(.+?)\s+(?:poke|สะกิด|สกิด)$/i);
@@ -4158,6 +4193,7 @@ function setupVoice() {
     if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
   });
   G.voice = V;
+  V.remoteMicOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.mic === 1); };
   ['micBtn', 'camBtn', 'deafBtn', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
   $('#voiceSetBtn').onclick = openVoiceSettings;
   if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : V.startScreen()); }
@@ -4272,6 +4308,8 @@ function paintVoiceSettings() {
   mr.append(rr); rl.append(rangeLabel); mr.append(rl);
   right.append(mr);
 
+  const dg = el('button', 'pbtn sm', '🩺 ตรวจเสียง (พูด/ได้ยินใครไม่ได้?)'); dg.onclick = () => { G.voicePanelOpen = false; openVoiceDiag(); };
+  right.append(dg);
   const bg = el('div', 'opt');
   bg.append(el('span', null, 'ตอนพับจอ / สลับไปแอปอื่น'));
   const bgl = el('label', 'chk'); const bgc = el('input'); bgc.type = 'checkbox'; bgc.checked = !!G.bgAudio;
@@ -5481,6 +5519,49 @@ setInterval(() => {
     }
   }
 }, 2000);
+
+// ---------- 🩺 ตรวจเสียง: บอกว่าเครื่องนี้พูด/ได้ยินใครได้บ้าง + คัดลอกผลไปส่งให้คนช่วยดู ----------
+function voiceDiag() {
+  const V = G.voice, lines = [];
+  const ua = navigator.userAgent;
+  const app = G.inAppBrowser ? 'แอปแชต (Messenger/IG/LINE) ⚠️' : /CriOS|Chrome/.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : /Firefox/.test(ua) ? 'Firefox' : 'อื่นๆ';
+  lines.push(`เบราว์เซอร์: ${app}${isIOS ? ' · iPhone/iPad' : /Android/.test(ua) ? ' · Android' : ''}`);
+  if (!V) { lines.push('ระบบเสียงยังไม่เริ่ม'); return lines; }
+  const t = V.audioTrack;
+  const lvl = V.meters.get('me');
+  lines.push(`ไมค์ของฉัน: ${!t ? (V.micLost ? '❌ หลุด (แอปอื่นแย่งไมค์)' : '⭕ ยังไม่เปิด') : t.readyState !== 'live' ? '❌ หยุดทำงาน' : t.muted ? '⚠️ ถูกระบบปิด (แอปอื่นใช้ไมค์อยู่?)' : V.mic ? `🟢 เปิด · ระดับเสียง ${lvl ? Math.round(lvl.lvl * 1000) : 0}` : '🔴 ปิดอยู่ (กดปุ่มไมค์)'}${V.deaf ? ' · 🔇 ปิดหูฟังอยู่' : ''}`);
+  lines.push(`เสียงในเครื่อง: ${V.actx ? V.actx.state : 'ยังไม่เริ่ม'}${V.actx && V.actx.state !== 'running' ? ' ⚠️ แตะหน้าจอ 1 ครั้ง' : ''} · TURN: ${G.net.hasTurn ? 'มี' : 'ไม่มี (ใช้เซิร์ฟเวอร์สำรอง)'}`);
+  for (const rt of G.others.values()) {
+    const p = V.peers.get(rt.key);
+    const relay = p && V.relayActive(p);
+    const mode = !p ? 'ยังไม่เชื่อม' : relay ? '🛰️ ผ่านเซิร์ฟเวอร์' : p.state === 'connected' ? '🔗 ต่อตรง' : `🟡 ${p.state}`;
+    const rx = p && p.stat ? Math.round(p.stat.rxRate / 1000) : '-', tx = p && p.stat ? Math.round(p.stat.txRate / 1000) : '-';
+    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (relayTargetsInfo(p) ? 'กำลังส่ง' : 'ไม่ได้ส่ง') : tx + 'KB/s'} · ${voiceStatus(rt)}`);
+  }
+  return lines;
+}
+function relayTargetsInfo(p) { const V = G.voice; return !!(V && V.audioTrack && V.mic && !V.deaf && p.allowed); }
+function openVoiceDiag() {
+  openModal((card) => {
+    card.append(el('h2', null, '🩺 ตรวจเสียง'));
+    card.append(el('p', 'sub', 'ดูว่าเครื่องนี้พูด/ได้ยินใครได้บ้าง ถ้ายังมีปัญหา กด "คัดลอกผลตรวจ" แล้วส่งให้คนช่วยดู'));
+    const pre = el('pre', 'diag'); card.append(pre);
+    const tips = el('div', 'opt');
+    tips.append(el('span', null, 'วิธีแก้ที่เจอบ่อย'));
+    for (const t of ['เปิดผ่าน Safari/Chrome ไม่ใช่ในแอป IG/Messenger/LINE (กด ⋯ → เปิดในเบราว์เซอร์)', 'ปิดแอปอื่นที่ใช้ไมค์อยู่ เช่น Discord, LINE call, โทรศัพท์ แล้วกดเปิดไมค์ใหม่', 'iPhone: ตั้งค่า → Safari → ไมโครโฟน → อนุญาต · และแตะหน้าจอ 1 ครั้งหลังเข้าห้อง', 'อยู่ห้องเดียวกัน และในห้องรวมต้องอยู่ในวงไมค์ของกันและกัน', 'ยังไม่ได้ → ให้คนนั้นรีเฟรชหน้าเว็บ'])
+      tips.append(el('p', 'tip', '• ' + t));
+    card.append(tips);
+    const foot = el('div', 'foot');
+    const cp = el('button', 'pbtn', '📋 คัดลอกผลตรวจ');
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(voiceDiag().join('\n')); toast('คัดลอกแล้ว'); } catch { toast('คัดลอกไม่ได้ แคปหน้าจอแทนได้'); } };
+    const close = el('button', 'pbtn pink', 'ปิด'); close.onclick = () => { clearInterval(G.diagTimer); closeModal(); };
+    foot.append(cp, close); card.append(foot);
+    const paint = () => { if ($('#modal').classList.contains('hidden')) return clearInterval(G.diagTimer); pre.textContent = voiceDiag().join('\n'); };
+    clearInterval(G.diagTimer); setTimeout(() => { G.diagTimer = setInterval(paint, 1000); paint(); }, 0);
+  });
+}
+// เปิดได้จาก: พิมพ์ "ตรวจเสียง"/"diag" ในแชต · ปุ่มในหน้า ⚙️ · ปุ่มในรายชื่อคน
+$('#diagBtn').onclick = () => { $('#people').classList.add('hidden'); openVoiceDiag(); };
 
 })();
 </script>

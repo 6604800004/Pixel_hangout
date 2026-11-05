@@ -349,3 +349,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pvol small { flex-basis: 100%; font-size: 11px; color: var(--ink2); }
 
 .people .who small.vstat { margin-top: 2px; font-size: 11.5px; color: #6a5a7e; }
+
+pre.diag { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; background: #fff; border: 2px dashed #e6d4c2; border-radius: 10px; padding: 10px; margin: 8px 0; font-family: inherit; }
+.leave-row { gap: 8px; justify-content: space-between; }
