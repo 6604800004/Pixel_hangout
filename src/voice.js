@@ -235,6 +235,13 @@ function makeVoice(net, onChange) {
     const next = (chains.get(from) || Promise.resolve()).then(() => handleSignal(from, data)).catch((e) => console.warn('signal', e));
     chains.set(from, next);
   });
+  // ปิดทุกอย่างตอนออก: ไมค์/กล้อง/แชร์จอ/การเชื่อมต่อ (ไฟไมค์-กล้องในเครื่องดับทันที)
+  V.shutdown = () => {
+    for (const k of [...V.peers.keys()]) { try { close(k); } catch {} }
+    for (const t of [V.audioTrack, V.meterTrack, V.videoTrack, V.screenTrack]) { try { t && t.stop(); } catch {} }
+    V.audioTrack = V.meterTrack = V.videoTrack = V.screenTrack = null; V.mic = V.cam = false;
+    try { V.actx && V.actx.close(); } catch {}
+  };
   function close(key) {
     const p = V.peers.get(key);
     if (!p) return;

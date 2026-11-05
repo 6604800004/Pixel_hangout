@@ -449,6 +449,7 @@ function showHelp() {
     '👉 poke ชื่อ — สะกิดเฉพาะคน (หรือ สะกิด ชื่อ / ชื่อ poke / poke all)',
     '🎧 bg on · bg off — เปิด/ปิด ได้ยินเสียงตอนพับจอหรือสลับแอป',
     '🩺 ตรวจเสียง — ดูว่าทำไมพูด/ได้ยินใครไม่ได้ (หรือ diag)',
+    '🚪 ออก — ออกจากห้องหรือออกจากเว็บ (หรือ leave / exit / ปุ่ม 🚪 มุมขวาบน)',
     '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
     '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
     'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ · คอม: R หัน, E นั่ง, Enter แชต',
@@ -467,6 +468,7 @@ function showHelp() {
   if (!G.chatOpen) setChatOpen(true);
 }
 function chatCommand(text) {
+  if (/^\/?(leave|exit|quit|ออก|ออกจากห้อง|ออกจากเว็บ)$/i.test(text.trim())) { askLeave(); return true; }
   if (!G.net) return false;
   if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
   if (/^\/?(diag|ตรวจเสียง|เช็คเสียง|เช็กเสียง)$/i.test(text)) { openVoiceDiag(); return true; }
@@ -1213,13 +1215,43 @@ $('#toolbar').addEventListener('click', (e) => {
 });
 $('#roomChip').onclick = () => { const p = $('#people'); p.classList.toggle('hidden'); G.peopleSig = ''; if (!p.classList.contains('hidden')) renderPeople(); };
 // ออกจากห้อง: รีโหลดหน้าเพื่อปิดไมค์/กล้อง/การเชื่อมต่อทั้งหมด แล้วกลับไปหน้าเข้าห้อง
-$('#leaveTop').onclick = () => $('#leaveBtn').onclick();
-$('#leaveBtn').onclick = () => {
-  if (!confirm('ออกจากห้องใช่ไหม?')) return;
-  try { sessionStorage.setItem('pixel.left', '1'); } catch {}
+// ไม่ใช้ confirm() เพราะบางแอป (LINE/IG/Facebook) บล็อกกล่องยืนยัน ทำให้กดออกไม่ได้เลย
+$('#leaveTop').onclick = () => askLeave();
+$('#leaveBtn').onclick = () => askLeave();
+function askLeave() {
+  $('#people').classList.add('hidden');
+  openModal((card) => {
+    card.classList.add('leave-card');
+    card.append(el('h2', null, '👋 จะออกแล้วเหรอ?'));
+    card.append(el('p', 'sub', 'ออกแล้ว ไมค์และกล้องจะปิดทันที'));
+    const b1 = el('button', 'pbtn pink big', '🚪 ออกจากห้อง (กลับหน้าแรก)'); b1.onclick = () => doLeave('room');
+    const b2 = el('button', 'pbtn big', '❌ ออกจากเว็บ'); b2.onclick = () => doLeave('site');
+    const b3 = el('button', 'pbtn big ghost', 'อยู่ต่อ'); b3.onclick = () => closeModal();
+    const col = el('div', 'leave-col'); col.append(b1, b2, b3); card.append(col);
+  });
+}
+function hangUp() {
+  try { G.voice && G.voice.shutdown && G.voice.shutdown(); } catch {}
+  try { keepAlive(false); } catch {}
+  try { document.querySelectorAll('iframe').forEach((f) => f.remove()); } catch {}
   try { G.net.stop && G.net.stop(); } catch {}
-  location.reload();
-};
+}
+function doLeave(mode) {
+  hangUp();
+  G.joined = false;
+  if (mode === 'room') { try { sessionStorage.setItem('pixel.left', '1'); } catch {} location.reload(); return; }
+  // ออกจากเว็บ: ลองปิดแท็บ (ได้เฉพาะบางเบราว์เซอร์) ถ้าปิดไม่ได้ ขึ้นหน้าบอกลาแทน — ตัดการเชื่อมต่อแล้วทุกอย่าง
+  try { window.close(); } catch {}
+  setTimeout(() => {
+    for (const e of document.body.children) e.style.display = 'none';
+    const bye = document.createElement('div'); document.body.append(bye);
+    bye.outerHTML = '<div class="bye"><div class="bye-card"><div class="bye-emo">👋</div><h2>ออกจากเว็บแล้ว</h2><p>ไมค์ กล้อง และการเชื่อมต่อปิดหมดแล้ว<br>ปิดแท็บนี้ได้เลย (หรือกดปุ่มย้อนกลับ/ปัดแอปทิ้ง)</p><button class="pbtn pink big" id="byeBack">กลับเข้าเว็บอีกครั้ง</button></div></div>';
+    document.getElementById('byeBack').onclick = () => location.reload();
+    try { history.replaceState(null, '', location.pathname); } catch {}
+  }, 250);
+}
+// ปิดแท็บ/ปัดแอปทิ้ง: ตัดการเชื่อมต่อทันที เพื่อนจะเห็นว่าออกแล้วเลย ไม่ค้างอยู่ในห้อง
+window.addEventListener('pagehide', (e) => { if (!e.persisted && G.joined) hangUp(); });
 $$('[data-close]').forEach((b) => (b.onclick = () => $('#' + b.dataset.close).classList.add('hidden')));
 
 function renderPeople() {
