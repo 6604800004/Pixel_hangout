@@ -175,7 +175,7 @@ function makeWsNet(cfg) {
   }
 
   const net = {
-    mode: 'ws', uid, myKey: null, canWrite: true, voice: true, profileName: '', hasRoom: true, hasDb: true,
+    mode: 'ws', uid, myUid: uid, myKey: null, canWrite: true, voice: true, profileName: '', hasRoom: true, hasDb: true,
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }], roomName: cfg.roomName, password: '',
     start() { closedByUser = false; connect(); },
     stop() { closedByUser = true; try { ws && ws.close(); } catch {} },

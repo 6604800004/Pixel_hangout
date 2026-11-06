@@ -176,10 +176,17 @@ const ADMIN_DEF = { hair: 'short', top: 'hoodie', acc: 'none', pet: 'none' };
 function adminKeyOk(k) {
   return !!ADMIN_KEY && typeof k === 'string' && k.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(k), Buffer.from(ADMIN_KEY));
 }
-function stripAdminLook(l) {
+// ของพิเศษที่แอดมินให้ยืมใช้ (เก็บตาม uid ของเครื่อง) — settings/grants: { uid: { n: ชื่อตอนให้, items: ['dragon', ...] } }
+const ADMIN_ITEMS = Object.values(ADMIN_ONLY).flat();
+const ITEM_FIELD = Object.fromEntries(Object.entries(ADMIN_ONLY).flatMap(([f, list]) => list.map((it) => [it, f])));
+const ITEM_ALIAS = { มังกร: 'dragon', dragon: 'dragon', ยูนิคอร์น: 'unicorn', unicorn: 'unicorn', เมฆ: 'cloud', ก้อนเมฆ: 'cloud', cloud: 'cloud', ผมรุ้ง: 'rainbow', รุ้ง: 'rainbow', rainbow: 'rainbow', ชุดราชา: 'royal', ราชา: 'royal', royal: 'royal', ปีก: 'wings', ปีกนางฟ้า: 'wings', wings: 'wings' };
+const ITEM_TH = { dragon: '⭐ มังกร', unicorn: '⭐ ยูนิคอร์น', cloud: '⭐ ก้อนเมฆ', rainbow: '⭐ ผมรุ้ง', royal: '⭐ ชุดราชา', wings: '⭐ ปีกนางฟ้า' };
+const grantsOf = (uid) => { const g = store.settings.grants && store.settings.grants[uid]; return g && Array.isArray(g.items) ? g.items : []; };
+function stripAdminLook(l, uid) {
   if (!l || typeof l !== 'object') return l;
+  const ok = uid ? grantsOf(uid) : [];
   let out = l;
-  for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(l[f])) { if (out === l) out = { ...l }; out[f] = ADMIN_DEF[f]; }
+  for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(l[f]) && !ok.includes(l[f])) { if (out === l) out = { ...l }; out[f] = ADMIN_DEF[f]; }
   return out;
 }
 const ZONE_IDS = ['hall', 'meet', 'garden', 'karaoke', 'pub', 'shrine', 'cinema'];
@@ -226,7 +233,7 @@ wss.on('connection', (ws) => {
       }
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
       const isAdmin = adminKeyOk(m.ak);
-      if (!isAdmin && p.l) p.l = stripAdminLook(p.l);
+      if (!isAdmin && p.l) p.l = stripAdminLook(p.l, uid);
       peers.set(key, { ws, uid, p, isAdmin });
       send(ws, {
         t: 'welcome', key, ice: iceServers(), turn: hasTurn(), roomName: ROOM_NAME, now: Date.now(), v: BUILD,
@@ -241,7 +248,7 @@ wss.on('connection', (ws) => {
     switch (m.t) {
       case 'p': {
         if (!m.patch || typeof m.patch !== 'object') break;
-        if (m.patch.l && !me.isAdmin) m.patch.l = stripAdminLook(m.patch.l);
+        if (m.patch.l && !me.isAdmin) m.patch.l = stripAdminLook(m.patch.l, me.uid);
         const next = { ...me.p };
         for (const [k, v] of Object.entries(m.patch)) { if (v === null) delete next[k]; else next[k] = v; }
         if (JSON.stringify(next).length > 4096) break;
@@ -262,7 +269,7 @@ wss.on('connection', (ws) => {
       }
       case 'set': {
         if (!COLS.includes(m.col) || m.col === 'board' || !okId(m.id) || !m.doc || typeof m.doc !== 'object') break;
-        if (m.col === 'settings' && m.id === 'names') break; // ชื่อห้อง: แอดมินเท่านั้น (ผ่านคำสั่ง rename)
+        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants')) break; // ชื่อห้อง/ของพิเศษ: แอดมินเท่านั้น
         if (JSON.stringify(m.doc).length > 8192) break;
         if (!store[m.col][m.id] && Object.keys(store[m.col]).length >= (m.col === 'chat' ? 100000 : 200)) break;
         store[m.col][m.id] = m.doc;
@@ -276,7 +283,7 @@ wss.on('connection', (ws) => {
       }
       case 'del': {
         if (!COLS.includes(m.col) || !okId(m.id) || !store[m.col][m.id]) break;
-        if (m.col === 'settings' && m.id === 'names') break;
+        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants')) break;
         if (m.col === 'board') removeImage(m.id);
         else delete store[m.col][m.id];
         broadcast({ t: 'col', col: m.col, id: m.id, doc: null }, key);
@@ -322,6 +329,52 @@ wss.on('connection', (ws) => {
           store.settings.names = names;
           broadcast({ t: 'col', col: 'settings', id: 'names', doc: names });
           save();
+          break;
+        }
+        if (m.cmd === 'grant' || m.cmd === 'revoke' || m.cmd === 'grants') {
+          const grants = { ...(store.settings.grants || {}) }; delete grants.id;
+          if (m.cmd === 'grants') {
+            const rows = Object.values(grants).filter((g) => g.items && g.items.length).map((g) => `${g.n || '?'}: ${g.items.map((i) => ITEM_TH[i] || i).join(', ')}`);
+            send(ws, { t: 'sys', message: rows.length ? '🎁 ของพิเศษที่ให้ไว้ — ' + rows.join(' · ') : '🎁 ยังไม่ได้ให้ของพิเศษใคร' }); break;
+          }
+          const a = m.arg && typeof m.arg === 'object' ? m.arg : {};
+          const who = String(a.name || '').trim().toLowerCase();
+          const itemRaw = String(a.item || '').trim().toLowerCase();
+          const all = itemRaw === 'all' || itemRaw === 'ทั้งหมด' || itemRaw === 'ทุกอย่าง';
+          const item = ITEM_ALIAS[itemRaw];
+          if (!who || (!item && !all)) { send(ws, { t: 'sys', message: 'ใช้: ให้ ชื่อ มังกร · ยึด ชื่อ มังกร (ของ: มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา ปีก หรือ ทั้งหมด)' }); break; }
+          const others = [...peers].filter(([k]) => k !== key);
+          const name = ([, c]) => String(c.p.n || '').trim().toLowerCase();
+          let targets = others.filter((e) => name(e) === who);
+          if (!targets.length) targets = others.filter((e) => name(e).includes(who));
+          // ยึดคืนจากคนที่ออฟไลน์อยู่ก็ได้ (หาจากชื่อที่บันทึกไว้)
+          const offline = m.cmd === 'revoke' && !targets.length ? Object.entries(grants).filter(([, g]) => String(g.n || '').toLowerCase().includes(who)).map(([u]) => u) : [];
+          if (!targets.length && !offline.length) { send(ws, { t: 'sys', message: `ไม่เจอ "${a.name}" ในห้อง` }); break; }
+          if (targets.length > 1 && !others.some((e) => name(e) === who)) { send(ws, { t: 'sys', message: `ชื่อซ้ำกันหลายคน: ${targets.map(([, c]) => c.p.n).join(', ')} — พิมพ์ชื่อให้เต็ม` }); break; }
+          const items = all ? ADMIN_ITEMS : [item];
+          const uids = [...new Set([...targets.map(([, c]) => c.uid), ...offline])];
+          for (const u of uids) {
+            const cur = new Set(grantsOf(u));
+            for (const it of items) m.cmd === 'grant' ? cur.add(it) : cur.delete(it);
+            const tp = targets.find(([, c]) => c.uid === u);
+            const n = tp ? tp[1].p.n : (grants[u] && grants[u].n) || '';
+            if (cur.size) grants[u] = { n, items: [...cur] }; else delete grants[u];
+          }
+          store.settings.grants = grants;
+          broadcast({ t: 'col', col: 'settings', id: 'grants', doc: grants });
+          save();
+          const label = all ? 'ของพิเศษทั้งหมด' : ITEM_TH[item];
+          for (const [k, c] of targets) {
+            if (m.cmd === 'grant') send(c.ws, { t: 'sys', message: `🎁 แอดมินให้คุณใช้ ${label} แล้ว — กด 👕 แต่งตัว เพื่อเลือกใช้` });
+            else {
+              // ยึดคืน: ถ้ากำลังใช้อยู่ ถอดออกทันที (ทั้งในเครื่องเขาและที่คนอื่นเห็น)
+              const fixed = stripAdminLook(c.p.l, c.uid);
+              if (fixed !== c.p.l) { c.p = { ...c.p, l: fixed }; broadcast({ t: 'peer', key: k, uid: c.uid, p: c.p }, k); }
+              send(c.ws, { t: 'sys', message: `แอดมินยึด ${label} คืนแล้ว`, look: fixed });
+            }
+          }
+          const names = uids.map((u) => (grants[u] && grants[u].n) || (targets.find(([, c]) => c.uid === u) || [, { p: {} }])[1].p.n || '?');
+          send(ws, { t: 'sys', message: m.cmd === 'grant' ? `🎁 ให้ ${label} กับ ${names.join(', ')} แล้ว` : `↩️ ยึด ${label} คืนจาก ${names.join(', ')} แล้ว` });
           break;
         }
         if (m.cmd !== 'kick') break;

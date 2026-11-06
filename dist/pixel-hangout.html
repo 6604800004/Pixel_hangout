@@ -2488,7 +2488,7 @@ function makeWsNet(cfg) {
   }
 
   const net = {
-    mode: 'ws', uid, myKey: null, canWrite: true, voice: true, profileName: '', hasRoom: true, hasDb: true,
+    mode: 'ws', uid, myUid: uid, myKey: null, canWrite: true, voice: true, profileName: '', hasRoom: true, hasDb: true,
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }], roomName: cfg.roomName, password: '',
     start() { closedByUser = false; connect(); },
     stop() { closedByUser = true; try { ws && ws.close(); } catch {} },
@@ -3896,6 +3896,9 @@ function showHelp() {
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
+    '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา ปีก หรือ ทั้งหมด)',
+    '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
+    '📋 ของพิเศษ — ดูว่าให้ใครใช้อะไรไว้บ้าง',
     '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
     '🚪 admin off — เลิกเป็นแอดมินในเครื่องนี้',
   );
@@ -3932,6 +3935,12 @@ function chatCommand(text) {
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
   m = text.match(new RegExp('^\\/?(?:kick|เตะ)\\s+(.+?)\\s+delay\\s+' + UNIT + '$', 'i'));    // kick หมี delay 1m
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
+  const ITEM_WORDS = /^(มังกร|dragon|ยูนิคอร์น|unicorn|เมฆ|ก้อนเมฆ|cloud|ผมรุ้ง|รุ้ง|rainbow|ชุดราชา|ราชา|royal|ปีก|ปีกนางฟ้า|wings|ทั้งหมด|ทุกอย่าง|all)$/i; // คำสั่งต้องลงท้ายด้วยชื่อของ ไม่งั้นถือเป็นแชตปกติ
+  m = text.match(/^\/?(?:give|ให้)\s+(.+)\s+(\S+)$/i);                                       // ให้ หมี มังกร
+  if (m && G.isAdmin && ITEM_WORDS.test(m[2])) { G.net.admin('grant', key, { name: m[1].trim(), item: m[2] }); return true; }
+  m = text.match(/^\/?(?:take|revoke|ยึด|ยึดคืน)\s+(.+)\s+(\S+)$/i);                        // ยึด หมี มังกร / ยึด หมี ทั้งหมด
+  if (m && G.isAdmin && ITEM_WORDS.test(m[2])) { G.net.admin('revoke', key, { name: m[1].trim(), item: m[2] }); return true; }
+  if (G.isAdmin && /^\/?(?:grants|ของพิเศษ)$/i.test(text)) { G.net.admin('grants', key, ''); return true; }
   m = text.match(/^\/?(?:kick|เตะ)\s+(.+)$/i);                                             // kick หมี / kick all
   if (m) { G.net.admin('kick', key, m[1].trim(), 0); return true; }
   return false;
@@ -4865,11 +4874,12 @@ function colorRow(label, pal, get, set, natural) {
   return o;
 }
 // ไอเท็ม ⭐ เห็น/ใช้ได้เฉพาะแอดมิน
-const visItems = (list, field) => list.filter((it) => G.isAdmin || !(ADMIN_ONLY[field] || []).includes(it[0]));
+const canUse = (it) => G.isAdmin || (G.myGrants || []).includes(it);
+const visItems = (list, field) => list.filter((it) => !(ADMIN_ONLY[field] || []).includes(it[0]) || canUse(it[0]));
 function stripAdmin(look) {
   if (G.isAdmin) return look;
   const o = { ...look };
-  for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(o[f])) o[f] = DEFAULT_LOOK[f];
+  for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(o[f]) && !canUse(o[f])) o[f] = DEFAULT_LOOK[f];
   return o;
 }
 function startPreview(cv, drawFn) {
@@ -5356,6 +5366,7 @@ function frame(ms) {
   if (net.onSys) net.onSys((m) => {
     if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
     if (m.admin === false) lsSet('pixel.admin', null);
+    if (m.look && typeof m.look === 'object' && G.joined) { G.me.look = cleanLook(m.look); lsSet('pixel.look', G.me.look); if (G.me.ride && G.me.look.pet === 'none') { G.me.ride = false; pres({ rd: null }); } }
     if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); if (m.admin && G.joined) pres({ l: G.me.look }); }
     G.pendingAdminKey = null;
     addSys((m.kind === 'info' ? '' : '🛡️ ') + m.message); toast(m.message, 4000);
@@ -5423,6 +5434,10 @@ function frame(ms) {
     const s = docs.find((d) => d.id === 'room');
     G.settings = s ? { call: typeof s.call === 'string' ? s.call : '' } : {};
     $('#callBtn').classList.toggle('on', !!G.settings.call);
+    const gr = docs.find((d) => d.id === 'grants');
+    const mine = gr && G.net.myUid && gr[G.net.myUid];
+    G.myGrants = mine && Array.isArray(mine.items) ? mine.items : [];
+    if (G.joined) { const fixed = stripAdmin(G.me.look); if (JSON.stringify(fixed) !== JSON.stringify(G.me.look)) { G.me.look = fixed; lsSet('pixel.look', fixed); pres({ l: fixed }); if (G.me.ride && fixed.pet === 'none') { G.me.ride = false; pres({ rd: null }); } } }
     const nm = docs.find((d) => d.id === 'names');
     G.roomNames = {};
     if (nm) for (const z of Object.keys(ZONES)) if (typeof nm[z] === 'string' && nm[z].trim()) G.roomNames[z] = nm[z].trim().slice(0, 40);
