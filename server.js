@@ -460,3 +460,12 @@ setInterval(() => {
 }, 12000); // ตรวจการเชื่อมต่อที่ตายแล้วถี่ขึ้น ไม่ให้มีตัวละครค้างในห้องนาน
 
 server.listen(PORT, () => console.log(`Pixel Hangout พร้อมที่ http://localhost:${PORT}`));
+// กำลังจะปิดเพื่ออัปเดต (Render ส่ง SIGTERM ให้ตัวเก่าหลังตัวใหม่พร้อมแล้ว) → เตือนทุกคนก่อน 15 วิ แล้วค่อยปิด
+let stopping = false;
+process.on('SIGTERM', () => {
+  if (stopping) return; stopping = true;
+  console.log('SIGTERM: แจ้งเตือนอัปเดต 15 วิ');
+  broadcast({ t: 'sys', updating: 15 });
+  try { save(); } catch {}
+  setTimeout(() => process.exit(0), 16000);
+});

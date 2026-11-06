@@ -1923,6 +1923,34 @@ function isBlackVideo(key, vid) {
 $('#focus').onclick = () => { $('#focus').classList.add('hidden'); $('#focusVideo').srcObject = null; };
 
 // ============================================================== เริ่ม ====
+// ---- แจ้งเตือนก่อนรีโหลดเพื่ออัปเดต: ป้ายใหญ่กลางด้านบน นับถอยหลัง ----
+function updateCountdown(sec) {
+  if (G.updT) return; // กำลังนับอยู่แล้ว
+  G.updateBanner = true;
+  const reload = () => {
+    try { if (G.joined) sessionStorage.setItem('pixel.autojoin', JSON.stringify({ mic: !!(G.voice && G.voice.mic), at: Date.now() })); } catch {}
+    location.reload();
+  };
+  let left = Math.max(3, Math.round(sec));
+  const box = document.createElement('div'); box.className = 'upd-alert';
+  box.innerHTML = '<div class="upd-ico">🔄</div><div class="upd-txt"><b>มีอัปเดตใหม่!</b><span>จะรีโหลดอัตโนมัติใน <em class="upd-n"></em> วินาที — เข้าห้องให้เองหลังโหลดเสร็จ</span></div><button class="pbtn pink">รีโหลดเลย</button>';
+  document.body.append(box);
+  const n = box.querySelector('.upd-n'), bar = document.createElement('i'); bar.className = 'upd-bar'; box.append(bar);
+  box.querySelector('button').onclick = reload;
+  const total = left;
+  const tick = () => {
+    n.textContent = left;
+    bar.style.width = (left / total) * 100 + '%';
+    if (left <= 3 && !G.updBeeped) { G.updBeeped = true; try { SFX.pop(); } catch {} }
+    if (left <= 0) {
+      // กำลังพิมพ์/แก้ห้องอยู่ → รออีกนิด ไม่ให้ข้อความหาย
+      if (isTyping() && $('#chatInput').value.trim()) { n.textContent = '…'; G.updT = setTimeout(tick, 2000); return; }
+      reload(); return;
+    }
+    left--; G.updT = setTimeout(tick, 1000);
+  };
+  tick();
+}
 async function join() {
   const net = G.net;
   G.me.look = stripAdmin(G.me.look);
@@ -1986,25 +2014,14 @@ function frame(ms) {
   if (net.onSys) net.onSys((m) => {
     if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
     if (m.admin === false) lsSet('pixel.admin', null);
+    if (m.updating) { updateCountdown(Number(m.updating) || 15); return; }
     if (m.look && typeof m.look === 'object' && G.joined) { G.me.look = cleanLook(m.look); lsSet('pixel.look', G.me.look); if (G.me.ride && G.me.look.pet === 'none') { G.me.ride = false; pres({ rd: null }); } }
     if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); if (m.admin && G.joined) pres({ l: G.me.look }); }
     G.pendingAdminKey = null;
     addSys((m.kind === 'info' ? '' : '🛡️ ') + m.message); toast(m.message, 4000);
   });
-  if (net.onUpdate) net.onUpdate(() => {
-    // มีเวอร์ชันใหม่: ถ้าไม่ได้กำลังพิมพ์/เปิดหน้าต่างอยู่ โหลดใหม่แล้วเข้าห้องให้เองเลย (จำว่าเปิดไมค์อยู่ไหม)
-    const busy = () => isTyping() || !$('#modal').classList.contains('hidden') || G.edit;
-    const go = () => {
-      try { sessionStorage.setItem('pixel.autojoin', JSON.stringify({ mic: !!(G.voice && G.voice.mic), at: Date.now() })); } catch {}
-      location.reload();
-    };
-    const tryGo = () => { if (!busy()) go(); else setTimeout(tryGo, 3000); };
-    setTimeout(tryGo, 1500 + Math.random() * 2500);
-    const b = $('#banner');
-    b.textContent = '🔄 มีอัปเดตใหม่ — แตะตรงนี้เพื่อโหลดใหม่'; b.classList.remove('hidden');
-    b.style.pointerEvents = 'auto'; b.style.cursor = 'pointer'; b.style.zIndex = '30'; b.onclick = () => location.reload();
-    G.updateBanner = true;
-  });
+  // มีเวอร์ชันใหม่ (เชื่อมต่อใหม่แล้วเจอ build ใหม่) → นับถอยหลัง 15 วิก่อนรีโหลด (ถ้ายังไม่ได้นับจากคำเตือนของเซิร์ฟเวอร์)
+  if (net.onUpdate) net.onUpdate(() => updateCountdown(15));
   if (net.onPoke) net.onPoke(pokeReceived);
   if (net.onChatDel) net.onChatDel((ids) => {
     const list = ids === 'all' ? [...G.messages.values()].filter((x) => !x.sys).map((x) => x.id) : ids;
