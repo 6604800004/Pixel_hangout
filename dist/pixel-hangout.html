@@ -3694,7 +3694,8 @@ function onPeers(list) {
       for (const m of p.say.slice(-3)) {
         if (!m || typeof m.i !== 'string' || typeof m.t !== 'string' || rt.saySeen.has(m.i)) continue;
         rt.saySeen.add(m.i);
-        const fresh = !isNew && !G.messages.has(m.i);
+        // ข้อความใหม่ขึ้นบนหัวเสมอ (แม้แชตจากฐานข้อมูลจะมาถึงก่อน presence) — saySeen กันขึ้นซ้ำ, isNew = เพิ่งเห็นคนนี้ ไม่โชว์ข้อความเก่า
+        const fresh = !isNew;
         addMessage({ id: m.i, by: peer.by || p.uid || peer.key, n: p.n, l: p.l, text: m.t.slice(0, 200), ts: Number(m.ts) || Date.now() });
         if (fresh) { rt.bubble = { id: m.i, text: m.t.slice(0, 200), until: now + 6000, lines: null }; SFX.msg(); }
       }
@@ -4396,7 +4397,8 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const p = ch === G.me ? null : ch.p;
     const [sx, sy0] = S(ch.x, ch.y);
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
-    let top = sy0 - ((ch.sit ? 33 : 35) + (isRiding(ch) ? RIDE_LIFT + 2 : 0)) * scale;
+    const rLift = isRiding(ch) ? RIDE_LIFT + 2 + (ch.look.pet === 'cloud' ? 9 : ch.look.pet === 'fish' || ch.look.pet === 'dragon' ? 4 : 0) : 0;
+    let top = sy0 - ((ch.sit ? 33 : 35) + rLift) * scale;
     const away = ch !== G.me && (G.voice ? !G.audible.has(ch.key) : zoneAt(ch.x, ch.y) !== G.zone);
     c.globalAlpha = away && G.voice ? 0.5 : 1;
     const key = ch === G.me ? G.net.myKey : ch.key;
