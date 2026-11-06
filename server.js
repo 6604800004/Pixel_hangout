@@ -480,11 +480,14 @@ wss.on('connection', (ws) => {
             cur.forEach((it, i) => { const d = Math.hypot(it.x - a.x, it.y - a.y); if (d < bd) { bd = d; best = i; } });
             if (best < 0) { send(ws, { t: 'sys', message: 'ไม่มี NPC อยู่ใกล้ๆ — เดินไปใกล้ตัวที่จะลบ หรือพิมพ์ npc ลบหมด' }); break; }
             list = cur.filter((_, i) => i !== best); msg = 'ลบ NPC แล้ว';
+          } else if (a.op === 'move') {
+            if (!Number.isFinite(a.x) || !Number.isFinite(a.y) || !cur.some((it) => it.id === a.id)) break;
+            list = cur.map((it) => (it.id === a.id ? { ...it, x: Math.round(a.x), y: Math.round(a.y) } : it));
           } else if (a.op === 'clear') { list = []; msg = `ลบ NPC ทั้งหมดแล้ว (${cur.length} ตัว) 🧹`; }
           else break;
           store.settings.npcs = { list };
           broadcast({ t: 'col', col: 'settings', id: 'npcs', doc: { list } });
-          send(ws, { t: 'sys', message: msg });
+          if (msg) send(ws, { t: 'sys', message: msg });
           save();
           break;
         }

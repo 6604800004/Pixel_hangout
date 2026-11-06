@@ -4797,6 +4797,11 @@ canvas.addEventListener('pointerdown', (e) => {
   closeTrays();
   for (const h of G.bubbleHits) if (Math.abs(e.clientX - h.x) < h.r && Math.abs(e.clientY - h.y) < h.r) { openFocus(h.key); return; }
   const w = toWorld(e.clientX, e.clientY);
+  // แอดมิน: กดค้างที่ NPC แล้วลากเพื่อย้าย
+  if (G.isAdmin) {
+    const hit = (G.npcs || []).filter((n) => Math.abs(w.x - n.x) < 11 && w.y < n.y + 4 && w.y > n.y - 38).sort((a, b) => b.y - a.y)[0];
+    if (hit) { G.npcDrag = { id: hit.id, ox: w.x - hit.x, oy: w.y - hit.y, moved: false }; return; }
+  }
   if (G.edit) {
     const it = itemAt(w.x, w.y);
     if (it) { G.selected = it.id; G.drag = { id: it.id, ox: w.x - it.x, oy: w.y - it.y, moved: false }; }
@@ -4847,6 +4852,14 @@ canvas.addEventListener('pointermove', (e) => {
     return;
   }
   const w = toWorld(e.clientX, e.clientY);
+  if (G.npcDrag) {
+    const n = (G.npcs || []).find((x) => x.id === G.npcDrag.id);
+    if (!n) return;
+    const nx = clamp(Math.round(w.x - G.npcDrag.ox), LEFT + 10, RIGHT - 10), ny = clamp(Math.round(w.y - G.npcDrag.oy), SHRINE_FLOOR + 4, H - 4);
+    if (!G.npcDrag.moved && Math.hypot(nx - n.x, ny - n.y) < 3) return;
+    n.x = nx; n.y = ny; G.npcDrag.moved = true;
+    return;
+  }
   if (G.drag) {
     const it = G.furniture.find((f) => f.id === G.drag.id);
     if (!it) return;
@@ -4869,6 +4882,13 @@ async function endPointer(e) {
   pointers.delete(e.pointerId);
   if (pointers.size < 2) pinch = null;
   G.holding = false; G.pan = null;
+  if (G.npcDrag) {
+    const d = G.npcDrag; G.npcDrag = null;
+    const n = (G.npcs || []).find((x) => x.id === d.id);
+    if (n && d.moved) G.net.admin('npc', lsGet('pixel.admin', '') || '', { op: 'move', id: n.id, x: n.x, y: n.y });
+    else if (n) toast(`${n.a === 'sing' ? '🎤' : '🕺'} ${n.n} — กดค้างแล้วลากเพื่อย้าย`, 1800);
+    return;
+  }
   if (G.drag) {
     const drag = G.drag; G.drag = null;
     const it = G.furniture.find((f) => f.id === drag.id);
@@ -4946,6 +4966,7 @@ function npcPose(n, t) {
 }
 function drawNpc(c, n, t) {
   const { ph, dir, pose, frame, dx, dy } = npcPose(n, t);
+  if (G.npcDrag && G.npcDrag.id === n.id) { c.fillStyle = 'rgba(255,143,171,.55)'; c.fillRect(Math.round(n.x) - 12, Math.round(n.y) - 2, 24, 5); c.fillRect(Math.round(n.x) - 9, Math.round(n.y) - 4, 18, 9); }
   drawShadow(c, n.x, n.y, dy < -1 ? 10 : 12);
   c.drawImage(charSprite(n.l, dir, frame, pose, (ph * 3) % 4.1 < 0.13), snap(n.x - 11 + dx), snap(n.y - 35 + dy));
   if (n.a === 'sing') {
