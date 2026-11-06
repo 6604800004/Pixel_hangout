@@ -297,7 +297,9 @@ function updateMe(dt) {
 
 function updatePet(owner, pet, dt) {
   const side = owner.dir === 'left' ? 1 : owner.dir === 'right' ? -1 : (pet.x >= owner.x ? 1 : -1);
-  const tx = owner.x + side * 13, ty = owner.y + (owner.dir === 'up' ? 6 : 2);
+  // สัตว์ตัวใหญ่ (วัว ม้า ฯลฯ) ยืนห่างออกไปตามขนาดตัว ไม่ทับเจ้าของ
+  const pw = owner.look && FARM[owner.look.pet] ? FARM[owner.look.pet][0] : 14;
+  const tx = owner.x + side * Math.max(13, 7 + pw / 2), ty = owner.y + (owner.dir === 'up' ? 6 : 2);
   const dx = tx - pet.x, dy = ty - pet.y, d = Math.hypot(dx, dy);
   if (d > 60) { pet.x = tx; pet.y = ty; }
   else if (d > 2) {
