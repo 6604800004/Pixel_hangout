@@ -100,13 +100,16 @@
     <b id="scrTitle">🖥️ แชร์จอ</b>
     <div class="ytbtns">
       <button id="scrStop" class="hidden" title="หยุดแชร์">⏹️</button>
+      <button id="scrPip" title="ป๊อปเอาต์ (ลอยทับแอปอื่นได้)">🗗</button>
+      <button id="scrFull" title="เต็มจอ">⛶</button>
       <button id="scrMin" title="ย่อ">➖</button>
       <button id="scrBig" title="ขยาย">⤢</button>
       <button id="scrHide" title="ซ่อน (เฉพาะเรา)">✕</button>
     </div>
   </header>
   <div class="scrtabs hidden" id="scrTabs"></div>
-  <div class="ytbox"><video id="scrVideo" autoplay playsinline muted></video></div>
+  <div class="ytbox"><video id="scrVideo" autoplay playsinline muted></video><span class="live-badge">🔴 LIVE</span></div>
+  <p class="scr-info hidden" id="scrInfo"></p>
 </section>
 <section class="yt hidden" id="ytPanel">
   <header>

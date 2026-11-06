@@ -2,6 +2,13 @@
 // voice.js — คุยเสียง/เปิดกล้องด้วย WebRTC (ใช้เฉพาะเวอร์ชันเซิร์ฟเวอร์ Node)
 // ทุกคนต่อหากันตรงๆ (mesh) — คนที่ key น้อยกว่าเป็นฝ่ายโทร จึงไม่ชนกัน
 // ============================================================================
+// คุณภาพแชร์จอ (แบบ Discord)
+const SHARE_Q = {
+  saver: { w: 854, h: 480, fps: 30, br: 1200000, name: '480p 30fps · ประหยัดเน็ต' },
+  smooth: { w: 1280, h: 720, fps: 60, br: 4500000, name: '720p 60fps · ลื่น (แนะนำ)' },
+  sharp: { w: 1920, h: 1080, fps: 30, br: 5000000, name: '1080p 30fps · คมชัด (ตัวหนังสือ/งาน)' },
+  max: { w: 1920, h: 1080, fps: 60, br: 8000000, name: '1080p 60fps · สูงสุด (เน็ตแรงเท่านั้น)' },
+};
 function makeVoice(net, onChange) {
   const sink = document.createElement('div');
   sink.hidden = true;
@@ -99,11 +106,13 @@ function makeVoice(net, onChange) {
         if (tx === peer.videoTx) p.encodings[0].maxFramerate = 24;
         if (tx === peer.screenTx) {
           // แชร์จอแบบลื่น: 720p 60fps (จอใหญ่กว่า 720p = ย่อลงก่อนส่ง) · เน็ตไม่พอ = ลดความคมก่อน ไม่ลดเฟรม
-          p.encodings[0].maxFramerate = 60;
+          const so = V.screenOpts || SHARE_Q.smooth;
+          p.encodings[0].maxFramerate = so.fps;
+          p.encodings[0].maxBitrate = so.br;
           const st = V.screenTrack && V.screenTrack.getSettings ? V.screenTrack.getSettings() : {};
-          const scale = st.height ? Math.max(1, st.height / 720, (st.width || 0) / 1280) : 1;
+          const scale = st.height ? Math.max(1, st.height / so.h, (st.width || 0) / so.w) : 1;
           p.encodings[0].scaleResolutionDownBy = scale;
-          p.degradationPreference = 'maintain-framerate';
+          p.degradationPreference = so.fps >= 60 ? 'maintain-framerate' : 'balanced';
         }
         await tx.sender.setParameters(p);
       } catch {}
@@ -112,7 +121,7 @@ function makeVoice(net, onChange) {
   // ส่งเสียง/ภาพให้เฉพาะคนที่อยู่โซนเดียวกัน (คนละโซน = ไม่ส่งและไม่เล่นเสียง)
   function apply(peer) {
     const ok = !!peer.allowed;
-    peer.audioTx?.sender.replaceTrack(ok ? V.audioTrack || null : null).catch(() => {});
+    peer.audioTx?.sender.replaceTrack(ok ? V.mixTrack || V.audioTrack || null : null).catch(() => {});
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
     peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
     volOut(peer);
@@ -245,6 +254,7 @@ function makeVoice(net, onChange) {
   async function handleSignal(from, data) {
     let peer = V.peers.get(from);
     if (data.relayPlease) { if (peer) { peer.forceRelay = Date.now(); if (V.actx && V.actx.state !== 'running') onChange('unlock-mic'); } return; }
+    if (data.watch) { if (V.screenTrack) V.watchers.set(from, Date.now()); return; }
     if (data.kf) {
       // เพื่อนเห็นภาพกล้องเราเป็นสีดำ → บังคับส่งภาพเต็มเฟรมใหม่ (ปิด-เปิดการส่งวิดีโอช่องนี้)
       const tx = peer && peer.videoTx;
@@ -357,6 +367,7 @@ function makeVoice(net, onChange) {
   }
   // ใส่ track ใหม่: ส่งให้ทุกคน + ตัววัดเสียง + ฟังเสียงตัวเอง
   function setAudioTrack(t) {
+    setTimeout(() => rebuildMix(), 0);
     const old = V.audioTrack;
     V.audioTrack = t;
     if (V.meterTrack) V.meterTrack.stop();
@@ -491,14 +502,46 @@ function makeVoice(net, onChange) {
   V.screenTrack = null;
   V.selfScreen = Object.assign(document.createElement('video'), { muted: true, playsInline: true, autoplay: true });
   V.selfScreen.setAttribute('playsinline', ''); sink.append(V.selfScreen);
-  V.startScreen = async () => {
-    if (!V.canShare) { onChange('error', 'อุปกรณ์นี้แชร์จอไม่ได้ (ใช้คอมด้วย Chrome / Edge / Firefox / Safari)'); return; }
+  // ---- เสียงจากจอที่แชร์: ผสมกับไมค์แล้วส่งในช่องเสียงเดิม (ปิดไมค์ = ยังได้ยินเสียงจอ) ----
+  const mix = { dest: null, mic: null, scr: null };
+  function rebuildMix() {
+    const st = V.screenAudio;
+    if (!st || st.readyState !== 'live') {
+      if (V.mixTrack) { try { mix.mic && mix.mic.disconnect(); mix.scr && mix.scr.disconnect(); } catch {} V.mixTrack = null; mix.dest = null; for (const p of V.peers.values()) apply(p); }
+      return;
+    }
+    const ctx = ensureCtx();
+    if (!ctx) return;
     try {
-      const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 }, width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 } }, audio: false });
+      if (!mix.dest) { mix.dest = ctx.createMediaStreamDestination(); }
+      try { mix.mic && mix.mic.disconnect(); mix.scr && mix.scr.disconnect(); } catch {}
+      mix.scr = ctx.createMediaStreamSource(new MediaStream([st])); mix.scr.connect(mix.dest);
+      // ไมค์: ใช้ track ที่ส่งจริง (ปิดไมค์ = track ถูก disable = เงียบเอง)
+      mix.mic = V.audioTrack ? ctx.createMediaStreamSource(new MediaStream([V.audioTrack])) : null;
+      if (mix.mic) mix.mic.connect(mix.dest);
+      V.mixTrack = mix.dest.stream.getAudioTracks()[0];
+      for (const p of V.peers.values()) apply(p);
+    } catch { V.mixTrack = null; }
+  }
+  V.startScreen = async (opts) => {
+    if (!V.canShare) { onChange('error', 'อุปกรณ์นี้แชร์จอไม่ได้ (ใช้คอมด้วย Chrome / Edge / Firefox / Safari)'); return; }
+    const so = (opts && SHARE_Q[opts.q]) || SHARE_Q.smooth;
+    const wantAudio = !opts || opts.audio !== false;
+    try {
+      ensureCtx(); if (V.actx && V.actx.state !== 'running') V.actx.resume().catch(() => {});
+      const s = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: so.fps, max: so.fps }, width: { ideal: so.w, max: 1920 }, height: { ideal: so.h, max: 1080 } },
+        audio: wantAudio ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false } : false,
+        systemAudio: wantAudio ? 'include' : 'exclude', selfBrowserSurface: 'exclude', surfaceSwitching: 'include',
+      });
       const t = s.getVideoTracks()[0];
-      try { t.contentHint = 'motion'; } catch {} // เน้นความลื่น (เกม/คลิป) มากกว่าความคมของตัวหนังสือ
-      try { await t.applyConstraints({ frameRate: { ideal: 60, max: 60 }, width: { max: 1280 }, height: { max: 720 } }); } catch {}
+      try { t.contentHint = so.fps >= 60 ? 'motion' : 'detail'; } catch {}
+      try { await t.applyConstraints({ frameRate: { ideal: so.fps, max: so.fps }, width: { max: so.w }, height: { max: so.h } }); } catch {}
       t.onended = () => V.stopScreen();
+      V.screenOpts = so;
+      V.screenAudio = s.getAudioTracks()[0] || null;
+      if (V.screenAudio) V.screenAudio.onended = () => { V.screenAudio = null; rebuildMix(); onChange('media'); };
+      rebuildMix();
       V.screenTrack = t;
       V.selfScreen.srcObject = new MediaStream([t]); V.selfScreen.play().catch(() => {});
       for (const p of V.peers.values()) { p.screenTx?.sender.replaceTrack(p.screenOk ? t : null).catch(() => {}); tune(p); }
@@ -511,10 +554,17 @@ function makeVoice(net, onChange) {
     if (!V.screenTrack) return;
     const t = V.screenTrack; V.screenTrack = null;
     t.onended = null; t.stop();
+    if (V.screenAudio) { V.screenAudio.onended = null; V.screenAudio.stop(); V.screenAudio = null; }
+    rebuildMix();
+    V.watchers.clear();
     V.selfScreen.srcObject = null;
     for (const p of V.peers.values()) p.screenTx?.sender.replaceTrack(null).catch(() => {});
     onChange('media');
   };
+  // ---- คนดูสตรีม (แบบ Discord: รู้ว่าใครกำลังดูจอเราอยู่) ----
+  V.watchers = new Map();
+  V.watching = (key) => net.signal(key, { watch: 1 });
+  V.watcherList = () => { const now = Date.now(); return [...V.watchers].filter(([, t]) => now - t < 9000).map(([k]) => k); };
   V.screenFor = (key) => {
     if (key === net.myKey) return V.screenTrack ? V.selfScreen : null;
     const p = V.peers.get(key);

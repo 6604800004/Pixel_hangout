@@ -746,7 +746,20 @@ function syncShare() {
   if (!list.some((s) => s.key === SHARE.sel)) SHARE.sel = (list.find((s) => !s.me) || list[0]).key;
   const cur = list.find((s) => s.key === SHARE.sel);
   panel.classList.remove('hidden');
-  $('#scrTitle').textContent = cur.me ? '🖥️ คุณกำลังแชร์จอ (คนในห้องนี้เห็น)' : `🖥️ ${cur.name} กำลังแชร์จอ`;
+  $('#scrTitle').textContent = cur.me ? '🔴 คุณกำลังไลฟ์จอ' : `🔴 ${cur.name} กำลังไลฟ์`;
+  // ข้อมูลใต้จอ: คนแชร์เห็นว่าใครกำลังดู · คนดูเห็นคุณภาพ/มีเสียงไหม
+  const info = $('#scrInfo');
+  if (cur.me) {
+    const ws = G.voice.watcherList().map((k) => { const rt = G.others.get(k); return rt ? rt.p.n || 'เพื่อน' : null; }).filter(Boolean);
+    const so = G.voice.screenOpts || {};
+    info.textContent = `👀 ${ws.length ? ws.length + ' คนกำลังดู: ' + ws.join(', ') : 'ยังไม่มีใครดู'} · ${so.name || ''}${G.voice.screenAudio ? ' · 🔊 แชร์เสียงด้วย' : ' · 🔇 ไม่มีเสียง'}`;
+  } else {
+    const v = $('#scrVideo');
+    info.textContent = v.videoWidth ? `${v.videoWidth}×${v.videoHeight}` : 'กำลังโหลดภาพ…';
+    // บอกคนแชร์ว่าเรากำลังดูอยู่ (ทุก ~3 วิ)
+    if (!SHARE.watchAt || Date.now() - SHARE.watchAt > 3000) { SHARE.watchAt = Date.now(); G.voice.watching(cur.key); }
+  }
+  info.classList.remove('hidden');
   $('#scrStop').classList.toggle('hidden', !G.voice.screenTrack);
   const vid = $('#scrVideo');
   const src = cur.el.srcObject;
@@ -767,7 +780,63 @@ setInterval(syncShare, 600);
 $('#scrStop').onclick = () => G.voice && G.voice.stopScreen();
 $('#scrBig').onclick = () => $('#scrPanel').classList.toggle('big');
 $('#scrHide').onclick = () => { if (SHARE.sel) SHARE.hidden.add(SHARE.sel); syncShare(); toast('ซ่อนจอที่แชร์แล้ว จะขึ้นใหม่เมื่อเขาเริ่มแชร์ครั้งถัดไป'); };
-$('#scrVideo').ondblclick = () => $('#scrPanel').classList.toggle('big');
+$('#scrVideo').ondblclick = () => toggleScrFull();
+function toggleScrFull() {
+  const v = $('#scrVideo'), box = $('#scrPanel');
+  if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+  if (box.requestFullscreen) box.requestFullscreen().catch(() => box.classList.toggle('big'));
+  else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); // iPhone
+  else box.classList.toggle('big');
+}
+$('#scrFull').onclick = () => toggleScrFull();
+$('#scrPip').onclick = async () => {
+  const v = $('#scrVideo');
+  try {
+    if (document.pictureInPictureElement) await document.exitPictureInPicture();
+    else if (v.requestPictureInPicture) await v.requestPictureInPicture();
+    else if (v.webkitSetPresentationMode) v.webkitSetPresentationMode('picture-in-picture');
+    else toast('เบราว์เซอร์นี้ไม่รองรับป๊อปเอาต์');
+  } catch { toast('ป๊อปเอาต์ไม่ได้ตอนนี้'); }
+};
+if (!document.pictureInPictureEnabled && !('webkitSetPresentationMode' in HTMLVideoElement.prototype)) $('#scrPip').classList.add('hidden');
+// เปิดดูไลฟ์ของคนนี้ (จากแถบห้อง/รายชื่อ)
+function watchStream(key) {
+  SHARE.hidden.delete(key); SHARE.sel = key;
+  setMini('#scrPanel', '#scrMin', false, 'pixel.scrMini');
+  syncShare();
+  if ($('#scrPanel').classList.contains('hidden')) toast('ต้องอยู่ห้องเดียวกันถึงจะดูไลฟ์ได้'); else $('#scrPanel').classList.add('big');
+}
+// ---- หน้าต่าง "เริ่มไลฟ์" แบบ Discord: เลือกคุณภาพ + แชร์เสียง ----
+function openGoLive() {
+  const V = G.voice;
+  openModal((card) => {
+    card.classList.add('golive');
+    card.append(el('h2', null, '🔴 แชร์หน้าจอ'));
+    card.append(el('p', 'sub', 'คนที่อยู่ห้องเดียวกันจะเห็นจอคุณ'));
+    let q = lsGet('pixel.shareQ', 'smooth'); if (!SHARE_Q[q]) q = 'smooth';
+    let audio = lsGet('pixel.shareAudio', true) !== false;
+    const list = el('div', 'gl-list');
+    const paint = () => {
+      list.innerHTML = '';
+      for (const [k, o] of Object.entries(SHARE_Q)) {
+        const b = el('button', 'gl-opt' + (k === q ? ' sel' : ''));
+        b.type = 'button';
+        b.append(el('b', null, o.name.split(' · ')[0]), el('span', null, o.name.split(' · ')[1] || ''));
+        b.onclick = () => { q = k; paint(); };
+        list.append(b);
+      }
+    };
+    paint();
+    card.append(el('div', 'gl-lab', 'คุณภาพ'), list);
+    const au = el('label', 'chk gl-audio'); const ac = el('input'); ac.type = 'checkbox'; ac.checked = audio; ac.onchange = () => (audio = ac.checked);
+    au.append(ac, el('b', null, '🔊 แชร์เสียงด้วย'));
+    card.append(au, el('p', 'tip', 'เสียง: Chrome/Edge แชร์ได้เมื่อเลือก "แท็บ" หรือ "ทั้งหน้าจอ" (Windows) และติ๊ก "แชร์เสียง" ในหน้าต่างของเบราว์เซอร์ · ปิดไมค์อยู่ เพื่อนก็ยังได้ยินเสียงจอ'));
+    const go = el('button', 'pbtn pink big', '🔴 เริ่มไลฟ์');
+    go.onclick = async () => { lsSet('pixel.shareQ', q); lsSet('pixel.shareAudio', audio); closeModal(); await V.startScreen({ q, audio }); if (V.screenTrack && audio && !V.screenAudio) toast('แชร์จอแล้ว แต่ไม่มีเสียง — ตอนเลือกจอให้ติ๊ก "แชร์เสียง" ด้วย (ได้กับแท็บ/ทั้งหน้าจอ)', 6000); };
+    const cancel = el('button', 'pbtn big ghost', 'ยกเลิก'); cancel.onclick = () => closeModal();
+    const col = el('div', 'leave-col'); col.append(go, cancel); card.append(col);
+  });
+}
 
 // ---------- แผงรัศมีไมค์แบบเล็ก (แตะป้ายห้อง) — เห็นวงรอบตัวละครระหว่างปรับ ----------
 function micRangeName(r) { return r >= MIC_R_WHOLE ? 'ทั้งห้อง' : r <= 90 ? 'กระซิบ' : r <= 150 ? 'ปกติ' : r <= 210 ? 'ดัง' : 'ตะโกน'; }
@@ -1141,7 +1210,7 @@ function renderRooms() {
   const by = roomMembers();
   const here = zoneAt(G.me.x, G.me.y);
   const inCall = !!G.voice;
-  const sig = JSON.stringify([here, inCall, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf]))]);
+  const sig = JSON.stringify([here, inCall, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf, m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr]))]);
   const list = $('#roomsList');
   if (sig !== G.roomsSig) {
     G.roomsSig = sig;
@@ -1171,9 +1240,11 @@ function renderRooms() {
         cv.getContext('2d').drawImage(charSprite(cleanLook(m.l), 'down', 0, 'stand', false), 0, 0);
         const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (m.n || 'เพื่อน') + (m.me ? ' (คุณ)' : '');
         const mi = document.createElement('span'); mi.className = 'mi';
+        const live = m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr === 1;
         if (inCall && m.deaf) { mi.textContent = '🔇'; mi.title = 'ปิดหูฟัง'; }
         else if (inCall && !m.mic) { mi.textContent = '🎙️'; mi.className = 'mi off'; mi.title = 'ปิดไมค์'; }
-        row.append(cv, nm, mi);
+        if (live) { const lv = document.createElement('span'); lv.className = 'live'; lv.textContent = 'LIVE'; lv.title = 'กำลังแชร์จอ — แตะเพื่อดู'; lv.onclick = (e) => { e.stopPropagation(); if (m.me) watchStream('me'); else watchStream(m.key); }; row.append(cv, nm, lv, mi); }
+        else row.append(cv, nm, mi);
         if (m.rt) row.onclick = () => { walkTo(m.rt.x + 14, m.rt.y + 4); if (isMobile()) setRoomsOpen(false); };
         list.append(row);
       }

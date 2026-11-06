@@ -1150,7 +1150,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const st = (ch === G.me ? G.me.st : p.st) || '';
     const micOff = G.voice && (ch === G.me ? !G.voice.mic : p.mic === 0);
     const sharing = ch === G.me ? !!(G.voice && G.voice.screenTrack) : p.scr === 1;
-    const label = (sharing ? '🖥️ ' : '') + (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
+    const label = (sharing ? '🔴 LIVE · ' : '') + (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
     c.font = '500 12px Mitr, sans-serif';
     const w = c.measureText(label).width + 14;
     const ly = top - 20;
@@ -1704,7 +1704,7 @@ function setupVoice() {
   V.remoteCamOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.cam === 1); };
   ['micBtn', 'camBtn', 'deafBtn', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
   $('#voiceSetBtn').onclick = openVoiceSettings;
-  if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : V.startScreen()); }
+  if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : openGoLive()); }
   $('#callBtn').classList.add('hidden');
   $('#micBtn').onclick = () => V.toggleMic();
   $('#camBtn').onclick = () => V.toggleCam();
