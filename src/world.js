@@ -7,6 +7,14 @@ const TOP = -232;
 // โรงหนังอยู่ "ข้างๆ" ทางซ้ายของห้องรวม (พิกัด x ติดลบ)
 const LEFT = -288;
 const CINEMA = { x0: LEFT, x1: 0, y0: 0, y1: 352 }; // รวมผนัง
+// นอกบ้านฝั่งขวา: ⛰️ ภูเขา (บน) + 🏖️ ทะเล (ล่าง) — ออกทางประตูรั้วด้านขวาของสวน
+const RIGHT = W + 384;
+const GATE_EAST = { x: W, y: 452, h: 40, zone: 'beach', side: true };
+const MTN_TOP = -96;                         // เหนือแนวนี้ = ทิวเขาหิมะ (ฉากหลัง)
+const RIDGE_Y = 352, TRAIL = { x: 616, w: 40 }; // แนวหินกั้นภูเขา|ชายหาด เว้นทางเดินขึ้นเขา
+const SEA_X = W + 262;
+const shoreX = (y) => SEA_X + Math.round(Math.sin(y / 37) * 7 + Math.sin(y / 13) * 3);
+const POND = { x: W + 40, y: 28, w: 72, h: 44 };
 const DOOR_CINEMA = { x: 0, y: 112, h: 34, zone: 'cinema', side: true, left: true };
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
@@ -29,11 +37,14 @@ const ZONES = {
   pub: { id: 'pub', name: 'ผับ', icon: '🍻' },
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
   cinema: { id: 'cinema', name: 'โรงหนัง', icon: '🎬' },
+  mountain: { id: 'mountain', name: 'ภูเขา', icon: '⛰️' },
+  beach: { id: 'beach', name: 'ทะเล', icon: '🏖️' },
 };
 // ชื่อห้อง: แอดมินตั้งเองได้ (ไม่ตั้ง = ชื่อเดิม)
 const zoneName = (z) => (typeof G !== 'undefined' && G.roomNames && G.roomNames[z]) || ZONES[z].name;
 function zoneAt(x, y) {
   if (x < 0) return 'cinema';
+  if (x >= W) return y < RIDGE_Y + 12 ? 'mountain' : 'beach';
   if (y < 0) return 'shrine';
   if (y < LOWER_Y + 16) return 'hall';
   if (y < LOWER2_Y + 16) return x < DIVIDER_X + 3 ? 'meet' : 'garden';
@@ -95,8 +106,19 @@ const DEFAULT_LAYOUT = [
   { t: 'popcorn', x: -266, y: 344 }, { t: 'speaker', x: -272, y: 92 }, { t: 'speaker', x: -20, y: 92 },
   // ---- v8: เบาะกราบสีทองหน้าโต๊ะหมู่บูชา (บนพรมแดงกลาง) ----
   { t: 'prayerMat', v: 1, x: 256, y: -112 },
+  // ---- v10: 🏖️ ทะเล ----
+  { t: 'palm', x: 548, y: 420 }, { t: 'palm', x: 714, y: 600 }, { t: 'palm', x: 556, y: 830 },
+  { t: 'parasol', v: 0, x: 640, y: 540 }, { t: 'beachChair', v: 0, x: 626, y: 562 }, { t: 'beachChair', v: 1, x: 654, y: 562 },
+  { t: 'towel', v: 0, x: 600, y: 650 }, { t: 'towel', v: 1, x: 652, y: 700 }, { t: 'sandcastle', x: 700, y: 770 },
+  { t: 'surfboard', v: 1, x: 742, y: 470 }, { t: 'parasol', v: 1, x: 600, y: 760 }, { t: 'beachChair', v: 2, x: 612, y: 782 },
+  // ---- v10: ⛰️ ภูเขา ----
+  { t: 'pine', v: 1, x: 540, y: -40 }, { t: 'pine', x: 600, y: 140 }, { t: 'pine', x: 870, y: 40 }, { t: 'pine', x: 862, y: 250 },
+  { t: 'pine', v: 1, x: 560, y: 300 }, { t: 'pine', v: 1, x: 784, y: -50 }, { t: 'pine', x: 540, y: 180 },
+  { t: 'rock', x: 660, y: 24 }, { t: 'rock', v: 1, x: 800, y: 190 }, { t: 'rock', v: 1, x: 880, y: 140 },
+  { t: 'campfire', x: 760, y: 128 }, { t: 'logSeat', x: 760, y: 106 }, { t: 'tent', v: 0, x: 844, y: 104 }, { t: 'tent', v: 1, x: 812, y: 318 },
 ];
-const LAYOUT_VERSION = 9;
+const LAYOUT_VERSION = 10;
+const LAYOUT_V10_FROM = 125; // def125+: ของตกแต่งทะเล + ภูเขา
 // v9: เอาต้นไม้หน้าประตูห้องประชุมออก (ลบตามตำแหน่ง ไม่ว่าใครจะย้าย/วางไว้)
 const LAYOUT_V9_REMOVE = [{ t: 'plant', x: 236, y: 342, r: 12 }];
 const LAYOUT_V8_FROM = 124; // def124: เบาะกราบทองหน้าพระ
@@ -122,7 +144,7 @@ const LOWER_WINDOWS = [{ x: 256, y: 360, w: 26, h: 16 }];
 const CLOCK = { x: 176, y: 26 };
 
 function buildBackground() {
-  const c = mkCanvas(W - LEFT, H - TOP);
+  const c = mkCanvas(RIGHT - LEFT, H - TOP);
   const g = c.getContext('2d');
   g.translate(-LEFT, -TOP); // วาดด้วยพิกัดโลก (รวมส่วนที่ y ติดลบของห้องไหว้พระ)
   const P = painter(g);
@@ -357,7 +379,7 @@ function buildBackground() {
     for (let i = 0; i < 12; i++) P(cx - 60 + i * 10 + 3, top + 72 + (i % 2), 4, 3, i % 3 ? '#fff6e0' : '#ff9a3a');
   }
   // ---- ขอบห้อง ----
-  P(0, TOP, 3, H - TOP, '#3a2c3f'); P(W - 3, TOP, 3, H - TOP, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f'); P(0, TOP, W, 3, '#3a2c3f');
+  P(0, TOP, 3, H - TOP, '#3a2c3f'); P(W - 3, TOP, 3, LOWER_Y - TOP, '#3a2c3f'); P(W - 3, LOWER2_Y, 3, H - LOWER2_Y, '#3a2c3f'); P(0, H - 3, W, 3, '#3a2c3f'); P(0, TOP, W, 3, '#3a2c3f');
   // ================= โรงหนัง =================
   { const { x0, y1 } = CINEMA, fx = x0 + 3, fw = -6 - fx;
     for (let y = WALL; y < y1; y += 8) for (let x = fx; x < -6; x += 8) {
@@ -376,10 +398,89 @@ function buildBackground() {
     P(-6, d.y, 9, d.h, '#521a2b'); P(-7, d.y - 3, 11, 3, '#d9a441'); P(-7, d.y + d.h, 11, 3, '#d9a441');
     P(0, d.y, 3, d.h, '#d9a374');
   }
+  // ================= นอกบ้านฝั่งขวา: ภูเขา (บน) + ทะเล (ล่าง) =================
+  {
+    const X0 = W, X1 = RIGHT;
+    // ---- ทุ่งหญ้าบนเขา ----
+    for (let y = TOP; y < RIDGE_Y + 22; y += 4) for (let x = X0; x < X1; x += 4) {
+      const r = rnd();
+      P(x, y, 4, 4, r < 0.5 ? '#7fbf68' : r < 0.85 ? '#76b660' : '#88c872');
+      if (r > 0.95) P(x + 1, y + 1, 1, 2, '#5f9e4e');
+      if (r > 0.992) P(x, y, 2, 2, ['#ffffff', '#ffe07a', '#c8a2ff'][Math.floor(rnd() * 3)]);
+    }
+    // ---- ท้องฟ้า + ทิวเขาหิมะ (ฉากหลังด้านบน เดินไม่ได้) ----
+    for (let y = TOP; y < MTN_TOP; y++) { const k = (y - TOP) / (MTN_TOP - TOP); P(X0, y, X1 - X0, 1, k < 0.5 ? '#bfe3ff' : '#d4ecff'); }
+    P(X0 + 300, TOP + 18, 12, 12, '#fff6c8'); P(X0 + 298, TOP + 20, 16, 8, '#fff6c8');
+    const peak = (cx, h, w, a, b) => {
+      for (let i = 0; i <= h; i++) {
+        const y = MTN_TOP + 6 - i, half = Math.round((w / 2) * (1 - i / h));
+        P(cx - half, y, half, 1, a); P(cx, y, half + 1, 1, b);
+        if (i > h * 0.68) { const sh = Math.round(half * 0.9); P(cx - sh, y, sh * 2 + 1, 1, i % 3 ? '#f4f8ff' : '#e2eaf6'); }
+        else if (i > h * 0.6 && (i + cx) % 3 === 0) P(cx - half + 2, y, 3, 1, '#f4f8ff');
+      }
+    };
+    peak(X0 + 60, 92, 170, '#8494b4', '#9fb0cc');
+    peak(X0 + 330, 104, 200, '#7d8daf', '#98a9c8');
+    peak(X0 + 200, 128, 230, '#71819f', '#8ea0bf');
+    for (let x = X0; x < X1; x += 7) { const h = 10 + ((x * 13) % 9); P(x + 2, MTN_TOP + 6 - h, 3, h, '#2f6e4a'); P(x, MTN_TOP + 6 - h + 4, 7, h - 4, '#3a7d55'); P(x + 1, MTN_TOP + 6 - h + 2, 5, 2, '#3a7d55'); }
+    P(X0, MTN_TOP + 4, X1 - X0, 4, '#4f8f50');
+    // ---- ทางเดินดินขึ้นเขา ----
+    const path = [[TRAIL.x + TRAIL.w / 2, RIDGE_Y + 22], [660, 290], [700, 220], [690, 140], [740, 60], [820, 0], [850, -60]];
+    for (let i = 0; i < path.length - 1; i++) {
+      const [ax, ay] = path[i], [bx, by] = path[i + 1], n = Math.ceil(Math.hypot(bx - ax, by - ay) / 2);
+      for (let k = 0; k <= n; k++) { const x = ax + ((bx - ax) * k) / n, y = ay + ((by - ay) * k) / n; P(Math.round(x) - 9, Math.round(y) - 4, 18, 8, '#b68a5a'); }
+      for (let k = 0; k <= n; k++) { const x = ax + ((bx - ax) * k) / n, y = ay + ((by - ay) * k) / n; P(Math.round(x) - 7, Math.round(y) - 3, 14, 6, '#cfa572'); if (k % 7 === 0) P(Math.round(x) - 3 + (k % 5), Math.round(y), 2, 1, '#a87c4e'); }
+    }
+    // ---- บ่อน้ำบนเขา ----
+    { const { x, y, w, h } = POND; const cx = x + w / 2, cy = y + h / 2;
+      for (let j = -h / 2 - 3; j <= h / 2 + 3; j++) { const half = Math.round((w / 2 + 3) * Math.sqrt(Math.max(0, 1 - (j / (h / 2 + 3)) ** 2))); P(cx - half, cy + j, half * 2, 1, '#9aa3b4'); }
+      for (let j = -h / 2; j <= h / 2; j++) { const half = Math.round((w / 2) * Math.sqrt(Math.max(0, 1 - (j / (h / 2)) ** 2))); P(cx - half, cy + j, half * 2, 1, j < -h / 4 ? '#7fcbe8' : '#5fb6dc'); }
+      P(cx - 20, cy - 8, 10, 1, '#d8f2ff'); P(cx + 6, cy + 4, 8, 1, '#d8f2ff');
+      P(cx - 26, cy + 6, 6, 4, '#5fae68'); P(cx - 25, cy + 5, 4, 1, '#8fd694'); P(cx + 18, cy - 10, 5, 3, '#5fae68');
+    }
+    // ---- แนวหินกั้นภูเขา | ชายหาด (เว้นทางเดิน) ----
+    for (let x = X0; x < X1; x += 6) {
+      if (x + 6 > TRAIL.x && x < TRAIL.x + TRAIL.w) continue;
+      const h = 14 + ((x * 7) % 8);
+      P(x, RIDGE_Y + 20 - h, 7, h, '#8d8f9e'); P(x + 1, RIDGE_Y + 20 - h, 5, 2, '#b4b6c4'); P(x + 5, RIDGE_Y + 22 - h, 2, h - 2, '#6f7180');
+    }
+    // ---- ชายหาด ----
+    for (let y = RIDGE_Y + 20; y < H; y += 4) {
+      const sx = shoreX(y);
+      for (let x = X0; x < X1; x += 4) {
+        const r = rnd();
+        if (x < sx - 14) { P(x, y, 4, 4, r < 0.5 ? '#f3dca5' : r < 0.85 ? '#efd59a' : '#f7e3b2'); if (r > 0.985) P(x + 1, y + 1, 2, 1, ['#ffffff', '#ffb8c8', '#e8a26a'][Math.floor(rnd() * 3)]); }
+        else if (x < sx) P(x, y, 4, 4, r < 0.6 ? '#dcbc80' : '#d4b378');
+        else if (x < sx + 20) P(x, y, 4, 4, r < 0.6 ? '#7fd3e8' : '#8bd9ec');
+        else if (x < sx + 70) P(x, y, 4, 4, r < 0.6 ? '#45aedc' : '#4cb4e0');
+        else P(x, y, 4, 4, r < 0.6 ? '#3596cc' : '#3a9cd0');
+      }
+    }
+    // ทางเดินไม้จากประตูสวน
+    { const g = GATE_EAST; for (let x = X0; x < X0 + 70; x += 6) { P(x, g.y + 4, 5, g.h - 8, '#c08a5a'); P(x, g.y + 4, 5, 1, '#d9a374'); P(x + 5, g.y + 4, 1, g.h - 8, '#8a5a36'); } }
+    // ---- ผนังบ้านด้านขวา (เว้นประตูรั้วสวน) + ขอบโลก ----
+    const g = GATE_EAST;
+    P(W - 3, LOWER_Y, 6, g.y - LOWER_Y, '#3f7d4a'); P(W - 3, g.y + g.h, 6, LOWER2_Y - g.y - g.h, '#3f7d4a');
+    P(W - 4, g.y - 6, 8, 6, '#a8752a'); P(W - 4, g.y + g.h, 8, 6, '#a8752a'); P(W - 3, g.y - 6, 6, 1, '#d9a441'); P(W - 3, g.y + g.h, 6, 1, '#d9a441');
+    for (let y = g.y; y < g.y + g.h; y += 4) P(W - 3, y, 6, 4, '#92d07c');
+    P(X1 - 3, TOP, 3, H - TOP, '#3a2c3f'); P(X0, H - 3, X1 - X0, 3, '#3a2c3f'); P(X0, TOP, X1 - X0, 3, '#3a2c3f');
+  }
   return c;
 }
 
 function drawLiveWall(ctx, now, t) {
+  // ---- ทะเล: คลื่นซัดฝั่ง + แสงระยิบ ----
+  for (let y = RIDGE_Y + 22; y < H - 3; y += 3) {
+    const sx = shoreX(y), w = Math.sin(t * 1.6 + y / 23);
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(sx - 2 + Math.round(w * 4), y, 3, 3);
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(sx + 6 + Math.round(w * 3), y, 2, 2);
+  }
+  for (let i = 0; i < 18; i++) {
+    const ph = (t * 0.35 + i * 0.137) % 1, x = SEA_X + 30 + ((i * 53) % (RIGHT - SEA_X - 40)), y = RIDGE_Y + 40 + ((i * 97) % (H - RIDGE_Y - 60));
+    if (ph < 0.5) { ctx.fillStyle = `rgba(255,255,255,${(0.5 - Math.abs(ph - 0.25) * 2) * 0.9})`; ctx.fillRect(x, y, 4, 1); ctx.fillRect(x + 1, y - 1, 2, 3); }
+  }
+  // ---- บ่อน้ำบนเขา: ระลอกน้ำ ----
+  { const { x, y, w, h } = POND; ctx.fillStyle = 'rgba(255,255,255,.55)'; for (let i = 0; i < 3; i++) { const ph = (t * 0.5 + i / 3) % 1, rr = 4 + ph * 14; ctx.globalAlpha = 1 - ph; ctx.fillRect(x + w / 2 - rr + i * 6, y + h / 2 + i * 3 - 6, rr * 2, 1); } ctx.globalAlpha = 1; }
   const sky = skyAt(now);
   for (const w of WINDOWS) {
     const gr = ctx.createLinearGradient(0, w.y, 0, w.y + w.h);
@@ -499,16 +600,24 @@ function solidRects(furniture) {
   list.push({ x: DOOR_SHRINE.x + DOOR_SHRINE.w, y: -6, w: W - DOOR_SHRINE.x - DOOR_SHRINE.w, h: WALL + 6 });
   list.push({ x: ALTAR.x - 4, y: SHRINE_FLOOR, w: ALTAR.w + 8, h: ALTAR.h });
   for (const px of PILLARS) list.push({ x: px - 9, y: SHRINE_FLOOR, w: 18, h: 78 });
+  // นอกบ้าน: ผนังบ้านด้านขวา (เว้นประตูรั้วสวน) · ทิวเขา · บ่อน้ำ · แนวหิน (เว้นทางเดิน) · ทะเลลึก
+  list.push({ x: W - 4, y: TOP - 20, w: 8, h: GATE_EAST.y - TOP + 20 });
+  list.push({ x: W - 4, y: GATE_EAST.y + GATE_EAST.h, w: 8, h: H - GATE_EAST.y - GATE_EAST.h + 20 });
+  list.push({ x: W, y: TOP - 20, w: RIGHT - W + 20, h: MTN_TOP + 14 - TOP + 20 });
+  list.push({ x: POND.x - 2, y: POND.y, w: POND.w + 4, h: POND.h });
+  list.push({ x: W, y: RIDGE_Y, w: TRAIL.x - W, h: 20 });
+  list.push({ x: TRAIL.x + TRAIL.w, y: RIDGE_Y, w: RIGHT - TRAIL.x - TRAIL.w + 20, h: 20 });
+  for (let y = RIDGE_Y + 20; y < H; y += 8) list.push({ x: shoreX(y) + 16, y, w: RIGHT - shoreX(y) + 4, h: 8 });
   return list;
 }
 function hitsRects(rects, x, y) {
-  if (x < LEFT + 9 || x > W - 9 || y < SHRINE_FLOOR + 5 || y > H - 5) return true;
+  if (x < LEFT + 9 || x > RIGHT - 9 || y < SHRINE_FLOOR + 5 || y > H - 5) return true;
   for (const r of rects) if (x + 5 > r.x && x - 5 < r.x + r.w && y + 2 > r.y && y - 3 < r.y + r.h) return true;
   return false;
 }
 
 // ---------- หาเส้นทาง (A* บนตาราง 4px) ----------
-const CELL = 4, GW = (W - LEFT) / CELL, GH = (H - TOP) / CELL; // คอลัมน์ 0 = x LEFT, แถว 0 = y TOP
+const CELL = 4, GW = (RIGHT - LEFT) / CELL, GH = (H - TOP) / CELL; // คอลัมน์ 0 = x LEFT, แถว 0 = y TOP
 function buildGrid(rects) {
   const grid = new Uint8Array(GW * GH);
   for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) grid[gy * GW + gx] = hitsRects(rects, gx * CELL + 2 + LEFT, gy * CELL + 2 + TOP) ? 1 : 0;

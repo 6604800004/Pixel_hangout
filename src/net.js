@@ -130,6 +130,7 @@ function makeWsNet(cfg) {
         if (m.v) { if (net.build && net.build !== m.v) L.update.forEach((f) => f()); net.build = net.build || m.v; }
         if (Number.isFinite(m.now)) net.timeOffset = m.now - Date.now();
         net.iceServers = m.ice || net.iceServers;
+        clearTimeout(net.dropT);
         peers.clear();
         for (const p of m.peers) peers.set(p.key, p);
         peers.set(m.key, { key: m.key, uid, p: myPresence });
@@ -146,6 +147,9 @@ function makeWsNet(cfg) {
         if (pr && Number.isFinite(m.x) && Number.isFinite(m.y)) { pr.p.x = m.x; pr.p.y = m.y; if (m.d) pr.p.d = m.d; pr.p.m = m.m ? 1 : 0; if (Number.isFinite(m.ts)) pr.p.t = m.ts; L.move.forEach((f) => f(m.k, pr.p)); }
       } else if (m.t === 'peer-left') {
         peers.delete(m.key); emitPeers();
+      } else if (m.t === 'cols') {
+        // ข้อมูลห้องทั้งก้อน (ได้คืนจากเซิร์ฟเวอร์ตัวเก่า/ที่สำรองไว้)
+        for (const c of COLS) { if (!m.cols || !Array.isArray(m.cols[c])) continue; cols[c].clear(); for (const d of m.cols[c]) cols[c].set(d.id, d); emitCol(c); }
       } else if (m.t === 'col') {
         if (!cols[m.col]) return;
         if (m.doc) cols[m.col].set(m.id, { ...m.doc, id: m.id }); else cols[m.col].delete(m.id);
@@ -167,8 +171,10 @@ function makeWsNet(cfg) {
     };
     ws.onclose = () => {
       if (ws !== me) return;
-      peers.clear(); emitPeers();
-      if (closedByUser) return;
+      // หลุดชั่วคราว (เช่น เซิร์ฟเวอร์รีสตาร์ตตอนอัปเดต): ยังไม่ลบเพื่อนออกทันที ให้ต่อใหม่ก่อน ภาพจะไม่ "เด้ง"
+      clearTimeout(net.dropT);
+      if (closedByUser) { peers.clear(); emitPeers(); return; }
+      net.dropT = setTimeout(() => { if (!ws || ws.readyState !== 1) { peers.clear(); emitPeers(); } }, 12000);
       L.status.forEach((f) => f('offline'));
       setTimeout(connect, Math.min(8000, 700 * 2 ** retry++));
     };

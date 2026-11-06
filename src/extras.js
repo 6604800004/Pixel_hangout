@@ -32,6 +32,8 @@ const ZONE_TIPS = {
   pub: 'ห้องส่วนตัว — ได้ยินทุกคนในผับ คนข้างนอกไม่ได้ยิน',
   shrine: 'ห้องส่วนตัว เงียบสงบ — ได้ยินเฉพาะคนในห้อง · นั่งเบาะกราบเพื่อไหว้พระ 🙏',
   cinema: 'ห้องส่วนตัว — แตะจอใหญ่เพื่อฉายหนังจาก YouTube แล้วเลือกที่นั่ง ธรรมดา / VIP / เตียง VVIP 🍿',
+  mountain: 'ได้ยินทุกคนบนเขา · นั่งล้อมกองไฟที่ขอนไม้ได้ 🔥',
+  beach: 'ได้ยินทุกคนบนชายหาด · นั่งเก้าอี้ชายหาด/ผ้าเช็ดตัวได้ 🏖️ (ใส่ชุดว่ายน้ำได้ที่ 👕)',
 };
 const peerRange = (p) => clampMic(p.mr);
 const peerRingColor = (p) => MIC_COLORS[Number.isInteger(p.mc) && p.mc >= 0 && p.mc < MIC_COLORS.length ? p.mc : 0];
@@ -63,7 +65,7 @@ function updateZones() {
   G.audible = hear; G.sendTo = send;
   if (z !== G.zone) {
     G.zone = z;
-    toast(`${ZONES[z].icon} ${zoneName(z)}` + (G.voice ? ' — ' + ZONE_TIPS[z] : ''), 3200);
+    toast(`${ZONES[z].icon} ${zoneName(z)}` + (G.voice && ZONE_TIPS[z] ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
   const chip = $('#zoneChip');
   const n = othersInZone(z).size + 1;
@@ -251,7 +253,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 8 ? DEFAULT_LAYOUT.length : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 8 ? LAYOUT_V10_FROM : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -1164,10 +1166,10 @@ $('#diagBtn').onclick = () => { $('#people').classList.add('hidden'); openVoiceD
 
 // ================================================= รายชื่อห้องด้านข้าง (แบบช่องเสียง) ====
 // แต่ละห้อง = ช่องเสียงหนึ่งช่อง · แตะชื่อห้องเพื่อเดินไป · แตะชื่อคนเพื่อเดินไปหา · ขอบเขียว = กำลังพูด
-const ROOM_ORDER = ['shrine', 'cinema', 'hall', 'meet', 'garden', 'pub', 'karaoke'];
+const ROOM_ORDER = ['shrine', 'cinema', 'hall', 'meet', 'garden', 'pub', 'karaoke', 'mountain', 'beach'];
 const ROOM_SPOTS = {
   shrine: [240, -40], cinema: [-40, 130], hall: [256, 250], meet: [230, 420],
-  garden: [408, 420], pub: [440, 660], karaoke: [228, 757],
+  garden: [408, 420], pub: [440, 660], karaoke: [228, 757], mountain: [636, 300], beach: [580, 472],
 };
 function roomTarget(z) {
   const [cx, cy] = ROOM_SPOTS[z];

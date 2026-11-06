@@ -10,7 +10,7 @@ const HAIR_COLORS = ['#3a2c3f', '#6b4430', '#b0703c', '#f0c96b', '#f08a6c', '#f5
 const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7d9cf0', '#b48cf0', '#f4f1e8', '#5a5f7a', '#e8505b', '#3fa37a', '#c8a27a', '#2e2a3a', '#ffffff', '#ff6bd5', '#00b3a4', '#a33b54', '#3b4f8f', '#d6c3a5', '#8c6a4f'];
 // ⭐ = เฉพาะแอดมิน (เซิร์ฟเวอร์ตัดออกถ้าคนทั่วไปใส่)
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
-const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง']];
+const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['swim', 'ชุดว่ายน้ำ'], ['bikini', 'บิกินี่'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
 const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
 const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
@@ -126,14 +126,15 @@ function charSprite(look, dir, frame, pose, blink) {
     const tc = colOf(look.tc, CLOTH_COLORS) || CLOTH_COLORS[5], tcD = shade(tc, -0.2), tcL = shade(tc, 0.2);
     const bc = colOf(look.bc, CLOTH_COLORS) || CLOTH_COLORS[8], bcD = shade(bc, -0.22);
     const top = look.top;
-    const sleeve = top === 'tank' ? skin : tc, sleeveD = top === 'tank' ? skinD : tcD;
+    const swim = top === 'swim' || top === 'bikini';
+    const sleeve = top === 'tank' || swim ? skin : tc, sleeveD = top === 'tank' || swim ? skinD : tcD;
     const shoe = '#4a3a4a';
     const dress = look.top === 'dress';
     const fem = look.sex === 'f';
     // ผู้หญิง: ใส่กระโปรงอัตโนมัติ (ยกเว้นชุดเดรส/เอี๊ยม) ให้ต่างจากผู้ชายชัดๆ
     const princess = top === 'princess';
-    const skirt = fem && !dress && look.top !== 'overall' && !princess;
-    const legC = dress || skirt ? skin : bc, legD = dress || skirt ? skinD : bcD;
+    const skirt = fem && !dress && look.top !== 'overall' && !princess && !swim;
+    const legC = dress || skirt || swim ? skin : bc, legD = dress || skirt || swim ? skinD : bcD;
     const side = d === 'left';
     const EYE = '#2e2235';
 
@@ -168,8 +169,16 @@ function charSprite(look, dir, frame, pose, blink) {
     if (top === 'sweater') U(8, 17, 6, 2, tcL);
 
     // ---------- ลำตัว ----------
-    U(7, 19, 8, 7, tc);
-    U(14, 19, 1, 7, tcD); U(7, 25, 8, 1, tcD);
+    const bodyC = swim ? skin : tc, bodyD = swim ? skinD : tcD;
+    U(7, 19, 8, 7, bodyC);
+    U(14, 19, 1, 7, bodyD); U(7, 25, 8, 1, bodyD);
+    if (swim) {
+      // ชุดว่ายน้ำ / บิกินี่ (สีตามสีเสื้อ ลายจุดสีอ่อน)
+      if (fem && top === 'swim') { U(7, 20, 8, 7, tc); U(8, 19, 1, 1, tc); U(13, 19, 1, 1, tc); U(14, 20, 1, 7, tcD); U(7, 26, 8, 1, tcD); U(9, 21, 1, 1, tcL); U(12, 23, 1, 1, tcL); U(9, 24, 1, 1, tcL); U(10, 20, 2, 1, tcL); }
+      else if (fem) { U(7, 20, 8, 2, tc); U(8, 19, 1, 1, tc); U(13, 19, 1, 1, tc); U(10, 20, 2, 2, tcD); U(14, 20, 1, 2, tcD); U(7, 25, 8, 2, tc); U(14, 25, 1, 2, tcD); U(10, 26, 2, 1, tcD); U(8, 20, 1, 1, tcL); U(12, 20, 1, 1, tcL); }
+      else if (top === 'swim') { U(7, 24, 8, 4, tc); U(7, 24, 8, 1, tcD); U(10, 27, 2, 1, skinD); U(7, 25, 1, 3, tcL); U(14, 25, 1, 3, tcL); U(10, 25, 1, 1, '#ffffff'); }
+      else { U(7, 25, 8, 2, tc); U(7, 25, 8, 1, tcD); U(10, 26, 2, 1, tcD); }
+    }
     if (dress) { U(6, 23, 10, 3, tc); U(5, 25, 12, 2, tc); U(5, 27, 12, 1, tcD); U(15, 23, 1, 3, tcD); }
     if (princess) {
       // ⭐ ชุดเจ้าหญิง: กระโปรงบานยาวถึงพื้น 3 ชั้น เข็มขัดทอง แขนพอง ประกายวิบวับ
@@ -183,8 +192,8 @@ function charSprite(look, dir, frame, pose, blink) {
       U(glint ? 6 : 14, glint ? 27 : 25, 1, 1, '#ffffff'); U(glint ? 15 : 7, glint ? 29 : 28, 1, 1, '#ffffff');
     }
     if (skirt) { U(7, 24, 8, 2, bc); U(6, 25, 10, 2, bc); U(5, 27, 12, 1, bc); U(5, 28, 12, 1, bcD); U(9, 26, 1, 2, bcD); U(13, 26, 1, 2, bcD); }
-    if (fem) { U(7, 22, 1, 2, tcD); U(14, 22, 1, 2, tcD); } // เอวคอด
-    else { U(6, 19, 10, 1, tc); U(15, 19, 1, 1, tcD); }     // ไหล่กว้าง
+    if (fem) { U(7, 22, 1, 2, swim ? skinD : tcD); U(14, 22, 1, 2, swim ? skinD : tcD); } // เอวคอด
+    else { U(6, 19, 10, 1, bodyC); U(15, 19, 1, 1, bodyD); }     // ไหล่กว้าง
     if (top === 'stripe') { for (const y of [20, 22, 24]) U(7, y, 8, 1, tcL); }
     if (top === 'tank') { U(6, 19, 1, 1, skin); U(15, 19, 1, 1, skinD); U(7, 19, 1, 2, skin); U(14, 19, 1, 2, skinD); }
     if (top === 'sweater') { U(7, 25, 8, 1, tcL); U(7, 19, 8, 1, tcL); }
@@ -956,6 +965,75 @@ const FURN = {
     ctx.fillStyle = '#fff6d8';
     for (let i = 0; i < 14; i++) { const x = sx + 2 + ((i * 7) % 18), y = sy + 13 + ((i * 5) % 7); ctx.fillRect(x, y, 2, 2); }
     for (let i = 0; i < 3; i++) { const ph = (t * 1.6 + i / 3) % 1; ctx.fillRect(sx + 6 + i * 5, sy + 13 - Math.round(Math.sin(ph * Math.PI) * 6), 2, 2); }
+  } },
+  // ---------------- ทะเล + ภูเขา ----------------
+  palm: { label: 'ต้นมะพร้าว', emo: '🌴', w: 40, h: 58, solid: true, foot: 6, fw: 10, draw(P) {
+    P(17, 20, 5, 36, '#a8743c'); for (let y = 22; y < 56; y += 5) P(17, y, 5, 1, '#8a5a2c'); P(20, 20, 2, 36, '#c08a4c');
+    P(14, 54, 12, 4, '#d4b378');
+    const leaf = (x, y, w, dir) => { for (let i = 0; i < w; i++) { P(x + i * dir, y + Math.floor((i * i) / (w * 1.2)), 2, 3, i % 3 ? '#3f9a4a' : '#57b45e'); } };
+    leaf(20, 14, 20, 1); leaf(18, 14, 18, -1); leaf(20, 10, 14, 1); leaf(18, 10, 14, -1); P(14, 6, 12, 10, '#3f9a4a'); P(16, 4, 8, 4, '#57b45e');
+    P(16, 16, 4, 4, '#7a4a24'); P(21, 17, 4, 4, '#7a4a24'); P(17, 17, 1, 1, '#a8743c');
+  } },
+  parasol: { label: 'ร่มชายหาด', emo: '⛱️', w: 40, h: 40, solid: true, foot: 4, fw: 4, variants: 3, draw(P, v) {
+    const [a, b] = [['#ff6b8a', '#ffffff'], ['#3fa6e0', '#ffe07a'], ['#7ed37a', '#ffffff']][v % 3];
+    P(19, 10, 2, 30, '#efe6d6'); P(19, 38, 2, 2, '#a89c88');
+    for (let r = 0; r < 12; r++) { const half = 4 + r * 1.5 | 0; for (let x = -half; x < half; x++) P(20 + x, 2 + r, 1, 1, ((x + 40) / 5 | 0) % 2 ? a : b); }
+    P(18, 0, 4, 3, b);
+  } },
+  beachChair: { label: 'เก้าอี้ชายหาด', emo: '🪑', w: 18, h: 22, solid: true, foot: 6, variants: 3,
+    seats: () => [{ dx: 0, dy: -5, dir: 'right' }],
+    draw(P, v) {
+      const [a, b] = [['#ff8fab', '#ffffff'], ['#6cc6d9', '#ffffff'], ['#ffe07a', '#ff9a3c']][v % 3];
+      P(2, 18, 2, 4, '#c8a27a'); P(14, 18, 2, 4, '#c8a27a');
+      for (let y = 0; y < 12; y++) P(1, y, 4, 1, y % 4 < 2 ? a : b);
+      for (let x = 1; x < 17; x++) P(x, 12, 1, 6, ((x / 3) | 0) % 2 ? a : b);
+      P(0, 0, 1, 18, '#c8a27a'); P(17, 12, 1, 6, '#c8a27a');
+    } },
+  towel: { label: 'ผ้าเช็ดตัว', emo: '🏖️', w: 34, h: 16, floor: true, solid: false, variants: 4,
+    seats: () => [{ dx: 0, dy: -3, dir: 'down' }],
+    draw(P, v) {
+      const [a, b] = [['#ff6b8a', '#ffd6e0'], ['#3fa6e0', '#d6efff'], ['#ffb03a', '#fff1c8'], ['#8f7dff', '#e6e0ff']][v % 4];
+      P(0, 0, 34, 16, a); for (let x = 2; x < 34; x += 6) P(x, 0, 3, 16, b); P(0, 0, 34, 1, '#ffffff'); P(0, 15, 34, 1, '#00000022');
+    } },
+  sandcastle: { label: 'ปราสาททราย', emo: '🏰', w: 26, h: 24, solid: true, foot: 8, draw(P) {
+    P(2, 12, 22, 12, '#e8c886'); P(2, 12, 22, 2, '#f6dca4'); P(4, 4, 6, 10, '#e8c886'); P(16, 4, 6, 10, '#e8c886'); P(10, 8, 6, 6, '#e8c886');
+    for (const x of [4, 8, 16, 20]) P(x, 2, 2, 2, '#e8c886'); P(11, 16, 4, 8, '#c8a462'); P(6, 7, 2, 2, '#c8a462'); P(18, 7, 2, 2, '#c8a462');
+    P(12, 0, 1, 8, '#7a5236'); P(13, 0, 5, 3, '#ff6b8a');
+  } },
+  surfboard: { label: 'กระดานโต้คลื่น', emo: '🏄', w: 12, h: 40, solid: true, foot: 4, fw: 8, variants: 3, draw(P, v) {
+    const [a, b] = [['#ff9a3c', '#ffffff'], ['#3fa6e0', '#ffe07a'], ['#ff6b8a', '#8f7dff']][v % 3];
+    P(3, 0, 6, 2, a); P(2, 2, 8, 34, a); P(3, 36, 6, 3, a); P(5, 2, 2, 36, b); P(2, 14, 8, 2, b);
+  } },
+  pine: { label: 'ต้นสน', emo: '🌲', w: 30, h: 50, solid: true, foot: 6, fw: 10, variants: 2, draw(P, v) {
+    const [a, b, c] = v % 2 ? ['#2f6e4a', '#3f8a5a', '#f4f8ff'] : ['#2f6e4a', '#3f8a5a', '#57a46c'];
+    P(13, 40, 4, 10, '#7a5236');
+    for (let tier = 0; tier < 4; tier++) { const y0 = 4 + tier * 9, w = 10 + tier * 5; for (let r = 0; r < 12; r++) { const half = Math.round((w * (r + 2)) / 14); P(15 - half, y0 + r, half * 2, 1, r < 3 ? c : r % 4 === 0 ? b : a); } }
+    P(14, 0, 2, 5, a);
+  } },
+  rock: { label: 'ก้อนหิน', emo: '🪨', w: 26, h: 16, solid: true, foot: 10, variants: 2, draw(P, v) {
+    const [a, b, c] = ['#9a9cab', '#b8bac8', '#787a89'];
+    P(3, 4, 20, 12, a); P(1, 7, 24, 8, a); P(5, 2, 12, 4, b); P(4, 4, 10, 3, b); P(2, 13, 22, 3, c); P(18, 6, 5, 8, c);
+    if (v % 2) { P(6, 10, 5, 2, '#7ed37a'); P(15, 11, 4, 1, '#7ed37a'); }
+  } },
+  campfire: { label: 'กองไฟ', emo: '🔥', w: 22, h: 18, solid: true, foot: 8, draw(P) {
+    for (const [x, y] of [[1, 12], [5, 14], [11, 15], [16, 13], [19, 10], [2, 8]]) P(x, y, 4, 3, '#8d8f9e');
+    P(3, 10, 16, 3, '#7a4a24'); P(5, 12, 12, 3, '#5a3418'); P(3, 10, 16, 1, '#9a6a3c');
+  },
+  anim(ctx, sx, sy, t) {
+    const f = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(sx + x, sy + y, w, h); };
+    const k = Math.sin(t * 9) > 0 ? 1 : 0, k2 = Math.sin(t * 7 + 1) > 0 ? 1 : 0;
+    f(7, 2 + k, 8, 9 - k, '#ff6b2a'); f(8, 0 + k2, 3, 4, '#ff9a3c'); f(12, 1 + k, 3, 4, '#ff9a3c'); f(9, 4 + k, 4, 6, '#ffd34d'); f(10, 6, 2, 4, '#fff6c8');
+    for (let i = 0; i < 3; i++) { const ph = (t * 0.8 + i / 3) % 1; ctx.fillStyle = `rgba(200,200,210,${0.5 * (1 - ph)})`; ctx.fillRect(sx + 9 + Math.round(Math.sin(ph * 6 + i) * 3), sy - 2 - ph * 18, 3, 3); }
+  } },
+  logSeat: { label: 'ขอนไม้นั่ง', emo: '🪵', w: 36, h: 12, solid: true, foot: 8, seats: () => [{ dx: -9, dy: -4, dir: 'down', over: true }, { dx: 9, dy: -4, dir: 'down', over: true }], draw(P) {
+    P(2, 2, 32, 9, '#8a5a2c'); P(2, 2, 32, 2, '#a8743c'); P(2, 9, 32, 2, '#6a4220'); P(0, 3, 4, 7, '#c8a26a'); P(1, 5, 2, 3, '#a8743c'); P(32, 3, 4, 7, '#c8a26a'); P(33, 5, 2, 3, '#a8743c');
+    for (let x = 8; x < 30; x += 7) P(x, 5, 3, 1, '#6a4220');
+  } },
+  tent: { label: 'เต็นท์', emo: '⛺', w: 46, h: 36, solid: true, foot: 20, variants: 2, draw(P, v) {
+    const [a, b] = v % 2 ? ['#3fa6e0', '#2f7fb0'] : ['#ff9a3c', '#d4762a'];
+    for (let r = 0; r < 30; r++) { const half = Math.round((r * 22) / 30); P(23 - half, 4 + r, half, 1, a); P(23, 4 + r, half, 1, b); }
+    for (let r = 10; r < 30; r++) { const half = Math.round(((r - 10) * 6) / 20); P(23 - half, 4 + r, half * 2, 1, '#3a2418'); }
+    P(22, 0, 2, 6, '#7a5236'); P(0, 33, 3, 3, '#7a5236'); P(43, 33, 3, 3, '#7a5236');
   } },
   // ---------------- ห้องไหว้พระ ----------------
   prayerMat: { label: 'เบาะกราบ', emo: '🙏', w: 20, h: 10, floor: true, solid: false, variants: 3,

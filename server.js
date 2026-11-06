@@ -91,9 +91,79 @@ function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(DATA_FILE, JSON.stringify(store), (e) => e && console.warn('save failed', e.message)));
+    if (typeof ghSchedule === 'function') ghSchedule();
   }, 500);
 }
 const list = (c) => Object.entries(store[c]).map(([id, d]) => ({ ...d, id }));
+// ================= เก็บข้อมูลห้องไม่ให้หายตอนอัปเดต/รีสตาร์ต =================
+// Render แบบฟรี: ดิสก์ถูกล้างทุกครั้งที่ deploy/หลับ → 1) ตัวเก่าส่งข้อมูลให้ตัวใหม่ก่อนปิด (อัตโนมัติ)
+// 2) (ถ้าตั้ง GH_TOKEN + GH_REPO) สำรองไว้ใน branch "room-data" ของ GitHub — รอดแม้เซิร์ฟเวอร์หลับ
+const HANDOFF_KEY = process.env.HANDOFF_KEY || ADMIN_KEY;
+const PUBLIC_URL = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL || '';
+const GH = { token: process.env.GH_TOKEN || '', repo: process.env.GH_REPO || '', branch: process.env.GH_BRANCH || 'room-data', file: 'room.json', sha: null, timer: null, busy: false };
+const ghOn = () => !!(GH.token && /^[\w.-]+\/[\w.-]+$/.test(GH.repo));
+const storeEmpty = () => !Object.keys(store.furniture).length && !Object.keys(store.settings).length && !Object.keys(store.chat).length;
+function mergeStore(incoming) {
+  let n = 0;
+  for (const c of COLS) {
+    const src = incoming && incoming[c];
+    if (!src || typeof src !== 'object') continue;
+    for (const [id, d] of Object.entries(src)) if (!store[c][id] && d && typeof d === 'object') { store[c][id] = d; n++; }
+  }
+  if (n) { save(); broadcast({ t: 'cols', cols: Object.fromEntries(COLS.map((c) => [c, list(c)])) }); }
+  return n;
+}
+async function ghApi(method, pathPart, body) {
+  const r = await fetch(`https://api.github.com/repos/${GH.repo}${pathPart}`, {
+    method, signal: AbortSignal.timeout(15000),
+    headers: { Authorization: `Bearer ${GH.token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'pixel-hangout', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const j = r.status === 204 ? {} : await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, j };
+}
+async function ghLoad() {
+  if (!ghOn()) return;
+  try {
+    const r = await ghApi('GET', `/contents/${GH.file}?ref=${encodeURIComponent(GH.branch)}`);
+    if (!r.ok) { console.log('GitHub backup: ยังไม่มีไฟล์สำรอง', r.status); return; }
+    GH.sha = r.j.sha;
+    const data = JSON.parse(Buffer.from(r.j.content || '', 'base64').toString('utf8'));
+    const n = mergeStore(data);
+    console.log(`GitHub backup: โหลดข้อมูลห้องคืน ${n} รายการ`);
+  } catch (e) { console.warn('GitHub backup load failed', e.message); }
+}
+async function ghEnsureBranch() {
+  const b = await ghApi('GET', `/branches/${encodeURIComponent(GH.branch)}`);
+  if (b.ok) return true;
+  const repo = await ghApi('GET', '');
+  const base = repo.j.default_branch || 'main';
+  const ref = await ghApi('GET', `/git/ref/heads/${encodeURIComponent(base)}`);
+  if (!ref.ok) return false;
+  const c = await ghApi('POST', '/git/refs', { ref: `refs/heads/${GH.branch}`, sha: ref.j.object.sha });
+  return c.ok;
+}
+async function ghSave() {
+  if (!ghOn() || GH.busy) return;
+  GH.busy = true;
+  try {
+    const content = Buffer.from(JSON.stringify(store)).toString('base64');
+    let r = await ghApi('PUT', `/contents/${GH.file}`, { message: 'room data backup [skip ci]', content, branch: GH.branch, ...(GH.sha ? { sha: GH.sha } : {}) });
+    if (r.status === 404 && (await ghEnsureBranch())) r = await ghApi('PUT', `/contents/${GH.file}`, { message: 'room data backup [skip ci]', content, branch: GH.branch });
+    if ((r.status === 409 || r.status === 422) && !r.ok) { const g = await ghApi('GET', `/contents/${GH.file}?ref=${encodeURIComponent(GH.branch)}`); GH.sha = g.ok ? g.j.sha : null; r = await ghApi('PUT', `/contents/${GH.file}`, { message: 'room data backup [skip ci]', content, branch: GH.branch, ...(GH.sha ? { sha: GH.sha } : {}) }); }
+    if (r.ok) GH.sha = r.j.content && r.j.content.sha; else console.warn('GitHub backup save failed', r.status, r.j.message);
+  } catch (e) { console.warn('GitHub backup save failed', e.message); } finally { GH.busy = false; }
+}
+function ghSchedule() { if (!ghOn()) return; clearTimeout(GH.timer); GH.timer = setTimeout(ghSave, 20000); }
+async function handoff() {
+  if (!HANDOFF_KEY || !PUBLIC_URL) return;
+  try {
+    const r = await fetch(`${PUBLIC_URL.replace(/\/$/, '')}/api/handoff`, { method: 'POST', signal: AbortSignal.timeout(8000), headers: { 'Content-Type': 'application/json', 'X-Handoff': crypto.createHash('sha256').update('handoff:' + HANDOFF_KEY).digest('hex'), 'X-Boot': BOOT_ID }, body: JSON.stringify(store) });
+    console.log('ส่งข้อมูลห้องให้เซิร์ฟเวอร์ใหม่:', r.status);
+  } catch (e) { console.warn('handoff failed', e.message); }
+}
+const BOOT_ID = crypto.randomBytes(6).toString('hex');
+if (storeEmpty()) ghLoad();
 
 // ---------- หน้าเว็บ ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
@@ -128,6 +198,20 @@ const server = http.createServer((req, res) => {
         out(code, body);
       })
       .catch(() => out(502, { error: 'lastfm' }));
+    return;
+  }
+  // ---- รับข้อมูลห้องจากเซิร์ฟเวอร์ตัวเก่า (ตอน deploy) ----
+  if (url.pathname === '/api/handoff' && req.method === 'POST') {
+    const want = HANDOFF_KEY ? crypto.createHash('sha256').update('handoff:' + HANDOFF_KEY).digest('hex') : '';
+    if (!want || req.headers['x-handoff'] !== want || req.headers['x-boot'] === BOOT_ID) { res.writeHead(403); return res.end(); }
+    const chunks = []; let size = 0;
+    req.on('data', (c) => { size += c.length; if (size > 20 * 1024 * 1024) req.destroy(); else chunks.push(c); });
+    req.on('end', () => {
+      let n = 0;
+      try { n = mergeStore(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch {}
+      console.log(`รับข้อมูลห้องจากตัวเก่า ${n} รายการ`);
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, n }));
+    });
     return;
   }
   // ---- แนบไฟล์ในแชต ----
@@ -248,7 +332,7 @@ function stripAdminLook(l, uid) {
   for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(l[f]) && !ok.includes(l[f])) { if (out === l) out = { ...l }; out[f] = ADMIN_DEF[f]; }
   return out;
 }
-const ZONE_IDS = ['hall', 'meet', 'garden', 'karaoke', 'pub', 'shrine', 'cinema'];
+const ZONE_IDS = ['hall', 'meet', 'garden', 'karaoke', 'pub', 'shrine', 'cinema', 'mountain', 'beach'];
 const okId = (id) => typeof id === 'string' && /^[\w.:-]{1,48}$/.test(id);
 
 wss.on('connection', (ws) => {
@@ -527,5 +611,6 @@ process.on('SIGTERM', () => {
   console.log('SIGTERM: แจ้งเตือนอัปเดต 15 วิ');
   broadcast({ t: 'sys', updating: 15 });
   try { save(); } catch {}
+  handoff(); clearTimeout(GH.timer); ghSave();
   setTimeout(() => process.exit(0), 16000);
 });
