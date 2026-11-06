@@ -55,7 +55,7 @@ const DEFAULT_LAYOUT = [
   { t: 'counter', x: 60, y: 300 }, { t: 'roundTable', x: 92, y: 334 }, { t: 'whiteboard', x: 488, y: 96 },
   { t: 'plant', v: 2, x: 270, y: 78 }, { t: 'rug', v: 1, x: 384, y: 308 }, { t: 'roundTable', x: 384, y: 306 },
   { t: 'armchair', x: 352, y: 312, v: 1 }, { t: 'armchair', x: 416, y: 312, v: 4 }, { t: 'plant', v: 0, x: 496, y: 342 },
-  { t: 'plant', v: 1, x: 236, y: 342 },
+  { t: 'plant', v: 1, x: 236, y: 342, gone: 9 /* v9: เอาออก (บังประตูห้องประชุม) */ },
   // ---- ห้องประชุม ----
   { t: 'bigScreen', x: 150, y: 404 }, { t: 'whiteboard', x: 44, y: 410 }, { t: 'plant', v: 0, x: 272, y: 404 },
   { t: 'meetChair', x: 112, y: 456, v: 0, f: 0 }, { t: 'meetChair', x: 150, y: 456, v: 1, f: 0 }, { t: 'meetChair', x: 188, y: 456, v: 2, f: 0 },
@@ -96,7 +96,9 @@ const DEFAULT_LAYOUT = [
   // ---- v8: เบาะกราบสีทองหน้าโต๊ะหมู่บูชา (บนพรมแดงกลาง) ----
   { t: 'prayerMat', v: 1, x: 256, y: -112 },
 ];
-const LAYOUT_VERSION = 8;
+const LAYOUT_VERSION = 9;
+// v9: เอาต้นไม้หน้าประตูห้องประชุมออก (ลบตามตำแหน่ง ไม่ว่าใครจะย้าย/วางไว้)
+const LAYOUT_V9_REMOVE = [{ t: 'plant', x: 236, y: 342, r: 12 }];
 const LAYOUT_V8_FROM = 124; // def124: เบาะกราบทองหน้าพระ
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)

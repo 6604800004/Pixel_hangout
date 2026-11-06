@@ -165,7 +165,7 @@ function fullPresence() {
 function effectiveFurniture() {
   const base = G.furnDocs && G.furnDocs.length
     ? G.furnDocs.filter((d) => FURN[d.t])
-    : DEFAULT_LAYOUT.map((d, i) => ({ ...d, id: 'def' + i, virtual: true }));
+    : DEFAULT_LAYOUT.map((d, i) => ({ ...d, id: 'def' + i, virtual: true })).filter((d) => !d.gone);
   // ของที่คนอื่นกำลังลากอยู่ (เห็นสดๆ)
   const live = new Map();
   for (const rt of G.others.values()) if (rt.p.dr && rt.p.dr.id) live.set(rt.p.dr.id, rt.p.dr);

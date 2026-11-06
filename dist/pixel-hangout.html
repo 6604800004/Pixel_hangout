@@ -1767,7 +1767,7 @@ const DEFAULT_LAYOUT = [
   { t: 'counter', x: 60, y: 300 }, { t: 'roundTable', x: 92, y: 334 }, { t: 'whiteboard', x: 488, y: 96 },
   { t: 'plant', v: 2, x: 270, y: 78 }, { t: 'rug', v: 1, x: 384, y: 308 }, { t: 'roundTable', x: 384, y: 306 },
   { t: 'armchair', x: 352, y: 312, v: 1 }, { t: 'armchair', x: 416, y: 312, v: 4 }, { t: 'plant', v: 0, x: 496, y: 342 },
-  { t: 'plant', v: 1, x: 236, y: 342 },
+  { t: 'plant', v: 1, x: 236, y: 342, gone: 9 /* v9: เอาออก (บังประตูห้องประชุม) */ },
   // ---- ห้องประชุม ----
   { t: 'bigScreen', x: 150, y: 404 }, { t: 'whiteboard', x: 44, y: 410 }, { t: 'plant', v: 0, x: 272, y: 404 },
   { t: 'meetChair', x: 112, y: 456, v: 0, f: 0 }, { t: 'meetChair', x: 150, y: 456, v: 1, f: 0 }, { t: 'meetChair', x: 188, y: 456, v: 2, f: 0 },
@@ -1808,7 +1808,9 @@ const DEFAULT_LAYOUT = [
   // ---- v8: เบาะกราบสีทองหน้าโต๊ะหมู่บูชา (บนพรมแดงกลาง) ----
   { t: 'prayerMat', v: 1, x: 256, y: -112 },
 ];
-const LAYOUT_VERSION = 8;
+const LAYOUT_VERSION = 9;
+// v9: เอาต้นไม้หน้าประตูห้องประชุมออก (ลบตามตำแหน่ง ไม่ว่าใครจะย้าย/วางไว้)
+const LAYOUT_V9_REMOVE = [{ t: 'plant', x: 236, y: 342, r: 12 }];
 const LAYOUT_V8_FROM = 124; // def124: เบาะกราบทองหน้าพระ
 const LAYOUT_V2_FROM = 25; // ของชิ้นที่ def25 ขึ้นไปมาในเวอร์ชัน 2 (ห้องประชุม + สวน)
 const LAYOUT_V3_FROM = 45; // def45 ขึ้นไปมาในเวอร์ชัน 3 (คาราโอเกะ + ผับ)
@@ -3545,7 +3547,7 @@ function fullPresence() {
 function effectiveFurniture() {
   const base = G.furnDocs && G.furnDocs.length
     ? G.furnDocs.filter((d) => FURN[d.t])
-    : DEFAULT_LAYOUT.map((d, i) => ({ ...d, id: 'def' + i, virtual: true }));
+    : DEFAULT_LAYOUT.map((d, i) => ({ ...d, id: 'def' + i, virtual: true })).filter((d) => !d.gone);
   // ของที่คนอื่นกำลังลากอยู่ (เห็นสดๆ)
   const live = new Map();
   for (const rt of G.others.values()) if (rt.p.dr && rt.p.dr.id) live.set(rt.p.dr.id, rt.p.dr);
@@ -5737,7 +5739,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 8 ? DEFAULT_LAYOUT.length : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -5745,6 +5747,7 @@ function maybeMigrateLayout() {
       if (ex && i >= LAYOUT_V4_FROM && ex.y > H) { const d = DEFAULT_LAYOUT[i]; try { await G.net.set('furniture', id, { t: d.t, v: d.v || 0, f: d.f || 0, ...ex, x: d.x, y: d.y }); } catch { return; } continue; }
       if (ex) continue;
       const d = DEFAULT_LAYOUT[i];
+      if (d.gone) continue;
       // มีคนวางเบาะไว้ตรงนั้นเองแล้ว → แค่เปลี่ยนเป็นสีทอง ไม่วางซ้อน
       if (d.t === 'prayerMat') {
         const near = G.furnDocs.find((o) => o.t === 'prayerMat' && Math.abs(o.x - d.x) < 14 && Math.abs(o.y - d.y) < 10);
@@ -5752,6 +5755,8 @@ function maybeMigrateLayout() {
       }
       try { await G.net.set('furniture', id, { t: d.t, x: d.x, y: d.y, v: d.v || 0, f: d.f || 0 }); } catch { return; }
     }
+    // v9: ลบของที่ประกาศเอาออก
+    if (G.layoutV < 9) for (const r of LAYOUT_V9_REMOVE) for (const d of G.furnDocs.filter((o) => o.t === r.t && Math.abs(o.x - r.x) <= r.r && Math.abs(o.y - r.y) <= r.r)) { try { await G.net.del('furniture', d.id); } catch {} }
     // ของที่ผู้ใช้วางไว้ในห้องไหว้พระเดิม (ชั้นล่างสุดที่ไม่มีแล้ว) ย้ายขึ้นไปห้องใหม่
     for (const d of G.furnDocs) if (!String(d.id).startsWith('def') && d.y > H) { try { await G.net.set('furniture', d.id, { ...d, y: -60 }); } catch {} }
     try { await G.net.set('settings', 'layout', { v: LAYOUT_VERSION }); } catch {}

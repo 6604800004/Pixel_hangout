@@ -251,7 +251,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 8 ? DEFAULT_LAYOUT.length : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -259,6 +259,7 @@ function maybeMigrateLayout() {
       if (ex && i >= LAYOUT_V4_FROM && ex.y > H) { const d = DEFAULT_LAYOUT[i]; try { await G.net.set('furniture', id, { t: d.t, v: d.v || 0, f: d.f || 0, ...ex, x: d.x, y: d.y }); } catch { return; } continue; }
       if (ex) continue;
       const d = DEFAULT_LAYOUT[i];
+      if (d.gone) continue;
       // มีคนวางเบาะไว้ตรงนั้นเองแล้ว → แค่เปลี่ยนเป็นสีทอง ไม่วางซ้อน
       if (d.t === 'prayerMat') {
         const near = G.furnDocs.find((o) => o.t === 'prayerMat' && Math.abs(o.x - d.x) < 14 && Math.abs(o.y - d.y) < 10);
@@ -266,6 +267,8 @@ function maybeMigrateLayout() {
       }
       try { await G.net.set('furniture', id, { t: d.t, x: d.x, y: d.y, v: d.v || 0, f: d.f || 0 }); } catch { return; }
     }
+    // v9: ลบของที่ประกาศเอาออก
+    if (G.layoutV < 9) for (const r of LAYOUT_V9_REMOVE) for (const d of G.furnDocs.filter((o) => o.t === r.t && Math.abs(o.x - r.x) <= r.r && Math.abs(o.y - r.y) <= r.r)) { try { await G.net.del('furniture', d.id); } catch {} }
     // ของที่ผู้ใช้วางไว้ในห้องไหว้พระเดิม (ชั้นล่างสุดที่ไม่มีแล้ว) ย้ายขึ้นไปห้องใหม่
     for (const d of G.furnDocs) if (!String(d.id).startsWith('def') && d.y > H) { try { await G.net.set('furniture', d.id, { ...d, y: -60 }); } catch {} }
     try { await G.net.set('settings', 'layout', { v: LAYOUT_VERSION }); } catch {}
