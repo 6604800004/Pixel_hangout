@@ -1062,7 +1062,7 @@ function drawCharacter(c, ch, t) {
     // ขี่สัตว์เลี้ยง: สัตว์ตัวใหญ่ขึ้นอยู่ข้างล่าง คนนั่งบนหลัง
     if (ch.dir === 'left' || ch.dir === 'right') ch.rideFace = ch.dir === 'right';
     const pf = ch.walking ? Math.floor(t * 8) % 2 : 0;
-    const ps = petSprite(look.pet, pf, !!ch.rideFace, look.pc || 0);
+    const ps = petSprite(look.pet, pf, !!ch.rideFace, look.pc || 0, carCols(look));
     if (look.pet === 'f1') {
       // รถ F1: คนนั่งอยู่ในห้องนักขับ (เห็นแค่หัว) แล้ววาดตัวรถทับ
       const k = 1.5, pw = ps.width * k, ph = ps.height * k, face = !!ch.rideFace;
@@ -1125,7 +1125,7 @@ function drawPet(c, ch, t) {
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
   drawShadow(c, pet.x, pet.y, 8);
   const fly = ch.look.pet === 'cloud' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : ch.look.pet === 'fish' ? 4 + Math.round(Math.sin(t * 2 + ch.seed)) : 0;
-  const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0);
+  const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0, carCols(ch.look));
   if (s.width > 16) drawShadow(c, pet.x, pet.y, Math.round(s.width * 0.45));
   c.drawImage(s, snap(pet.x - s.width / 2), snap(pet.y - s.height + 1 - fly));
 }
@@ -1773,13 +1773,17 @@ function openCreator(first) {
       optRow('เพศ', SEXES, (it) => draft.sex === it[0], (it) => (draft.sex = it[0])),
       optRow('สีผิว', SKINS, (_, i) => draft.skin === i, (_, i) => (draft.skin = i), 'sw'),
       optRow('ทรงผม', visItems(HAIR_STYLES, 'hair'), (it) => draft.hair === it[0], (it) => (draft.hair = it[0])),
-      colorRow('สีผม (🎨 = เลือกเอง)', HAIR_COLORS, () => draft.hc, (v) => (draft.hc = v)),
+      colorRow(visItems(ACCS, 'acc').some((a) => a[0] === 'racehelmet') ? 'สีผม / สีหมวกนักแข่ง (🎨 = เลือกเอง)' : 'สีผม (🎨 = เลือกเอง)', HAIR_COLORS, () => draft.hc, (v) => (draft.hc = v)),
       optRow('เสื้อ', visItems(TOPS, 'top'), (it) => draft.top === it[0], (it) => (draft.top = it[0])),
       colorRow('สีเสื้อ', CLOTH_COLORS, () => draft.tc, (v) => (draft.tc = v)),
-      colorRow('สีกางเกง / กระโปรง / เอี๊ยม', CLOTH_COLORS, () => draft.bc, (v) => (draft.bc = v)),
+      colorRow(visItems(TOPS, 'top').some((a) => a[0] === 'racer') ? 'สีกางเกง / กระโปรง / ลายชุด-หมวกนักแข่ง' : 'สีกางเกง / กระโปรง / เอี๊ยม', CLOTH_COLORS, () => draft.bc, (v) => (draft.bc = v)),
       optRow('เครื่องประดับ', visItems(ACCS, 'acc'), (it) => draft.acc === it[0], (it) => (draft.acc = it[0])),
       optRow('สัตว์เลี้ยงคู่ใจ', visItems(PETS, 'pet'), (it) => draft.pet === it[0], (it) => (draft.pet = it[0])),
-      colorRow('สีสัตว์เลี้ยง (ช่องแรก = สีธรรมชาติ)', PET_COLORS, () => draft.pc || 0, (v) => (draft.pc = v), 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'),
+      colorRow('สีสัตว์เลี้ยง / สีตัวรถ (ช่องแรก = สีธรรมชาติ)', PET_COLORS, () => draft.pc || 0, (v) => (draft.pc = v), 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'),
+      ...(visItems(PETS, 'pet').some((p) => p[0] === 'f1') ? [
+        colorRow('🏎️ สีลายรถ F1 — ลายหลัก', CLOTH_COLORS, () => draft.k1 ?? '#36e0ff', (v) => (draft.k1 = v)),
+        colorRow('🏎️ สีลายรถ F1 — ขอบลาย/ปลายปีก', CLOTH_COLORS, () => draft.k2 ?? '#ff3fa4', (v) => (draft.k2 = v)),
+      ] : []),
     ];
     const secBox = el('div', 'opts');
     const paintSections = () => { secBox.innerHTML = ''; sections().forEach((s) => secBox.append(s)); };
@@ -1821,7 +1825,7 @@ function openCreator(first) {
       const L = cleanLook(draft);
       g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
       g.drawImage(charSprite(L, dir, frame, 'stand', (t % 3.3) < 0.12), 17, 13);
-      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); } }
+      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc, carCols(L)); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); } }
     });
   });
 }
@@ -1867,7 +1871,7 @@ function openEnter() {
       const frame = Math.floor(t * 5) % 4;
       g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
       g.drawImage(charSprite(L, 'down', (t % 4) < 2 ? frame : 0, 'stand', (t % 3.3) < 0.12), 17, 13);
-      if (L.pet !== 'none') { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc); g.fillRect(38, 48, 10, 2); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); }
+      if (L.pet !== 'none') { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc, carCols(L)); g.fillRect(38, 48, 10, 2); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); }
     });
   });
 }

@@ -37,6 +37,7 @@ function cleanLook(l) {
   if (PETS.some((h) => h[0] === l.pet)) o.pet = l.pet;
   if (l.sex === 'f' || l.sex === 'm') o.sex = l.sex;
   if (inRange(l.pc, PET_COLORS.length) || isHex(l.pc)) o.pc = isHex(l.pc) ? l.pc.toLowerCase() : l.pc;
+  for (const k of ['k1', 'k2']) if (okCol(l[k], CLOTH_COLORS.length)) o[k] = isHex(l[k]) ? l[k].toLowerCase() : l[k]; // สีลายรถ F1
   return o;
 }
 
@@ -344,8 +345,8 @@ function charSprite(look, dir, frame, pose, blink) {
     if (acc === 'crown') { U(6, 1, 10, 3, '#ffd34d'); U(6, 0, 1, 1, '#ffd34d'); U(10, -1, 2, 2, '#ffd34d'); U(15, 0, 1, 1, '#ffd34d'); U(8, 2, 1, 1, '#ff6b8a'); U(13, 2, 1, 1, '#6cc6d9'); U(7, 1, 2, 1, '#fff2a8'); }
     if (acc === 'halo') { U(7, -2, 8, 1, '#ffe680'); U(6, -1, 1, 1, '#ffe680'); U(15, -1, 1, 1, '#ffe680'); U(7, 0, 8, 1, '#ffe680'); }
     if (acc === 'racehelmet') {
-      // ⭐ หมวกนักแข่ง: หมวกเต็มใบ เปิดหน้า (ยกบังลมขึ้น) สีตามเสื้อ แถบขาว + สีกางเกง
-      const Hc = tc, HD = tcD, HL = tcL, AC = colOf(look.bc, CLOTH_COLORS) || '#ff9a3c', VI = '#1d1f2e';
+      // ⭐ หมวกนักแข่ง: หมวกเต็มใบ เปิดหน้า (ยกบังลมขึ้น)
+      const Hc = hc0, HD = shade(hc0, -0.18), HL = shade(hc0, 0.25), AC = colOf(look.bc, CLOTH_COLORS) || '#ff9a3c', VI = '#1d1f2e'; // สีหมวก = สีผม (ผมซ่อนใต้หมวก) · ลาย = สีกางเกง
       if (d === 'up') { U(5, 1, 12, 1, Hc); U(4, 2, 14, 1, Hc); U(3, 3, 16, 16, Hc); U(17, 4, 2, 14, HD); U(11, 3, 2, 2, AC); U(10, 5, 2, 2, AC); U(9, 7, 4, 2, AC); U(11, 9, 2, 2, AC); U(10, 11, 2, 2, AC); U(10, 7, 1, 1, '#ffffff'); U(5, 18, 12, 1, HD); }
       else if (side) {
         U(6, 1, 10, 1, Hc); U(5, 2, 13, 1, Hc); U(4, 3, 15, 7, Hc); U(10, 10, 9, 8, Hc); U(4, 17, 15, 2, Hc); U(17, 4, 2, 13, HD); U(4, 18, 15, 1, HD);
@@ -404,8 +405,10 @@ function charSprite(look, dir, frame, pose, blink) {
 // ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
 const FARM = { f1: [52, 15], cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], trex: [27, 25], panda: [22, 22], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22] };
 const FARM_OUT = [74, 36, 48];
-function farmSprite(kind, frame, faceRight, pc) {
-  return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
+// สีลายรถ F1 จากชุดแต่งตัว (k1 = ลายหลัก, k2 = ขอบ/ปลายปีก)
+const carCols = (l) => (l && l.pet === 'f1' ? [colOf(l.k1, CLOTH_COLORS) || '', colOf(l.k2, CLOTH_COLORS) || ''].join('|') : '');
+function farmSprite(kind, frame, faceRight, pc, ac = '') {
+  return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}|${ac}`, () => {
     const [W, H] = FARM[kind];
     const c = mkCanvas(W + 3, H + 2), g = c.getContext('2d');
     const P = painter(g, 1, 1);
@@ -427,7 +430,7 @@ function farmSprite(kind, frame, faceRight, pc) {
       if (st) { P(1, 7, 1, 1, '#ffffff'); P(24, 6, 1, 1, '#ffffff'); }
     } else if (kind === 'f1') {
       // ⭐ รถ F1 ลาย "Pixel Hangout Racing" (ออกแบบเอง): ตัวรถทรงต่ำยาว สีเข้มด้าน (เปลี่ยนสีได้) สายฟ้าฟ้า-ชมพู เบอร์ 3 ยางซอฟต์แถบแดง
-      const [hi, b, lo, lo2] = tone(pick('#2b2a3a')), CY = '#36e0ff', PK = '#ff3fa4', CF = '#15141c', CF2 = '#3a3950', TY = '#17151d', RIM = '#e8323c', WH = '#ffffff';
+      const [ac1, ac2] = String(ac).split('|'), [hi, b, lo, lo2] = tone(pick('#2b2a3a')), CY = ac1 || '#36e0ff', PK = ac2 || '#ff3fa4', CF = '#15141c', CF2 = '#3a3950', TY = '#17151d', RIM = '#e8323c', WH = '#ffffff';
       // ปีกหลัง: แผ่นข้าง + ปีกหลัก + แฟลป DRS + บีมวิง
       P(46, 0, 6, 11, CF); P(44, 0, 8, 2, CF); P(45, 0, 6, 1, CY); P(45, 3, 6, 1, CF2); P(46, 2, 5, 1, PK); P(44, 8, 4, 1, CF2);
       // ฝาครอบเครื่อง + ครีบฉลาม (ลาดลงไปท้าย)
@@ -708,8 +711,8 @@ function statusIcon(kind) {
     return c;
   });
 }
-function petSprite(kind, frame, faceRight, pc = 0) {
-  if (FARM[kind]) return farmSprite(kind, frame, faceRight, pc);
+function petSprite(kind, frame, faceRight, pc = 0, ac = '') {
+  if (FARM[kind]) return farmSprite(kind, frame, faceRight, pc, ac);
   return cached(`p|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
     const c = mkCanvas(16, 16);
     const g = c.getContext('2d');
