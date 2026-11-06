@@ -314,7 +314,7 @@ function broadcast(m, except) {
 }
 const MOVE_KEYS = new Set(['x', 'y', 'd', 'm', 't']);
 // ไอเท็มพิเศษเฉพาะแอดมิน (ตรงกับ ADMIN_ONLY ใน sprites.js)
-const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess', 'racer'], acc: ['wings', 'racehelmet'], pet: ['dragon', 'unicorn', 'cloud', 'f1'] };
 const ADMIN_DEF = { hair: 'short', top: 'hoodie', acc: 'none', pet: 'none' };
 function adminKeyOk(k) {
   return !!ADMIN_KEY && typeof k === 'string' && k.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(k), Buffer.from(ADMIN_KEY));
@@ -322,8 +322,8 @@ function adminKeyOk(k) {
 // ของพิเศษที่แอดมินให้ยืมใช้ (เก็บตาม uid ของเครื่อง) — settings/grants: { uid: { n: ชื่อตอนให้, items: ['dragon', ...] } }
 const ADMIN_ITEMS = Object.values(ADMIN_ONLY).flat();
 const ITEM_FIELD = Object.fromEntries(Object.entries(ADMIN_ONLY).flatMap(([f, list]) => list.map((it) => [it, f])));
-const ITEM_ALIAS = { มังกร: 'dragon', dragon: 'dragon', ยูนิคอร์น: 'unicorn', unicorn: 'unicorn', เมฆ: 'cloud', ก้อนเมฆ: 'cloud', cloud: 'cloud', ผมรุ้ง: 'rainbow', รุ้ง: 'rainbow', rainbow: 'rainbow', ชุดราชา: 'royal', ราชา: 'royal', royal: 'royal', ชุดเจ้าหญิง: 'princess', เจ้าหญิง: 'princess', princess: 'princess', ปีก: 'wings', ปีกนางฟ้า: 'wings', wings: 'wings' };
-const ITEM_TH = { dragon: '⭐ มังกร', unicorn: '⭐ ยูนิคอร์น', cloud: '⭐ ก้อนเมฆ', rainbow: '⭐ ผมรุ้ง', royal: '⭐ ชุดราชา', princess: '⭐ ชุดเจ้าหญิง', wings: '⭐ ปีกนางฟ้า' };
+const ITEM_ALIAS = { รถf1: 'f1', รถ: 'f1', f1: 'f1', ชุดนักแข่ง: 'racer', นักแข่ง: 'racer', racer: 'racer', หมวกนักแข่ง: 'racehelmet', หมวกกันน็อก: 'racehelmet', helmet: 'racehelmet', มังกร: 'dragon', dragon: 'dragon', ยูนิคอร์น: 'unicorn', unicorn: 'unicorn', เมฆ: 'cloud', ก้อนเมฆ: 'cloud', cloud: 'cloud', ผมรุ้ง: 'rainbow', รุ้ง: 'rainbow', rainbow: 'rainbow', ชุดราชา: 'royal', ราชา: 'royal', royal: 'royal', ชุดเจ้าหญิง: 'princess', เจ้าหญิง: 'princess', princess: 'princess', ปีก: 'wings', ปีกนางฟ้า: 'wings', wings: 'wings' };
+const ITEM_TH = { f1: '⭐ รถ F1', racer: '⭐ ชุดนักแข่ง', racehelmet: '⭐ หมวกนักแข่ง', dragon: '⭐ มังกร', unicorn: '⭐ ยูนิคอร์น', cloud: '⭐ ก้อนเมฆ', rainbow: '⭐ ผมรุ้ง', royal: '⭐ ชุดราชา', princess: '⭐ ชุดเจ้าหญิง', wings: '⭐ ปีกนางฟ้า' };
 const grantsOf = (uid) => { const g = store.settings.grants && store.settings.grants[uid]; return g && Array.isArray(g.items) ? g.items : []; };
 function stripAdminLook(l, uid) {
   if (!l || typeof l !== 'object') return l;
@@ -514,7 +514,7 @@ wss.on('connection', (ws) => {
           const itemRaw = String(a.item || '').trim().toLowerCase();
           const all = itemRaw === 'all' || itemRaw === 'ทั้งหมด' || itemRaw === 'ทุกอย่าง';
           const item = ITEM_ALIAS[itemRaw];
-          if (!who || (!item && !all)) { send(ws, { t: 'sys', message: 'ใช้: ให้ ชื่อ มังกร · ยึด ชื่อ มังกร (ของ: มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา เจ้าหญิง ปีก หรือ ทั้งหมด)' }); break; }
+          if (!who || (!item && !all)) { send(ws, { t: 'sys', message: 'ใช้: ให้ ชื่อ มังกร · ยึด ชื่อ มังกร (ของ: มังกร ยูนิคอร์น เมฆ รถF1 ผมรุ้ง ชุดราชา เจ้าหญิง ชุดนักแข่ง หมวกนักแข่ง ปีก หรือ ทั้งหมด)' }); break; }
           const others = [...peers].filter(([k]) => k !== key);
           const name = ([, c]) => String(c.p.n || '').trim().toLowerCase();
           let targets = others.filter((e) => name(e) === who);

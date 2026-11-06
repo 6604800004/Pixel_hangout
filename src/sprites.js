@@ -10,10 +10,10 @@ const HAIR_COLORS = ['#3a2c3f', '#6b4430', '#b0703c', '#f0c96b', '#f08a6c', '#f5
 const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7d9cf0', '#b48cf0', '#f4f1e8', '#5a5f7a', '#e8505b', '#3fa37a', '#c8a27a', '#2e2a3a', '#ffffff', '#ff6bd5', '#00b3a4', '#a33b54', '#3b4f8f', '#d6c3a5', '#8c6a4f'];
 // ⭐ = เฉพาะแอดมิน (เซิร์ฟเวอร์ตัดออกถ้าคนทั่วไปใส่)
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
-const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['swim', 'ชุดว่ายน้ำ'], ['bikini', 'บิกินี่'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง']];
-const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['trex', '🦖 ที-เร็กซ์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
-const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
+const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['swim', 'ชุดว่ายน้ำ'], ['bikini', 'บิกินี่'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง'], ['racer', '⭐ ชุดนักแข่ง']];
+const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า'], ['racehelmet', '⭐ หมวกนักแข่ง']];
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['trex', '🦖 ที-เร็กซ์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ'], ['f1', '⭐ รถ F1']];
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess', 'racer'], acc: ['wings', 'racehelmet'], pet: ['dragon', 'unicorn', 'cloud', 'f1'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
 const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
 // สี: เลือกจากชุดสี (เลข) หรือกำหนดเอง (#rrggbb)
@@ -133,8 +133,9 @@ function charSprite(look, dir, frame, pose, blink) {
     const fem = look.sex === 'f';
     // ผู้หญิง: ใส่กระโปรงอัตโนมัติ (ยกเว้นชุดเดรส/เอี๊ยม) ให้ต่างจากผู้ชายชัดๆ
     const princess = top === 'princess';
-    const skirt = fem && !dress && look.top !== 'overall' && !princess && !swim;
-    const legC = dress || skirt || swim ? skin : bc, legD = dress || skirt || swim ? skinD : bcD;
+    const racer = top === 'racer';
+    const skirt = fem && !dress && look.top !== 'overall' && !princess && !swim && !racer;
+    const legC = racer ? tc : dress || skirt || swim ? skin : bc, legD = racer ? tcD : dress || skirt || swim ? skinD : bcD;
     const side = d === 'left';
     const EYE = '#2e2235';
 
@@ -195,6 +196,14 @@ function charSprite(look, dir, frame, pose, blink) {
     if (fem) { U(7, 22, 1, 2, swim ? skinD : tcD); U(14, 22, 1, 2, swim ? skinD : tcD); } // เอวคอด
     else { U(6, 19, 10, 1, bodyC); U(15, 19, 1, 1, bodyD); }     // ไหล่กว้าง
     if (top === 'stripe') { for (const y of [20, 22, 24]) U(7, y, 8, 1, tcL); }
+    if (racer) {
+      // ⭐ ชุดนักแข่ง: ชุดหมีทั้งตัว คอปกขาว เข็มขัด แถบข้างลำตัว/ขา แพตช์สีบนอก
+      const AC = colOf(look.bc, CLOTH_COLORS) || '#ff9a3c';
+      L(side ? 9 : 7, 27, side ? 4 : 1, 1, tcL); if (!side) L(14, 27, 1, 1, tcL);
+      if (d === 'down') { U(9, 19, 4, 1, '#ffffff'); U(10, 20, 2, 4, tcD); U(7, 24, 8, 1, '#2e2235'); U(10, 24, 2, 1, '#c8ccd8'); U(8, 21, 2, 2, AC); U(12, 21, 2, 1, '#ffffff'); U(12, 22, 2, 1, '#ffd34d'); U(7, 20, 1, 4, AC); U(14, 20, 1, 4, AC); }
+      else if (side) { U(7, 19, 3, 1, '#ffffff'); U(7, 24, 8, 1, '#2e2235'); U(11, 20, 3, 2, AC); }
+      else { U(9, 19, 4, 1, '#ffffff'); U(7, 24, 8, 1, '#2e2235'); U(8, 20, 6, 2, AC); }
+    }
     if (top === 'tank') { U(6, 19, 1, 1, skin); U(15, 19, 1, 1, skinD); U(7, 19, 1, 2, skin); U(14, 19, 1, 2, skinD); }
     if (top === 'sweater') { U(7, 25, 8, 1, tcL); U(7, 19, 8, 1, tcL); }
     if (side) {
@@ -333,6 +342,18 @@ function charSprite(look, dir, frame, pose, blink) {
     }
     if (acc === 'crown') { U(6, 1, 10, 3, '#ffd34d'); U(6, 0, 1, 1, '#ffd34d'); U(10, -1, 2, 2, '#ffd34d'); U(15, 0, 1, 1, '#ffd34d'); U(8, 2, 1, 1, '#ff6b8a'); U(13, 2, 1, 1, '#6cc6d9'); U(7, 1, 2, 1, '#fff2a8'); }
     if (acc === 'halo') { U(7, -2, 8, 1, '#ffe680'); U(6, -1, 1, 1, '#ffe680'); U(15, -1, 1, 1, '#ffe680'); U(7, 0, 8, 1, '#ffe680'); }
+    if (acc === 'racehelmet') {
+      // ⭐ หมวกนักแข่ง: หมวกเต็มใบ เปิดหน้า (ยกบังลมขึ้น) สีตามเสื้อ แถบขาว + สีกางเกง
+      const Hc = tc, HD = tcD, HL = tcL, AC = colOf(look.bc, CLOTH_COLORS) || '#ff9a3c', VI = '#1d1f2e';
+      if (d === 'up') { U(5, 1, 12, 1, Hc); U(4, 2, 14, 1, Hc); U(3, 3, 16, 16, Hc); U(17, 4, 2, 14, HD); U(10, 1, 2, 17, '#ffffff'); U(8, 3, 1, 14, AC); U(13, 3, 1, 14, AC); U(5, 18, 12, 1, HD); }
+      else if (side) {
+        U(6, 1, 10, 1, Hc); U(5, 2, 13, 1, Hc); U(4, 3, 15, 7, Hc); U(10, 10, 9, 8, Hc); U(4, 17, 15, 2, Hc); U(17, 4, 2, 13, HD); U(4, 18, 15, 1, HD);
+        U(3, 8, 7, 2, VI); U(4, 8, 3, 1, '#6a7ab0'); U(6, 3, 12, 1, '#ffffff'); U(10, 11, 8, 1, AC); U(10, 14, 8, 1, '#ffffff'); U(6, 4, 3, 1, HL);
+      } else {
+        U(5, 1, 12, 1, Hc); U(4, 2, 14, 1, Hc); U(3, 3, 16, 7, Hc); U(3, 10, 3, 8, Hc); U(16, 10, 3, 8, Hc); U(4, 17, 14, 2, Hc); U(17, 4, 2, 14, HD); U(4, 18, 14, 1, HD);
+        U(5, 8, 12, 2, VI); U(7, 8, 4, 1, '#6a7ab0'); U(10, 1, 2, 7, '#ffffff'); U(8, 2, 1, 6, AC); U(13, 2, 1, 6, AC); U(6, 4, 2, 2, HL); U(3, 12, 2, 3, AC);
+      }
+    }
 
     // ---------- ท่าร้องเพลง / เต้น (NPC คอนเสิร์ต) ----------
     if ((pose === 'sing' || pose === 'dance') && d === 'down') {
@@ -378,7 +399,7 @@ function charSprite(look, dir, frame, pose, blink) {
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
 // ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
-const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], trex: [27, 25], panda: [22, 22], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22] };
+const FARM = { f1: [46, 15], cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], trex: [27, 25], panda: [22, 22], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22] };
 const FARM_OUT = [74, 36, 48];
 function farmSprite(kind, frame, faceRight, pc) {
   return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
@@ -401,6 +422,24 @@ function farmSprite(kind, frame, faceRight, pc) {
       P(3, 9, 20, 1, sh); P(6, 10, 14, 1, shade(sh, -0.08));
       P(9, 6, 1, 2, EYE); P(15, 6, 1, 2, EYE); P(11, 8, 3, 1, lo2); P(7, 8, 2, 1, BLUSH); P(16, 8, 2, 1, BLUSH);
       if (st) { P(1, 7, 1, 1, '#ffffff'); P(24, 6, 1, 1, '#ffffff'); }
+    } else if (kind === 'f1') {
+      // ⭐ รถ F1 (ออกแบบเอง ไม่มีโลโก้ทีม) สีตัวรถเปลี่ยนได้ เบอร์ 3
+      const [hi, b, lo, lo2] = tone(pick('#2f9fd8')), AC = '#ff9a3c', CF = '#1d1f2e', CF2 = '#3a3d52', TY = '#17151d', RIM = '#ffd34d';
+      P(40, 1, 6, 2, CF); P(41, 1, 4, 1, AC); P(44, 1, 2, 10, CF); P(41, 3, 1, 5, CF2);
+      for (let x = 21; x < 43; x++) { const t = Math.min(4, Math.round((x - 21) * 0.2)); P(x, 4 + t, 1, 8 - t, b); P(x, 4 + t, 1, 1, hi); }
+      P(24, 1, 4, 4, CF); P(25, 2, 2, 1, CF2);
+      P(9, 8, 33, 4, b); P(9, 8, 12, 1, hi); P(13, 10, 26, 1, AC); P(9, 11, 33, 1, lo);
+      P(1, 9, 12, 2, b); P(0, 10, 2, 1, b); P(2, 9, 10, 1, hi); P(1, 10, 11, 1, lo);
+      P(0, 12, 9, 1, CF); P(0, 11, 1, 2, AC); P(2, 13, 6, 1, AC);
+      P(16, 6, 8, 2, CF); P(14, 7, 2, 1, CF2); P(15, 5, 1, 2, CF2); P(16, 4, 7, 1, CF2); P(22, 4, 1, 2, CF2);
+      P(8, 12, 34, 1, CF); P(36, 6, 1, 1, '#ffffff');
+      ['###', '..#', '.##', '..#', '###'].forEach((r, y) => { for (let x = 0; x < 3; x++) if (r[x] === '#') P(27 + x, 5 + y, 1, 1, '#ffffff'); });
+      const wheel = (cx, cy) => {
+        for (let y = -4; y <= 4; y++) { const w = Math.round(4 * Math.sqrt(Math.max(0, 1 - (y / 4.5) ** 2))); P(cx - w, cy + y, w * 2 + 1, 1, TY); }
+        for (const [x, y] of [[-2, -3], [-1, -3], [0, -3], [1, -3], [2, -3], [-3, -2], [3, -2], [-3, -1], [3, -1], [-3, 0], [3, 0], [-3, 1], [3, 1], [-3, 2], [3, 2], [-2, 3], [-1, 3], [0, 3], [1, 3], [2, 3]]) P(cx + x, cy + y, 1, 1, RIM);
+        P(cx - 1, cy - 1, 3, 3, '#43475e'); P(cx, cy, 1, 1, '#9aa0b8'); P(cx + (st ? -2 : 1), cy + (st ? 1 : -2), 1, 1, '#5a5f7a');
+      };
+      wheel(9, 11); wheel(37, 11);
     } else if (kind === 'cat') {
       const [hi, b, lo, lo2] = tone(pick('#f2a65a'));
       E(11, 10, 6, 3, lo); E(11, 9, 6, 3, b); P(7, 7, 8, 1, hi); P(10, 7, 1, 3, lo); P(13, 7, 1, 3, lo); P(8, 11, 6, 1, lo2);

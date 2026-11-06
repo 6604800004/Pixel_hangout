@@ -234,8 +234,8 @@ function toggleRide(on) {
   me.ride = v;
   pres({ rd: v ? 1 : null });
   G.actionSig = '';
-  if (v) { SFX.pop(); toast(`🐾 ขี่${(PETS.find((p) => p[0] === me.look.pet) || [, 'สัตว์เลี้ยง'])[1]}แล้ว! (เดินเร็วขึ้น)`, 2000); }
-  else toast('ลงจากหลังสัตว์เลี้ยงแล้ว', 1500);
+  if (v) { SFX.pop(); toast(me.look.pet === 'f1' ? '🏎️ ขึ้นรถ F1 แล้ว! (วิ่งเร็วสุดๆ)' : `🐾 ขี่${(PETS.find((p) => p[0] === me.look.pet) || [, 'สัตว์เลี้ยง'])[1]}แล้ว! (เดินเร็วขึ้น)`, 2000); }
+  else toast(me.look.pet === 'f1' ? 'ลงจากรถแล้ว' : 'ลงจากหลังสัตว์เลี้ยงแล้ว', 1500);
 }
 G.steps = lsGet('pixel.steps', true) !== false;
 function setSteps(on) { G.steps = !!on; lsSet('pixel.steps', G.steps); toast(G.steps ? '👣 เปิดเสียงเดินแล้ว' : '👣 ปิดเสียงเดินแล้ว', 1800); }
@@ -263,7 +263,7 @@ function updateMe(dt) {
   if (vx || vy) {
     me.path = null; me.pendingSeat = null; standUp();
     const len = Math.hypot(vx, vy); vx /= len; vy /= len;
-    const step = SPEED * (isRiding(me) ? RIDE_SPEED : 1) * Math.min(dt, 0.05);
+    const step = SPEED * (isRiding(me) ? (me.look.pet === 'f1' ? 2.1 : RIDE_SPEED) : 1) * Math.min(dt, 0.05);
     const inside = hitsRects(G.rects, me.x, me.y);
     if (inside || !hitsRects(G.rects, me.x + vx * step, me.y)) { me.x += vx * step; moved = true; }
     if (inside || !hitsRects(G.rects, me.x, me.y + vy * step)) { me.y += vy * step; moved = true; }
@@ -271,7 +271,7 @@ function updateMe(dt) {
   } else if (me.path && me.path.length) {
     const t = me.path[0];
     const dx = t.x - me.x, dy = t.y - me.y, d = Math.hypot(dx, dy);
-    const step = SPEED * (isRiding(me) ? RIDE_SPEED : 1) * Math.min(dt, 0.05);
+    const step = SPEED * (isRiding(me) ? (me.look.pet === 'f1' ? 2.1 : RIDE_SPEED) : 1) * Math.min(dt, 0.05);
     if (d <= step) {
       me.x = t.x; me.y = t.y; me.path.shift();
       if (!me.path.length) {
@@ -556,7 +556,7 @@ function showHelp() {
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
-    '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา เจ้าหญิง ปีก หรือ ทั้งหมด)',
+    '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ รถF1 ผมรุ้ง ชุดราชา เจ้าหญิง ชุดนักแข่ง หมวกนักแข่ง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
     '🎤 npc ร้อง [ชื่อ] — เรียกนักร้อง NPC มาข้างตัว (ถือไมค์ มีกุญแจซอลเด้ง)',
     '🕺 npc เต้น [ชื่อ] — เรียกนักเต้น NPC · npc ลบ = ลบตัวที่ใกล้สุด · npc ลบหมด = ลบทั้งหมด',
@@ -597,7 +597,7 @@ function chatCommand(text) {
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
   m = text.match(new RegExp('^\\/?(?:kick|เตะ)\\s+(.+?)\\s+delay\\s+' + UNIT + '$', 'i'));    // kick หมี delay 1m
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
-  const ITEM_WORDS = /^(มังกร|dragon|ยูนิคอร์น|unicorn|เมฆ|ก้อนเมฆ|cloud|ผมรุ้ง|รุ้ง|rainbow|ชุดราชา|ราชา|royal|ชุดเจ้าหญิง|เจ้าหญิง|princess|ปีก|ปีกนางฟ้า|wings|ทั้งหมด|ทุกอย่าง|all)$/i; // คำสั่งต้องลงท้ายด้วยชื่อของ ไม่งั้นถือเป็นแชตปกติ
+  const ITEM_WORDS = /^(รถf1|รถ|f1|ชุดนักแข่ง|นักแข่ง|racer|หมวกนักแข่ง|หมวกกันน็อก|helmet|มังกร|dragon|ยูนิคอร์น|unicorn|เมฆ|ก้อนเมฆ|cloud|ผมรุ้ง|รุ้ง|rainbow|ชุดราชา|ราชา|royal|ชุดเจ้าหญิง|เจ้าหญิง|princess|ปีก|ปีกนางฟ้า|wings|ทั้งหมด|ทุกอย่าง|all)$/i; // คำสั่งต้องลงท้ายด้วยชื่อของ ไม่งั้นถือเป็นแชตปกติ
   m = text.match(/^\/?(?:give|ให้)\s+(.+)\s+(\S+)$/i);                                       // ให้ หมี มังกร
   if (m && G.isAdmin && ITEM_WORDS.test(m[2])) { G.net.admin('grant', key, { name: m[1].trim(), item: m[2] }); return true; }
   m = text.match(/^\/?(?:take|revoke|ยึด|ยึดคืน)\s+(.+)\s+(\S+)$/i);                        // ยึด หมี มังกร / ยึด หมี ทั้งหมด
@@ -1063,6 +1063,19 @@ function drawCharacter(c, ch, t) {
     if (ch.dir === 'left' || ch.dir === 'right') ch.rideFace = ch.dir === 'right';
     const pf = ch.walking ? Math.floor(t * 8) % 2 : 0;
     const ps = petSprite(look.pet, pf, !!ch.rideFace, look.pc || 0);
+    if (look.pet === 'f1') {
+      // รถ F1: คนนั่งอยู่ในห้องนักขับ (เห็นแค่หัว) แล้ววาดตัวรถทับ
+      const k = 1.5, pw = ps.width * k, ph = ps.height * k, face = !!ch.rideFace;
+      const carX = ch.x - pw / 2 + shake, carY = ch.y - ph + 2 + (ch.walking && pf ? -0.5 : 0);
+      drawShadow(c, ch.x, ch.y, 34);
+      const cockpit = carX + (face ? ps.width - 21 : 21) * k, rim = carY + 7 * k;
+      c.save(); c.beginPath(); c.rect(cockpit - 20, rim - 40, 40, 40 + 2 * k); c.clip();
+      c.drawImage(charSprite(look, face ? 'right' : 'left', 0, 'sit', blink), snap(cockpit - 11), snap(rim - 22));
+      c.restore();
+      c.drawImage(ps, snap(carX), snap(carY), pw, ph);
+      if (ch.walking) { c.fillStyle = 'rgba(255,255,255,.55)'; for (let i = 0; i < 3; i++) { const L = 6 + ((t * 40 + i * 7) % 10); const lx = face ? carX - L - 2 : carX + pw + 2; c.fillRect(Math.round(lx), Math.round(carY + 5 + i * 4), Math.round(L), 1); } }
+      return;
+    }
     const k = ps.width > 16 ? Math.max(1.15, 30 / ps.width) : 1.9, pw = ps.width * k, ph = ps.height * k;
     const fly = look.pet === 'cloud' ? 7 + Math.round(Math.sin(t * 2.2 + ch.seed) * 2) : look.pet === 'fish' || look.pet === 'dragon' ? 3 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
     drawShadow(c, ch.x, ch.y, 20);
@@ -1303,7 +1316,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const p = ch === G.me ? null : ch.p;
     const [sx, sy0] = S(ch.x, ch.y);
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
-    const rLift = isRiding(ch) ? RIDE_LIFT + 2 + (ch.look.pet === 'cloud' ? 9 : ch.look.pet === 'fish' || ch.look.pet === 'dragon' ? 4 : 0) : 0;
+    const rLift = isRiding(ch) ? (ch.look.pet === 'f1' ? 0 : RIDE_LIFT + 2 + (ch.look.pet === 'cloud' ? 9 : ch.look.pet === 'fish' || ch.look.pet === 'dragon' ? 4 : 0)) : 0;
     let top = sy0 - ((ch.sit ? 33 : 35) + rLift) * scale;
     const away = ch !== G.me && (G.voice ? !G.audible.has(ch.key) : zoneAt(ch.x, ch.y) !== G.zone);
     c.globalAlpha = away && G.voice ? 0.5 : 1;
@@ -1452,7 +1465,7 @@ function updateActions() {
       acts.push(['🔄 หัน', 'turn']);
       if (G.myDesk && me.sit === `desk:${G.myDesk}`) acts.push(['🎨 แต่งโต๊ะ', 'deskEdit']);
     } else if (!me.path) {
-      if (me.look.pet !== 'none') acts.push([me.ride ? '🐾 ลงจากหลัง' : '🐾 ขี่' + ((PETS.find((p) => p[0] === me.look.pet) || [])[1] || ''), 'ride']);
+      if (me.look.pet !== 'none') acts.push([me.look.pet === 'f1' ? (me.ride ? '🚪 ลงจากรถ' : '🏎️ ขับรถ F1') : me.ride ? '🐾 ลงจากหลัง' : '🐾 ขี่' + ((PETS.find((p) => p[0] === me.look.pet) || [])[1] || ''), 'ride']);
       let best = null, bd = 22;
       for (const s of G.seats) {
         const d = Math.hypot(s.x - me.x, (s.y - me.y) * 1.2);
