@@ -217,6 +217,13 @@ wss.on('connection', (ws) => {
       if (peers.size >= MAX_USERS) { send(ws, { t: 'error', message: `ห้องเต็มแล้ว (สูงสุด ${MAX_USERS} คน)` }); return ws.close(); }
       key = 'k' + crypto.randomBytes(6).toString('hex');
       const uid = typeof m.uid === 'string' ? m.uid.slice(0, 40) : key;
+      // คนเดิมเข้ามาซ้ำ (เปิดอีกแท็บ/เน็ตหลุดแล้วต่อใหม่ก่อนตัวเก่าหลุด) → ปิดตัวเก่า ไม่ให้มีชื่อซ้ำในห้อง
+      for (const [k, c] of [...peers]) {
+        if (c.uid !== uid) continue;
+        peers.delete(k);
+        broadcast({ t: 'peer-left', key: k });
+        try { send(c.ws, { t: 'error', replaced: true, message: 'คุณเปิดห้องนี้อยู่ในแท็บหรือหน้าต่างอื่นแล้ว' }); c.ws.close(); } catch {}
+      }
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
       const isAdmin = adminKeyOk(m.ak);
       if (!isAdmin && p.l) p.l = stripAdminLook(p.l);
@@ -369,6 +376,7 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (!key) return;
     const me = peers.get(key);
+    if (!me || me.ws !== ws) return; // ถูกแทนที่ไปแล้ว
     peers.delete(key);
     broadcast({ t: 'peer-left', key });
     console.log(`- ${(me && me.p.n) || key} (${peers.size} ออนไลน์)`);
@@ -396,6 +404,6 @@ setInterval(sweepBoard, 5 * 60 * 1000);
 
 setInterval(() => {
   for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; ws.ping(); }
-}, 25000);
+}, 12000); // ตรวจการเชื่อมต่อที่ตายแล้วถี่ขึ้น ไม่ให้มีตัวละครค้างในห้องนาน
 
 server.listen(PORT, () => console.log(`Pixel Hangout พร้อมที่ http://localhost:${PORT}`));

@@ -1992,6 +1992,16 @@ function frame(ms) {
   if (net.onError) net.onError((m) => {
     // โดนเตะ: รีโหลดหน้าเพื่อปิดไมค์/กล้องทั้งหมดทันที แล้วแจ้งเตือนหลังโหลดเสร็จ
     if (m.kicked && G.joined) { try { sessionStorage.setItem('pixel.kicked', m.message || 'คุณถูกเตะออกจากห้อง'); } catch {} location.reload(); return; }
+    if (m.replaced) {
+      // ตัวเราเปิดซ้ำที่อื่น: แท็บนี้หยุดทุกอย่าง (ไมค์/กล้อง/เสียง) ไม่ต่อใหม่เอง กันชื่อซ้ำในห้อง
+      hangUp(); G.joined = false;
+      for (const e2 of document.body.children) e2.style.display = 'none';
+      const ov = document.createElement('div'); ov.className = 'bye';
+      ov.innerHTML = '<div class="bye-card"><div class="bye-emo">🪟</div><h2>เปิดอยู่ที่อื่นแล้ว</h2><p>คุณเข้าห้องจากแท็บหรือหน้าต่างอื่นอยู่<br>แท็บนี้เลยหยุดไว้ จะได้ไม่มีชื่อซ้ำในห้อง</p><button class="pbtn pink big" id="useHere">ใช้แท็บนี้แทน</button></div>';
+      document.body.append(ov);
+      ov.querySelector('#useHere').onclick = () => location.reload();
+      return;
+    }
     toast(m.message || 'เข้าห้องไม่ได้', 4000); G.joined = false; $('#hud').classList.add('hidden'); openCreator(true); });
   if (net.onWriteDenied) net.onWriteDenied(() => showBanner('คุณมีสิทธิ์ดูอย่างเดียว: ห้อง/โต๊ะจะไม่ถูกบันทึก'));
   if (net.mode === 'ws') {
