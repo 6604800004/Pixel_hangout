@@ -759,6 +759,44 @@ const COLORWAYS = [
   ['#ffb86b', '#e0954a', '#ffd8a8'], ['#b48cf0', '#9068d6', '#d8c4ff'], ['#6cc6d9', '#4aa3b8', '#a8e6f2'],
 ];
 
+// ต้นคริสต์มาสหลายขนาด: สร้างจากแบบเดียวกัน (ชั้นใบ สายรุ้งทอง ลูกบอล ไฟกะพริบ ดาวบนยอด กระถางแดง)
+function xmasTreeDef(label, W, HH, tiers) {
+  const cx = W / 2, top = 9, potH = 6 + Math.round(W / 20), bodyH = HH - top - potH + 2;
+  const step = Math.floor(bodyH / (tiers + 0.3)), rows = step + 4, maxHalf = W / 2;
+  const baseHalf = (k) => maxHalf * (0.45 + 0.55 * (tiers === 1 ? 1 : k / (tiers - 1)));
+  const halfAt = (k, r) => Math.round(baseHalf(k) * (r + 2) / (rows + 1));
+  const lights = [], orns = [], OC = ['#e8505b', '#5ab4ff', '#ffd34d', '#c070ff', '#ff9a3c'];
+  for (let k = 0; k < tiers; k++) {
+    const y0 = top + k * step, rl = rows - 3, hl = halfAt(k, rl), n = 2 + k;
+    for (let i = 0; i < n; i++) lights.push([Math.round(cx - hl + 2 + (i + 0.5) * (2 * hl - 4) / n), y0 + rl - 1 + (i % 2)]);
+    const ro = Math.round(rows * 0.55), ho = halfAt(k, ro);
+    for (let i = 0; i < 1 + Math.floor(k / 2) + (k ? 1 : 0); i++) orns.push([Math.round(cx - ho + 2 + ((i * 0.6 + 0.3 + k * 0.17) % 1) * (2 * ho - 6)), y0 + ro, OC[(i + k * 2) % OC.length]]);
+  }
+  const big = W >= 50 ? 4 : 3;
+  return { label, emo: '🎄', w: W, h: HH, solid: true, foot: Math.max(8, Math.round(W / 5)), fw: Math.round(W * 0.35), draw(P) {
+    const D = '#2a6e44', M = '#3a8f55', L = '#5cb870', GOLD = '#ffd34d', pw = Math.round(W * 0.34), px = Math.round(cx - pw / 2);
+    P(Math.round(cx - 3), HH - potH - 4, 6, 5, '#7a4a24');
+    P(px, HH - potH, pw, potH, '#c8323c'); P(px, HH - potH, pw, 1, '#e8505b'); P(px, HH - potH + 2, pw, 1, GOLD); P(px + pw - 2, HH - potH, 2, potH, '#a8242e');
+    for (let k = 0; k < tiers; k++) {
+      const y0 = top + k * step;
+      for (let r = 0; r < rows; r++) {
+        const half = halfAt(k, r), y = y0 + r;
+        if (y > HH - potH - 2) break;
+        P(Math.round(cx - half), y, half * 2, 1, r === rows - 1 ? D : r < 2 ? L : M); P(Math.round(cx - half), y, 2, 1, L); P(Math.round(cx + half - 2), y, 2, 1, D);
+      }
+      const rg = Math.round(rows * 0.75), hw = halfAt(k, rg);
+      for (let x = -hw + 2; x < hw - 1; x += 2) { const rr = rg + Math.round(x / 6); if (rr < rows && Math.abs(x) < halfAt(k, rr) - 1) P(Math.round(cx + x), y0 + rr, 1, 1, GOLD); }
+    }
+    for (const [x, y, c] of orns) { P(x, y, big, big, c); P(x, y, 1, 1, '#ffffff'); P(x + big - 1, y + big - 1, 1, 1, shade(c, -0.3)); }
+    const sx = Math.round(cx) - 1;
+    P(sx, 0, 2, 9, GOLD); P(sx - 3, 3, 8, 2, GOLD); P(sx - 2, 5, 2, 2, GOLD); P(sx + 2, 5, 2, 2, GOLD); P(sx - 1, 2, 4, 4, GOLD); P(sx, 3, 1, 1, '#fff6c8');
+  },
+  anim(ctx, ox, oy, t) {
+    const COL = ['#ff5a5a', '#ffe066', '#5fd8ff', '#7dff8a', '#ff8fe0'], f = Math.floor(t * 2.5);
+    lights.forEach(([x, y], i) => { if ((i + f) % 3 === 0) return; ctx.fillStyle = COL[(i + f) % COL.length]; ctx.fillRect(ox + x, oy + y, 2, 2); });
+    if (Math.sin(t * 3) > 0.2) { const sx = Math.round(cx) - 1; ctx.fillStyle = '#fff6c8'; ctx.fillRect(ox + sx, oy - 2, 2, 2); ctx.fillRect(ox + sx - 5, oy + 3, 2, 1); ctx.fillRect(ox + sx + 5, oy + 3, 2, 1); }
+  } };
+}
 const FURN = {
   rug: { label: 'พรม', emo: '🟫', w: 58, h: 34, floor: true, solid: false, variants: 4, draw(P, v) {
     const pal = [['#e8826e', '#f5b49a', '#c9604c'], ['#7d9cf0', '#b5c6ff', '#5f7ed8'], ['#8fd694', '#c9f0cb', '#5fae68'], ['#f5a3c7', '#ffd6e6', '#d27aa2']][v % 4];
@@ -1240,28 +1278,10 @@ const FURN = {
     ctx.fillStyle = on ? C : '#3a3a4a'; ctx.fillRect(sx + 5, sy + 4, 8, 6); if (on) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 7, sy + 6, 3, 2); }
   } },
   // ---------------- 🎄 คริสต์มาส ----------------
-  xmasTree: { label: '🎄 ต้นคริสต์มาส', emo: '🎄', w: 40, h: 62, solid: true, foot: 8, fw: 14, draw(P) {
-    const D = '#2a6e44', M = '#3a8f55', L = '#5cb870', GOLD = '#ffd34d';
-    P(17, 54, 6, 4, '#7a4a24'); P(13, 57, 14, 5, '#c8323c'); P(13, 57, 14, 1, '#e8505b'); P(13, 59, 14, 1, GOLD);
-    for (let k = 0; k < 4; k++) {
-      const y0 = 9 + k * 11;
-      for (let r = 0; r < 14; r++) {
-        const half = Math.round((6 + k * 4.5) * (r + 2) / 15), y = y0 + r;
-        if (y > 55) break;
-        P(20 - half, y, half * 2, 1, r === 13 ? D : r < 2 ? L : M); P(20 - half, y, 2, 1, L); P(20 + half - 2, y, 2, 1, D);
-      }
-      const hw = Math.round((6 + k * 4.5) * 11 / 15);
-      for (let x = -hw + 1; x < hw; x += 2) P(20 + x, y0 + 9 + Math.round(x / 5), 1, 1, GOLD); // สายรุ้งทอง
-    }
-    for (const [x, y, c] of [[15, 18, '#e8505b'], [24, 23, '#5ab4ff'], [11, 30, GOLD], [28, 33, '#e8505b'], [18, 37, '#c070ff'], [8, 43, '#5ab4ff'], [25, 45, GOLD], [33, 47, '#e8505b'], [14, 50, '#ff9a3c']]) { P(x, y, 3, 3, c); P(x, y, 1, 1, '#ffffff'); }
-    P(19, 0, 2, 9, GOLD); P(16, 3, 8, 2, GOLD); P(17, 5, 2, 2, GOLD); P(21, 5, 2, 2, GOLD); P(18, 2, 4, 4, GOLD); P(19, 3, 1, 1, '#fff6c8');
-  },
-  anim(ctx, sx, sy, t) {
-    const COL = ['#ff5a5a', '#ffe066', '#5fd8ff', '#7dff8a', '#ff8fe0'], f = Math.floor(t * 2.5);
-    const pts = [[19, 13], [16, 21], [23, 20], [12, 27], [27, 28], [20, 30], [9, 36], [31, 37], [16, 41], [24, 40], [6, 47], [34, 49], [12, 52], [21, 51], [29, 53]];
-    pts.forEach(([x, y], i) => { if ((i + f) % 3 === 0) return; ctx.fillStyle = COL[(i + f) % COL.length]; ctx.fillRect(sx + x, sy + y, 2, 2); });
-    if (Math.sin(t * 3) > 0.2) { ctx.fillStyle = '#fff6c8'; ctx.fillRect(sx + 19, sy - 2, 2, 2); ctx.fillRect(sx + 14, sy + 3, 2, 1); ctx.fillRect(sx + 24, sy + 3, 2, 1); ctx.fillRect(sx + 19, sy + 3, 2, 2); }
-  } },
+  xmasTreeS: xmasTreeDef('🎄 ต้นคริสต์มาส (เล็ก)', 26, 40, 3),
+  xmasTree: xmasTreeDef('🎄 ต้นคริสต์มาส (กลาง)', 40, 62, 4),
+  xmasTreeL: xmasTreeDef('🎄 ต้นคริสต์มาส (ใหญ่)', 58, 90, 5),
+  xmasTreeXL: xmasTreeDef('🎄 ต้นคริสต์มาส (ยักษ์)', 82, 126, 6),
   gift: { label: '🎁 กล่องของขวัญ', emo: '🎁', w: 16, h: 17, solid: true, foot: 6, variants: 4, draw(P, v) {
     const [b, r] = [['#e8505b', '#ffd34d'], ['#3fa35a', '#e8505b'], ['#3f7fe0', '#ffffff'], ['#a868e8', '#ff9fd8']][v % 4];
     P(1, 6, 14, 11, b); P(1, 15, 14, 2, shade(b, -0.22)); P(12, 6, 3, 11, shade(b, -0.12));

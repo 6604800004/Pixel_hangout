@@ -792,17 +792,44 @@ function setEdit(on) {
   if (on) { closeTrays('editTray'); toast('แตะของเพื่อเลือก ลากเพื่อย้าย · ลากพื้นเพื่อเลื่อนกล้อง'); }
   updateSelBar();
 }
+// หมวดหมู่ของตกแต่ง (ของที่ไม่อยู่ในหมวดไหน → อื่นๆ)
+const FURN_CATS = [
+  ['xmas', '🎄 คริสต์มาส', ['xmasTreeS', 'xmasTree', 'xmasTreeL', 'xmasTreeXL', 'gift', 'giftPile', 'snowman', 'candyCane', 'reindeer', 'sleigh', 'xmasWreath', 'xmasLights', 'gingerHouse', 'snowPatch']],
+  ['living', '🛋️ นั่งเล่น', ['rug', 'sofa', 'armchair', 'beanbag', 'coffeeTable', 'roundTable', 'bookshelf', 'floorLamp', 'tv', 'arcade', 'fridge', 'counter', 'catBed', 'fishTank']],
+  ['meet', '💼 ประชุม', ['whiteboard', 'confTable', 'meetChair', 'bigScreen']],
+  ['garden', '🌿 ต้นไม้/สวน', ['plant', 'tree', 'bench', 'flowerBed', 'pond', 'pine', 'rock']],
+  ['outdoor', '🏖️ ทะเล/ภูเขา', ['palm', 'parasol', 'beachChair', 'towel', 'sandcastle', 'surfboard', 'campfire', 'logSeat', 'tent']],
+  ['cinema', '🎬 โรงหนัง', ['projectorScreen', 'cinemaSeat', 'vipSeat', 'vvipBed', 'popcorn']],
+  ['music', '🎸 ดนตรี', ['speaker', 'micStand', 'drumKit', 'synth', 'stageLight']],
+  ['pub', '🍻 ผับ', ['bottleShelf', 'barCounter', 'barStool', 'dartboard', 'poolTable']],
+  ['shrine', '🙏 ห้องพระ', ['prayerMat', 'flowerVase', 'offeringTable', 'chantTable', 'lotusBowl', 'templeBell']],
+];
+{ const known = new Set(FURN_CATS.flatMap((c) => c[2])); const rest = Object.keys(FURN).filter((t) => !known.has(t)); if (rest.length) FURN_CATS.push(['other', '📦 อื่นๆ', rest]); }
+G.palCat = lsGet('pixel.palCat', 'all');
 function buildPalette() {
+  const cats = $('#paletteCats');
+  cats.innerHTML = '';
+  if (G.palCat !== 'all' && !FURN_CATS.some((c) => c[0] === G.palCat)) G.palCat = 'all';
+  for (const [id, label, list] of [['all', '⭐ ทั้งหมด', Object.keys(FURN)], ...FURN_CATS]) {
+    const b = document.createElement('button');
+    b.className = id === G.palCat ? 'on' : '';
+    b.innerHTML = label + '<small>' + list.filter((t) => FURN[t]).length + '</small>';
+    b.onclick = () => { G.palCat = id; lsSet('pixel.palCat', id); buildPalette(); $('#paletteList').scrollLeft = 0; };
+    cats.append(b);
+  }
   const box = $('#paletteList');
   box.innerHTML = '';
-  for (const [type, d] of Object.entries(FURN)) {
+  const cat = FURN_CATS.find((c) => c[0] === G.palCat);
+  const types = cat ? cat[2].filter((t) => FURN[t]) : Object.keys(FURN);
+  for (const type of types) {
+    const d = FURN[type];
     const b = document.createElement('button');
     b.className = 'fb';
     const spr = furnSprite(type, 0, 0);
     const c = mkCanvas(spr.width, spr.height);
     c.getContext('2d').drawImage(spr, 0, 0);
     b.append(c);
-    const l = document.createElement('span'); l.textContent = d.label; b.append(l);
+    const l = document.createElement('span'); l.textContent = d.label.replace(/^\p{Extended_Pictographic}\S*\s*/u, ''); b.title = d.label; b.append(l);
     b.onclick = async () => {
       if (!(await materializeDefaults())) return;
       const it = { id: 'f' + randomId(8), t: type, x: Math.round(clamp(G.me.x, LEFT + 30, RIGHT - 30)), y: Math.round(clamp(G.me.y - 20, SHRINE_FLOOR + d.h * 0.4, H - 8)), v: 0, f: 0 };
