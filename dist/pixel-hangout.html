@@ -4482,30 +4482,38 @@ function optRow(label, items, isSel, onPick, kind = 'chip') {
 }
 // แถวเลือกสี + ปุ่ม 🎨 เลือกสีเองได้ทุกสี
 function colorRow(label, pal, get, set, natural) {
+  // สร้างปุ่มครั้งเดียว แล้วแค่เปลี่ยนไฮไลต์ — ห้ามสร้าง <input type=color> ใหม่ระหว่างเลือก
+  // (iPhone จะปิดหน้าต่างเลือกสีทันทีถ้า input ถูกลบ/สร้างใหม่ ต้องกดเปิดใหม่เรื่อยๆ)
   const o = el('div', 'opt');
   o.append(el('span', null, label));
   const row = el('div', 'row');
-  const paint = () => {
-    row.innerHTML = '';
-    pal.forEach((c, i) => {
-      const b = el('button', 'sw'); b.type = 'button';
-      b.style.background = c || natural || '#ccc';
-      if (get() === i) b.classList.add('sel');
-      b.onclick = () => { set(i); paint(); };
-      row.append(b);
-    });
+  const btns = pal.map((c, i) => {
+    const b = el('button', 'sw'); b.type = 'button';
+    b.style.background = c || natural || '#ccc';
+    b.onclick = () => { set(i); refresh(); };
+    row.append(b);
+    return b;
+  });
+  const lab = el('label', 'sw custom'); lab.title = 'เลือกสีเอง';
+  const ico = el('span', 'ico', '🎨');
+  const inp = el('input'); inp.type = 'color';
+  const cur0 = get();
+  inp.value = isHex(cur0) ? cur0 : (pal[typeof cur0 === 'number' ? cur0 : 0] || '#ff8fab');
+  const pick = () => { set(inp.value.toLowerCase()); refresh(); };
+  inp.addEventListener('input', pick);
+  inp.addEventListener('change', pick);
+  lab.append(ico, inp);
+  row.append(lab);
+  function refresh() {
     const cur = get();
-    const lab = el('label', 'sw custom' + (isHex(cur) ? ' sel' : ''));
-    lab.title = 'เลือกสีเอง';
-    if (isHex(cur)) lab.style.background = cur;
-    else lab.textContent = '🎨';
-    const inp = el('input'); inp.type = 'color'; inp.value = isHex(cur) ? cur : (pal[typeof cur === 'number' ? cur : 0] || '#ff8fab');
-    inp.oninput = () => { set(inp.value.toLowerCase()); lab.style.background = inp.value; lab.textContent = ''; row.querySelectorAll('.sel').forEach((x) => x !== lab && x.classList.remove('sel')); lab.classList.add('sel'); };
-    inp.onchange = () => paint();
-    lab.append(inp);
-    row.append(lab);
-  };
-  paint(); o.append(row);
+    btns.forEach((b, i) => b.classList.toggle('sel', cur === i));
+    const hex = isHex(cur);
+    lab.classList.toggle('sel', hex);
+    lab.style.background = hex ? cur : '';
+    ico.style.visibility = hex ? 'hidden' : 'visible';
+  }
+  refresh();
+  o.append(row);
   return o;
 }
 // ไอเท็ม ⭐ เห็น/ใช้ได้เฉพาะแอดมิน
