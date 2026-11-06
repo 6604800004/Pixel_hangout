@@ -170,6 +170,18 @@ function broadcast(m, except) {
   for (const [k, c] of peers) if (k !== except && c.ws.readyState === 1) c.ws.send(s);
 }
 const MOVE_KEYS = new Set(['x', 'y', 'd', 'm', 't']);
+// ไอเท็มพิเศษเฉพาะแอดมิน (ตรงกับ ADMIN_ONLY ใน sprites.js)
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn'] };
+const ADMIN_DEF = { hair: 'short', top: 'hoodie', acc: 'none', pet: 'none' };
+function adminKeyOk(k) {
+  return !!ADMIN_KEY && typeof k === 'string' && k.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(k), Buffer.from(ADMIN_KEY));
+}
+function stripAdminLook(l) {
+  if (!l || typeof l !== 'object') return l;
+  let out = l;
+  for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(l[f])) { if (out === l) out = { ...l }; out[f] = ADMIN_DEF[f]; }
+  return out;
+}
 const ZONE_IDS = ['hall', 'meet', 'garden', 'karaoke', 'pub', 'shrine', 'cinema'];
 const okId = (id) => typeof id === 'string' && /^[\w.:-]{1,48}$/.test(id);
 
@@ -206,7 +218,9 @@ wss.on('connection', (ws) => {
       key = 'k' + crypto.randomBytes(6).toString('hex');
       const uid = typeof m.uid === 'string' ? m.uid.slice(0, 40) : key;
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
-      peers.set(key, { ws, uid, p });
+      const isAdmin = adminKeyOk(m.ak);
+      if (!isAdmin && p.l) p.l = stripAdminLook(p.l);
+      peers.set(key, { ws, uid, p, isAdmin });
       send(ws, {
         t: 'welcome', key, ice: iceServers(), turn: hasTurn(), roomName: ROOM_NAME, now: Date.now(), v: BUILD,
         peers: [...peers].filter(([k]) => k !== key).map(([k, c]) => ({ key: k, uid: c.uid, p: c.p })),
@@ -220,6 +234,7 @@ wss.on('connection', (ws) => {
     switch (m.t) {
       case 'p': {
         if (!m.patch || typeof m.patch !== 'object') break;
+        if (m.patch.l && !me.isAdmin) m.patch.l = stripAdminLook(m.patch.l);
         const next = { ...me.p };
         for (const [k, v] of Object.entries(m.patch)) { if (v === null) delete next[k]; else next[k] = v; }
         if (JSON.stringify(next).length > 4096) break;
@@ -272,6 +287,7 @@ wss.on('connection', (ws) => {
         const ok = ADMIN_KEY && typeof m.key === 'string' && m.key.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(m.key), Buffer.from(ADMIN_KEY));
         if (!ADMIN_KEY) { send(ws, { t: 'sys', message: 'ยังไม่ได้ตั้งรหัสแอดมิน — ใส่ ADMIN_KEY ใน Render → Environment ก่อน' }); break; }
         if (!ok) { send(ws, { t: 'sys', admin: false, message: 'ไม่มีสิทธิ์ใช้คำสั่งนี้ (รหัสแอดมินไม่ถูก)' }); break; }
+        me.isAdmin = true;
         if (m.cmd === 'login') { send(ws, { t: 'sys', admin: true, message: 'เป็นแอดมินแล้ว ✅ พิมพ์ help เพื่อดูคำสั่งแอดมิน' }); break; }
         if (m.cmd === 'delchat') {
           // ลบข้อความแชต: ทีละข้อความ (id) หรือทั้งหมด ('all')

@@ -98,6 +98,21 @@ function sfx(notes, vol = 0.05) {
     }
   } catch {}
 }
+// ---- เสียงเดิน (เปิด/ปิดได้: พิมพ์ "เสียงเดิน" หรือ ⚙️) ----
+let noiseBuf = null;
+function stepSound(vol, ride) {
+  try {
+    if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); }
+    if (actx.state !== 'running') return;
+    if (!noiseBuf) { noiseBuf = actx.createBuffer(1, Math.floor(actx.sampleRate * 0.08), actx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2); }
+    const t = actx.currentTime + 0.005;
+    const src = actx.createBufferSource(); src.buffer = noiseBuf; src.playbackRate.value = ride ? 1.6 + Math.random() * 0.2 : 0.75 + Math.random() * 0.25;
+    const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = ride ? 2400 : 900 + Math.random() * 400;
+    const g = actx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    src.connect(f).connect(g).connect(actx.destination); src.start(t); src.stop(t + 0.1);
+    if (ride) { const o = actx.createOscillator(), og = actx.createGain(); o.type = 'triangle'; o.frequency.value = 520 + Math.random() * 80; og.gain.setValueAtTime(vol * 0.5, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); o.connect(og).connect(actx.destination); o.start(t); o.stop(t + 0.06); }
+  } catch {}
+}
 const SFX = { join: () => sfx([523, 784, 1046]), leave: () => sfx([784, 523]), msg: () => sfx([1175], 0.03), pop: () => sfx([880, 1320], 0.03), sit: () => sfx([440], 0.03) };
 const segmenter = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
 function wrapText(c, text, maxW, maxLines) {
@@ -184,6 +199,7 @@ function standUp() {
 function sitOn(seat) {
   const me = G.me;
   me.path = null; me.pendingSeat = null;
+  if (me.ride) { me.ride = false; pres({ rd: null }); }
   me.x = seat.x; me.y = seat.y; me.dir = seat.dir; me.sit = seat.id;
   pres({ x: me.x, y: me.y, d: me.dir, s: seat.id, m: 0 });
   SFX.sit();
@@ -204,6 +220,36 @@ function seatTaken(seatId) {
   return false;
 }
 
+// ---- ขี่สัตว์เลี้ยง ----
+const RIDE_SPEED = 1.4, RIDE_LIFT = 9;
+function isRiding(ch) {
+  const rd = ch === G.me ? G.me.ride : ch.p && ch.p.rd === 1;
+  return !!rd && ch.look && ch.look.pet !== 'none' && !ch.sit;
+}
+function toggleRide(on) {
+  const me = G.me;
+  if (me.look.pet === 'none') { toast('ต้องมีสัตว์เลี้ยงก่อน — กด 👕 แต่งตัว แล้วเลือกสัตว์เลี้ยง'); return; }
+  const v = on == null ? !me.ride : !!on;
+  if (v && me.sit) standUp();
+  me.ride = v;
+  pres({ rd: v ? 1 : null });
+  G.actionSig = '';
+  if (v) { SFX.pop(); toast(`🐾 ขี่${(PETS.find((p) => p[0] === me.look.pet) || [, 'สัตว์เลี้ยง'])[1]}แล้ว! (เดินเร็วขึ้น)`, 2000); }
+  else toast('ลงจากหลังสัตว์เลี้ยงแล้ว', 1500);
+}
+G.steps = lsGet('pixel.steps', true) !== false;
+function setSteps(on) { G.steps = !!on; lsSet('pixel.steps', G.steps); toast(G.steps ? '👣 เปิดเสียงเดินแล้ว' : '👣 ปิดเสียงเดินแล้ว', 1800); }
+function footstep(ch, mine) {
+  const f = ch.frame;
+  if (f === ch.lastStepF) return;
+  ch.lastStepF = f;
+  if (!G.steps || !ch.walking || (f !== 1 && f !== 3) || document.hidden) return;
+  const ride = isRiding(ch);
+  if (mine) { stepSound(ride ? 0.07 : 0.09, ride); return; }
+  const d = Math.hypot(ch.x - G.me.x, ch.y - G.me.y);
+  if (d > 170 || zoneAt(ch.x, ch.y) !== zoneAt(G.me.x, G.me.y)) return;
+  stepSound((ride ? 0.05 : 0.06) * (1 - d / 170), ride);
+}
 function updateMe(dt) {
   const me = G.me;
   let vx = 0, vy = 0;
@@ -216,7 +262,7 @@ function updateMe(dt) {
   if (vx || vy) {
     me.path = null; me.pendingSeat = null; standUp();
     const len = Math.hypot(vx, vy); vx /= len; vy /= len;
-    const step = SPEED * Math.min(dt, 0.05);
+    const step = SPEED * (isRiding(me) ? RIDE_SPEED : 1) * Math.min(dt, 0.05);
     const inside = hitsRects(G.rects, me.x, me.y);
     if (inside || !hitsRects(G.rects, me.x + vx * step, me.y)) { me.x += vx * step; moved = true; }
     if (inside || !hitsRects(G.rects, me.x, me.y + vy * step)) { me.y += vy * step; moved = true; }
@@ -224,7 +270,7 @@ function updateMe(dt) {
   } else if (me.path && me.path.length) {
     const t = me.path[0];
     const dx = t.x - me.x, dy = t.y - me.y, d = Math.hypot(dx, dy);
-    const step = SPEED * Math.min(dt, 0.05);
+    const step = SPEED * (isRiding(me) ? RIDE_SPEED : 1) * Math.min(dt, 0.05);
     if (d <= step) {
       me.x = t.x; me.y = t.y; me.path.shift();
       if (!me.path.length) {
@@ -246,6 +292,7 @@ function updateMe(dt) {
   if (moved) { pres({ x: Math.round(me.x * 2) / 2, y: Math.round(me.y * 2) / 2, d: me.dir, m: 1, t: netNow() }); me.wasMoving = true; }
   else if (me.wasMoving) { me.wasMoving = false; pres({ x: Math.round(me.x * 2) / 2, y: Math.round(me.y * 2) / 2, d: me.dir, m: 0, t: netNow() }); lsSet('pixel.pos', { x: me.x, y: me.y }); }
   me.walking = moved;
+  footstep(me, true);
 }
 
 function updatePet(owner, pet, dt) {
@@ -319,6 +366,7 @@ function updateOthers(dt) {
     if (rt.walking && Math.abs(rt.x - ox) + Math.abs(rt.y - oy) > 0.05) rt.dir = Math.abs(rt.x - ox) > Math.abs(rt.y - oy) ? (rt.x > ox ? 'right' : 'left') : (rt.y > oy ? 'down' : 'up');
     else rt.dir = ['up', 'down', 'left', 'right'].includes(d) ? d : 'down';
     if (rt.walking && !p.s) { rt.ft += dt; rt.frame = Math.floor(rt.ft * 8) % 4; } else { rt.frame = 0; rt.ft = 0; }
+    footstep(rt, false);
     rt.look = cleanLook(p.l);
     updatePet(rt, rt.pet, dt);
   }
@@ -450,6 +498,8 @@ function showHelp() {
     '🎧 bg on · bg off — เปิด/ปิด ได้ยินเสียงตอนพับจอหรือสลับแอป',
     '🩺 ตรวจเสียง — ดูว่าทำไมพูด/ได้ยินใครไม่ได้ (หรือ diag)',
     '🚪 ออก — ออกจากห้องหรือออกจากเว็บ (หรือ leave / exit / ปุ่ม 🚪 มุมขวาบน)',
+    '🐾 ขี่ — ขี่สัตว์เลี้ยง เดินเร็วขึ้น (พิมพ์ ลง เพื่อลงจากหลัง)',
+    '👣 เสียงเดิน — เปิด/ปิดเสียงฝีเท้า (หรือ เสียงเดิน on / off)',
     '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
     '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
     'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ (นั่งอยู่ก็หันได้ หรือกด 🔄 หัน) · คอม: R หัน, E นั่ง, Enter แชต',
@@ -469,6 +519,10 @@ function showHelp() {
 }
 function chatCommand(text) {
   if (/^\/?(leave|exit|quit|ออก|ออกจากห้อง|ออกจากเว็บ)$/i.test(text.trim())) { askLeave(); return true; }
+  { const m = text.trim().match(/^\/?(?:steps|footsteps|เสียงเดิน)(?:\s+(on|off|เปิด|ปิด))?$/i);
+    if (m) { setSteps(m[1] ? /on|เปิด/i.test(m[1]) : !G.steps); return true; } }
+  { const m = text.trim().match(/^\/?(?:ride|ขี่|ขี่สัตว์|ลง|dismount)$/i);
+    if (m) { toggleRide(/ลง|dismount/i.test(m[0]) ? false : undefined); return true; } }
   if (!G.net) return false;
   if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
   if (/^\/?(diag|ตรวจเสียง|เช็คเสียง|เช็กเสียง)$/i.test(text)) { openVoiceDiag(); return true; }
@@ -826,9 +880,23 @@ function drawCharacter(c, ch, t) {
   const pose = ch.sit ? 'sit' : 'stand';
   const blink = ((t + ch.seed * 3) % 4.1) < 0.13;
   if (look.pet !== 'none' && ch.pet) { /* สัตว์เลี้ยงวาดแยก */ }
+  const shake = ch.shakeUntil && performance.now() < ch.shakeUntil ? Math.round(Math.sin(t * 60) * 1.5) : 0; // โดนสะกิด = สั่นดุ๊กดิ๊ก
+  if (isRiding(ch)) {
+    // ขี่สัตว์เลี้ยง: สัตว์ตัวใหญ่ขึ้นอยู่ข้างล่าง คนนั่งบนหลัง
+    if (ch.dir === 'left' || ch.dir === 'right') ch.rideFace = ch.dir === 'right';
+    const pf = ch.walking ? Math.floor(t * 8) % 2 : 0;
+    const ps = petSprite(look.pet, pf, !!ch.rideFace, look.pc || 0);
+    const k = 1.9, pw = ps.width * k, ph = ps.height * k;
+    const fly = look.pet === 'fish' || look.pet === 'dragon' ? 3 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
+    drawShadow(c, ch.x, ch.y, 20);
+    const bob = ch.walking && pf ? -1 : 0;
+    c.drawImage(ps, snap(ch.x - pw / 2 + shake), snap(ch.y - ph + 2 - fly), pw, ph);
+    const s = charSprite(look, ch.dir, 0, 'sit', blink);
+    c.drawImage(s, snap(ch.x - 11 + shake), snap(ch.y - 35 - RIDE_LIFT - fly + bob));
+    return;
+  }
   if (!ch.sit) drawShadow(c, ch.x, ch.y);
   const s = charSprite(look, ch.dir, ch.frame, pose, blink);
-  const shake = ch.shakeUntil && performance.now() < ch.shakeUntil ? Math.round(Math.sin(t * 60) * 1.5) : 0; // โดนสะกิด = สั่นดุ๊กดิ๊ก
   c.drawImage(s, snap(ch.x - 11 + shake), snap(ch.y - 35));
 }
 function drawPet(c, ch, t) {
@@ -913,7 +981,8 @@ function render(t) {
     if (c !== me) c.sit = c.p.s || null;
     const seat = c.sit && G.seatById && G.seatById.get(c.sit);
     list.push({ y: seat && seat.over ? seat.itemY + 0.5 : c.y + 0.2, kind: 'char', c });
-    if (c.look.pet !== 'none') list.push({ y: c.pet.y, kind: 'pet', c });
+    if (c.look.pet !== 'none' && !isRiding(c)) list.push({ y: c.pet.y, kind: 'pet', c });
+    else if (c.pet && isRiding(c)) { c.pet.x = c.x + 10; c.pet.y = c.y; }
   }
   list.sort((a, b2) => a.y - b2.y);
   for (const o of list) {
@@ -1023,7 +1092,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const p = ch === G.me ? null : ch.p;
     const [sx, sy0] = S(ch.x, ch.y);
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
-    let top = sy0 - (ch.sit ? 33 : 35) * scale;
+    let top = sy0 - ((ch.sit ? 33 : 35) + (isRiding(ch) ? RIDE_LIFT + 2 : 0)) * scale;
     const away = ch !== G.me && (G.voice ? !G.audible.has(ch.key) : zoneAt(ch.x, ch.y) !== G.zone);
     c.globalAlpha = away && G.voice ? 0.5 : 1;
     const key = ch === G.me ? G.net.myKey : ch.key;
@@ -1133,6 +1202,7 @@ function updateActions() {
       acts.push(['🔄 หัน', 'turn']);
       if (G.myDesk && me.sit === `desk:${G.myDesk}`) acts.push(['🎨 แต่งโต๊ะ', 'deskEdit']);
     } else if (!me.path) {
+      if (me.look.pet !== 'none') acts.push([me.ride ? '🐾 ลงจากหลัง' : '🐾 ขี่' + ((PETS.find((p) => p[0] === me.look.pet) || [])[1] || ''), 'ride']);
       let best = null, bd = 22;
       for (const s of G.seats) {
         const d = Math.hypot(s.x - me.x, (s.y - me.y) * 1.2);
@@ -1160,6 +1230,7 @@ function updateActions() {
     btn.onclick = () => {
       if (act === 'stand') standUp();
       if (act === 'turn') turnMe();
+      if (act === 'ride') toggleRide();
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
       else if (act.startsWith('screen:')) { const it = G.furniture.find((f) => f.id === act.slice(7)); if (it) openScreenModal(it); }
@@ -1333,6 +1404,42 @@ function optRow(label, items, isSel, onPick, kind = 'chip') {
   paint(); o.append(row);
   return o;
 }
+// แถวเลือกสี + ปุ่ม 🎨 เลือกสีเองได้ทุกสี
+function colorRow(label, pal, get, set, natural) {
+  const o = el('div', 'opt');
+  o.append(el('span', null, label));
+  const row = el('div', 'row');
+  const paint = () => {
+    row.innerHTML = '';
+    pal.forEach((c, i) => {
+      const b = el('button', 'sw'); b.type = 'button';
+      b.style.background = c || natural || '#ccc';
+      if (get() === i) b.classList.add('sel');
+      b.onclick = () => { set(i); paint(); };
+      row.append(b);
+    });
+    const cur = get();
+    const lab = el('label', 'sw custom' + (isHex(cur) ? ' sel' : ''));
+    lab.title = 'เลือกสีเอง';
+    if (isHex(cur)) lab.style.background = cur;
+    else lab.textContent = '🎨';
+    const inp = el('input'); inp.type = 'color'; inp.value = isHex(cur) ? cur : (pal[typeof cur === 'number' ? cur : 0] || '#ff8fab');
+    inp.oninput = () => { set(inp.value.toLowerCase()); lab.style.background = inp.value; lab.textContent = ''; row.querySelectorAll('.sel').forEach((x) => x !== lab && x.classList.remove('sel')); lab.classList.add('sel'); };
+    inp.onchange = () => paint();
+    lab.append(inp);
+    row.append(lab);
+  };
+  paint(); o.append(row);
+  return o;
+}
+// ไอเท็ม ⭐ เห็น/ใช้ได้เฉพาะแอดมิน
+const visItems = (list, field) => list.filter((it) => G.isAdmin || !(ADMIN_ONLY[field] || []).includes(it[0]));
+function stripAdmin(look) {
+  if (G.isAdmin) return look;
+  const o = { ...look };
+  for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(o[f])) o[f] = DEFAULT_LOOK[f];
+  return o;
+}
 function startPreview(cv, drawFn) {
   const g = cv.getContext('2d');
   g.imageSmoothingEnabled = false;
@@ -1392,14 +1499,14 @@ function openCreator(first) {
     const sections = () => [
       optRow('เพศ', SEXES, (it) => draft.sex === it[0], (it) => (draft.sex = it[0])),
       optRow('สีผิว', SKINS, (_, i) => draft.skin === i, (_, i) => (draft.skin = i), 'sw'),
-      optRow('ทรงผม', HAIR_STYLES, (it) => draft.hair === it[0], (it) => (draft.hair = it[0])),
-      optRow('สีผม', HAIR_COLORS, (_, i) => draft.hc === i, (_, i) => (draft.hc = i), 'sw'),
-      optRow('เสื้อ', TOPS, (it) => draft.top === it[0], (it) => (draft.top = it[0])),
-      optRow('สีเสื้อ', CLOTH_COLORS, (_, i) => draft.tc === i, (_, i) => (draft.tc = i), 'sw'),
-      optRow('สีกางเกง / เอี๊ยม', CLOTH_COLORS, (_, i) => draft.bc === i, (_, i) => (draft.bc = i), 'sw'),
-      optRow('เครื่องประดับ', ACCS, (it) => draft.acc === it[0], (it) => (draft.acc = it[0])),
-      optRow('สัตว์เลี้ยงคู่ใจ', PETS, (it) => draft.pet === it[0], (it) => (draft.pet = it[0])),
-      optRow('สีสัตว์เลี้ยง (ช่องแรก = สีธรรมชาติ)', PET_COLORS.map((c) => c || 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'), (_, i) => (draft.pc || 0) === i, (_, i) => (draft.pc = i), 'sw'),
+      optRow('ทรงผม', visItems(HAIR_STYLES, 'hair'), (it) => draft.hair === it[0], (it) => (draft.hair = it[0])),
+      colorRow('สีผม (🎨 = เลือกเอง)', HAIR_COLORS, () => draft.hc, (v) => (draft.hc = v)),
+      optRow('เสื้อ', visItems(TOPS, 'top'), (it) => draft.top === it[0], (it) => (draft.top = it[0])),
+      colorRow('สีเสื้อ', CLOTH_COLORS, () => draft.tc, (v) => (draft.tc = v)),
+      colorRow('สีกางเกง / กระโปรง / เอี๊ยม', CLOTH_COLORS, () => draft.bc, (v) => (draft.bc = v)),
+      optRow('เครื่องประดับ', visItems(ACCS, 'acc'), (it) => draft.acc === it[0], (it) => (draft.acc = it[0])),
+      optRow('สัตว์เลี้ยงคู่ใจ', visItems(PETS, 'pet'), (it) => draft.pet === it[0], (it) => (draft.pet = it[0])),
+      colorRow('สีสัตว์เลี้ยง (ช่องแรก = สีธรรมชาติ)', PET_COLORS, () => draft.pc || 0, (v) => (draft.pc = v), 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'),
     ];
     const secBox = el('div', 'opts');
     const paintSections = () => { secBox.innerHTML = ''; sections().forEach((s) => secBox.append(s)); };
@@ -1409,7 +1516,8 @@ function openCreator(first) {
     card.append(wrap);
     dice.onclick = () => {
       const r = (a) => Math.floor(Math.random() * a.length);
-      Object.assign(draft, { pc: r(PET_COLORS), skin: r(SKINS), hair: HAIR_STYLES[r(HAIR_STYLES)][0], hc: r(HAIR_COLORS), top: TOPS[r(TOPS)][0], tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: ACCS[r(ACCS)][0], pet: PETS[r(PETS)][0] });
+      const pk = (list, f) => { const v = visItems(list, f); return v[r(v)][0]; };
+      Object.assign(draft, { pc: r(PET_COLORS), skin: r(SKINS), hair: pk(HAIR_STYLES, 'hair'), hc: r(HAIR_COLORS), top: pk(TOPS, 'top'), tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: pk(ACCS, 'acc'), pet: pk(PETS, 'pet') });
       paintSections(); SFX.pop();
     };
     const foot = el('div', 'foot');
@@ -1419,7 +1527,8 @@ function openCreator(first) {
       nick = nick.trim().slice(0, 16);
       if (!nick) { nameInput.focus(); toast('ใส่ชื่อเล่นก่อนนะ'); return; }
       G.me.nick = nick;
-      G.me.look = cleanLook(draft);
+      G.me.look = stripAdmin(cleanLook(draft));
+      if (G.me.look.pet === 'none' && G.me.ride) { G.me.ride = false; pres({ rd: null }); }
       lsSet('pixel.look', G.me.look); lsSet('pixel.nick', nick);
       G.net.savePrivate({ look: G.me.look, nick, desk: G.myDeskStyle });
       if (manualDir && !G.me.sit) G.me.dir = manualDir;
@@ -1633,6 +1742,19 @@ function paintVoiceSettings() {
   mon.append(el('p', 'warn', 'ใส่หูฟังก่อนเปิด ไม่งั้นเสียงจะวนจากลำโพงเข้าไมค์จนหอน · ฟังได้แม้ปิดไมค์กับเพื่อนอยู่ (เพื่อนไม่ได้ยิน)'));
   right.append(mon);
 
+  // ---- ความดังเสียงเพื่อนทั้งหมด + เสียงเดิน ----
+  const mv = el('div', 'mon');
+  mv.append(el('b', null, '🔊 ความดังเสียงเพื่อน (ทุกคน)'));
+  const mvv = el('span', 'tip'); mvv.textContent = Math.round(V.master * 100) + '%';
+  const mvr = el('input'); mvr.type = 'range'; mvr.min = '0.5'; mvr.max = V.canBoost ? '2.5' : '1'; mvr.step = '0.05'; mvr.value = String(Math.min(V.master, V.canBoost ? 2.5 : 1));
+  mvr.oninput = () => { V.setMaster(Number(mvr.value)); mvv.textContent = Math.round(V.master * 100) + '%'; };
+  mv.append(mvr, mvv);
+  mv.append(el('p', 'tip', V.canBoost ? 'เกิน 100% = ขยายเสียงให้ดังกว่าปกติ (ปรับทีละคนได้อีกที่รายชื่อคนในห้อง)' : 'เบราว์เซอร์นี้ (iPhone/Safari) ดังสุดได้ 100% — เพิ่มเสียงที่ปุ่มเสียงของเครื่องได้'));
+  const stp = el('label', 'chk'); const sc = el('input'); sc.type = 'checkbox'; sc.checked = G.steps; sc.onchange = () => setSteps(sc.checked);
+  stp.append(sc, el('b', null, '👣 เสียงเดิน'));
+  mv.append(stp);
+  right.append(mv);
+
   // ---- รัศมีไมค์ (ห้องรวม) ----
   const mr = el('div', 'mon');
   mr.style.borderColor = MIC_COLORS[G.micSet.c];
@@ -1741,6 +1863,7 @@ $('#focus').onclick = () => { $('#focus').classList.add('hidden'); $('#focusVide
 // ============================================================== เริ่ม ====
 async function join() {
   const net = G.net;
+  G.me.look = stripAdmin(G.me.look);
   G.joined = true;
   $('#hud').classList.remove('hidden');
   setChatOpen(G.chatOpen);
@@ -1801,7 +1924,7 @@ function frame(ms) {
   if (net.onSys) net.onSys((m) => {
     if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
     if (m.admin === false) lsSet('pixel.admin', null);
-    if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); }
+    if (typeof m.admin === 'boolean') { G.isAdmin = m.admin; scheduleChatRender(); if (m.admin && G.joined) pres({ l: G.me.look }); }
     G.pendingAdminKey = null;
     addSys((m.kind === 'info' ? '' : '🛡️ ') + m.message); toast(m.message, 4000);
   });

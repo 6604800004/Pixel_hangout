@@ -98,10 +98,43 @@ function makeVoice(net, onChange) {
     peer.audioTx?.sender.replaceTrack(ok ? V.audioTrack || null : null).catch(() => {});
     peer.videoTx?.sender.replaceTrack(ok && V.cam ? V.videoTrack : null).catch(() => {});
     peer.screenTx?.sender.replaceTrack(peer.screenOk && V.screenTrack ? V.screenTrack : null).catch(() => {});
-    const play = !!peer.playOk;
-    peer.audioEl.muted = V.deaf || V.bgMute || !play || !!peer.userMuted;
-    if (play && !V.deaf && !V.bgMute && !peer.userMuted) peer.audioEl.play().catch(() => {});
+    volOut(peer);
   }
+  // ---- ความดังเสียงเพื่อน: เกิน 100% ใช้ WebAudio ขยาย (เบราว์เซอร์ที่ไม่รองรับ/เสียงในเครื่องยังไม่เริ่ม = ใช้แบบปกติ สูงสุด 100%) ----
+  V.master = (() => { try { const v = Number(JSON.parse(localStorage.getItem('pixel.vboost') || 'null')); return v >= 0.5 && v <= 2.5 ? v : 1.5; } catch { return 1.5; } })();
+  const UA = navigator.userAgent;
+  const canBoost = !/iP(hone|ad|od)/.test(UA) && !(/Safari\//.test(UA) && !/Chrome|Chromium|CriOS|Edg|Firefox|OPR/.test(UA));
+  V.canBoost = canBoost;
+  function volOut(p) {
+    const viaRelay = Date.now() - (p.relayRxAt || 0) < 1500;
+    const playing = !!p.playOk && !V.deaf && !V.bgMute && !p.userMuted && !viaRelay;
+    const ev = (p.vol ?? 1) * V.master;
+    const spk = V.settings && V.settings.spkId;
+    const want = canBoost && ev > 1.001 && V.actx && V.actx.state === 'running' && p.audioEl.srcObject && (!spk || V.actx.setSinkId);
+    if (want) {
+      try {
+        if (!p.boost || p.boost.stream !== p.audioEl.srcObject) {
+          if (p.boost) { try { p.boost.src.disconnect(); p.boost.g.disconnect(); } catch {} }
+          const src = V.actx.createMediaStreamSource(p.audioEl.srcObject), g = V.actx.createGain();
+          src.connect(g).connect(V.actx.destination);
+          p.boost = { src, g, stream: p.audioEl.srcObject };
+        }
+        p.boost.g.gain.value = playing ? ev : 0;
+        p.audioEl.muted = true; // ต้องผูกกับ <audio> ไว้ (Chrome) แต่ให้เสียงออกทาง WebAudio ทางเดียว
+        if (playing) p.audioEl.play().catch(() => {});
+        return;
+      } catch { /* ใช้แบบปกติแทน */ }
+    }
+    if (p.boost) { try { p.boost.src.disconnect(); p.boost.g.disconnect(); } catch {} p.boost = null; }
+    try { p.audioEl.volume = Math.min(1, ev); } catch {}
+    p.audioEl.muted = !playing;
+    if (playing) p.audioEl.play().catch(() => {});
+  }
+  V.setMaster = (v) => {
+    V.master = Math.max(0.5, Math.min(2.5, v));
+    try { localStorage.setItem('pixel.vboost', JSON.stringify(V.master)); } catch {}
+    for (const [k, p] of V.peers) { volOut(p); const rx = relay.rx.get(k); if (rx) rx.gain.gain.value = (p.vol ?? 1) * V.master; }
+  };
   V.audience = new Set();
   V.screenAudience = new Set();
   V.setScreenAudience = (keys) => {
@@ -117,9 +150,9 @@ function makeVoice(net, onChange) {
     if (p && !!p.userMuted !== !!m) { p.userMuted = !!m; apply(p); }
   };
   V.setVolume = (key, v) => {
-    const rx = relay.rx.get(key); if (rx) rx.gain.gain.value = v;
+    const rx = relay.rx.get(key); if (rx) rx.gain.gain.value = v * V.master;
     const p = V.peers.get(key);
-    if (p && Math.abs((p.vol ?? 1) - v) > 0.04) { p.vol = v; try { p.audioEl.volume = v; } catch {} }
+    if (p && Math.abs((p.vol ?? 1) - v) > 0.04) { p.vol = v; volOut(p); }
   };
   // sendKeys = คนที่เสียงเราไปถึง (ตามรัศมีไมค์ของเรา), playKeys = คนที่เราได้ยิน (ตามรัศมีไมค์ของเขา)
   V.playAud = new Set();
@@ -552,7 +585,7 @@ registerProcessor('px-play', PxPlay);`;
     if (relay.rx.has(key)) return relay.rx.get(key);
     const ctx = V.actx;
     const node = new AudioWorkletNode(ctx, 'px-play', { outputChannelCount: [1] });
-    const gain = ctx.createGain(); const p = V.peers.get(key); gain.gain.value = p && p.vol != null ? p.vol : 1;
+    const gain = ctx.createGain(); const p = V.peers.get(key); gain.gain.value = (p && p.vol != null ? p.vol : 1) * V.master;
     const an = ctx.createAnalyser(); an.fftSize = 512;
     node.connect(gain).connect(ctx.destination); gain.connect(an);
     rx = { node, gain, ratio: ctx.sampleRate / relay.rate };
@@ -580,7 +613,8 @@ registerProcessor('px-play', PxPlay);`;
     else if (!need && relay.cap) relayCapStop();
     for (const [k] of relay.rx) { const p = V.peers.get(k); if (!p || Date.now() - (p.relayRxAt || 0) > 5000) relayDrop(k); }
     // ระหว่างได้เสียงทางเซิร์ฟเวอร์ ปิดเสียงทางตรงไว้ (กันเสียงซ้อน)
-    for (const p of V.peers.values()) { const viaRelay = Date.now() - (p.relayRxAt || 0) < 1500; if (viaRelay && !p.audioEl.muted) p.audioEl.muted = true; else if (!viaRelay && p.audioEl.muted && p.playOk && !V.deaf && !V.bgMute && !p.userMuted) apply(p); }
+    // สลับทางตรง/ผ่านเซิร์ฟเวอร์ และเปิด-ปิดตัวขยายเสียงให้ตรงกับสถานะเสียงในเครื่อง
+    for (const p of V.peers.values()) { const viaRelay = Date.now() - (p.relayRxAt || 0) < 1500; const boostOk = !!(V.actx && V.actx.state === 'running'); if (viaRelay !== !!p.wasRelay || boostOk !== !!p.wasBoostOk) { p.wasRelay = viaRelay; p.wasBoostOk = boostOk; volOut(p); } }
   }, 500);
   // ---------- ตรวจว่าเสียงไหลจริงไหม (ต่อติดแต่ไม่มีเสียง = สลับไปทางเซิร์ฟเวอร์) ----------
   V.remoteMicOn = () => true;

@@ -394,3 +394,5 @@ pre.diag { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; backgrou
 .leave-row { gap: 8px; justify-content: space-between; }
 .rm .ed { flex: none; font-size: 12px; padding: 2px 4px; border-radius: 6px; opacity: .55; }
 .rm .ed:hover { opacity: 1; background: #fff; }
+.sw.custom { position: relative; display: inline-grid; place-items: center; font-size: 15px; cursor: pointer; background: conic-gradient(#ff5a6e, #ffd84d, #7ed37a, #5ab4ff, #8f7dff, #ff5a6e); overflow: hidden; }
+.sw.custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }

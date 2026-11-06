@@ -5,14 +5,19 @@ const OUTLINE = '#2e2235';
 const OUT_RGB = [0x2e, 0x22, 0x35];
 
 const SKINS = ['#ffe6cf', '#f8cba3', '#e3a878', '#b8794e', '#7c4c30'];
-const HAIR_COLORS = ['#3a2c3f', '#6b4430', '#b0703c', '#f0c96b', '#f08a6c', '#f5a3c7', '#8bb8f0', '#a98bf0', '#f4efe6', '#5cc39a'];
-const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7d9cf0', '#b48cf0', '#f4f1e8', '#5a5f7a', '#e8505b', '#3fa37a', '#c8a27a'];
-const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก']];
-const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม']];
-const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า']];
+const HAIR_COLORS = ['#3a2c3f', '#6b4430', '#b0703c', '#f0c96b', '#f08a6c', '#f5a3c7', '#8bb8f0', '#a98bf0', '#f4efe6', '#5cc39a', '#1c1c24', '#8a8a96', '#e8505b', '#ff9a3c', '#4a6cd0', '#2fa0a0'];
+const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7d9cf0', '#b48cf0', '#f4f1e8', '#5a5f7a', '#e8505b', '#3fa37a', '#c8a27a', '#2e2a3a', '#ffffff', '#ff6bd5', '#00b3a4', '#a33b54', '#3b4f8f', '#d6c3a5', '#8c6a4f'];
+// ⭐ = เฉพาะแอดมิน (เซิร์ฟเวอร์ตัดออกถ้าคนทั่วไปใส่)
+const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
+const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา']];
+const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น']];
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
-const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9'];
+const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
+// สี: เลือกจากชุดสี (เลข) หรือกำหนดเอง (#rrggbb)
+const isHex = (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+const colOf = (v, pal) => (isHex(v) ? v.toLowerCase() : pal[v]);
 const SEXES = [['m', 'ชาย'], ['f', 'หญิง']];
 const DEFAULT_LOOK = { sex: 'm', skin: 1, hair: 'short', hc: 0, top: 'hoodie', tc: 5, bc: 8, acc: 'none', pet: 'none', pc: 0 };
 
@@ -20,16 +25,17 @@ function cleanLook(l) {
   const o = { ...DEFAULT_LOOK };
   if (!l || typeof l !== 'object') return o;
   const inRange = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
+  const okCol = (v, n) => inRange(v, n) || isHex(v);
   if (inRange(l.skin, SKINS.length)) o.skin = l.skin;
-  if (inRange(l.hc, HAIR_COLORS.length)) o.hc = l.hc;
-  if (inRange(l.tc, CLOTH_COLORS.length)) o.tc = l.tc;
-  if (inRange(l.bc, CLOTH_COLORS.length)) o.bc = l.bc;
+  if (okCol(l.hc, HAIR_COLORS.length)) o.hc = isHex(l.hc) ? l.hc.toLowerCase() : l.hc;
+  if (okCol(l.tc, CLOTH_COLORS.length)) o.tc = isHex(l.tc) ? l.tc.toLowerCase() : l.tc;
+  if (okCol(l.bc, CLOTH_COLORS.length)) o.bc = isHex(l.bc) ? l.bc.toLowerCase() : l.bc;
   if (HAIR_STYLES.some((h) => h[0] === l.hair)) o.hair = l.hair;
   if (TOPS.some((h) => h[0] === l.top)) o.top = l.top;
   if (ACCS.some((h) => h[0] === l.acc)) o.acc = l.acc;
   if (PETS.some((h) => h[0] === l.pet)) o.pet = l.pet;
   if (l.sex === 'f' || l.sex === 'm') o.sex = l.sex;
-  if (inRange(l.pc, PET_COLORS.length)) o.pc = l.pc;
+  if (inRange(l.pc, PET_COLORS.length) || isHex(l.pc)) o.pc = isHex(l.pc) ? l.pc.toLowerCase() : l.pc;
   return o;
 }
 
@@ -112,9 +118,14 @@ function charSprite(look, dir, frame, pose, blink) {
     const U = painter(g, 0, 4 + bob);    // ช่วงบน (เด้งตามจังหวะเดิน)
 
     const skin = SKINS[look.skin], skinD = shade(skin, -0.13);
-    const hc = HAIR_COLORS[look.hc], hcL = shade(hc, 0.22), hcD = shade(hc, -0.22);
-    const tc = CLOTH_COLORS[look.tc], tcD = shade(tc, -0.2), tcL = shade(tc, 0.2);
-    const bc = CLOTH_COLORS[look.bc], bcD = shade(bc, -0.22);
+    const rainbow = look.hair === 'rainbow';
+    // ผมรุ้ง: วาดด้วยสีพิเศษก่อน แล้วค่อยแทนที่เป็นสีรุ้งตามแถว
+    const hc0 = colOf(look.hc, HAIR_COLORS) || HAIR_COLORS[0];
+    const hc = rainbow ? '#fe01fe' : hc0, hcL = rainbow ? '#fe02fe' : shade(hc0, 0.22), hcD = rainbow ? '#fe03fe' : shade(hc0, -0.22);
+    const tc = colOf(look.tc, CLOTH_COLORS) || CLOTH_COLORS[5], tcD = shade(tc, -0.2), tcL = shade(tc, 0.2);
+    const bc = colOf(look.bc, CLOTH_COLORS) || CLOTH_COLORS[8], bcD = shade(bc, -0.22);
+    const top = look.top;
+    const sleeve = top === 'tank' ? skin : tc, sleeveD = top === 'tank' ? skinD : tcD;
     const shoe = '#4a3a4a';
     const dress = look.top === 'dress';
     const fem = look.sex === 'f';
@@ -123,6 +134,18 @@ function charSprite(look, dir, frame, pose, blink) {
     const legC = dress || skirt ? skin : bc, legD = dress || skirt ? skinD : bcD;
     const side = d === 'left';
     const EYE = '#2e2235';
+
+    // ---------- ⭐ ปีกนางฟ้า (ด้านหลัง) ----------
+    const wings = look.acc === 'wings';
+    const drawWings = () => {
+      const W = '#ffffff', WD = '#d9e4ff', fl = (frame === 1 || frame === 3) ? -1 : 0;
+      if (d === 'up') { U(1, 15 + fl, 7, 9, W); U(14, 15 + fl, 7, 9, W); U(2, 18 + fl, 5, 1, WD); U(15, 18 + fl, 5, 1, WD); U(2, 21 + fl, 5, 1, WD); U(15, 21 + fl, 5, 1, WD); U(0, 16 + fl, 1, 6, W); U(21, 16 + fl, 1, 6, W); }
+      else if (side) { U(12, 14 + fl, 8, 9, W); U(13, 17 + fl, 6, 1, WD); U(13, 20 + fl, 6, 1, WD); U(19, 15 + fl, 2, 5, W); }
+      else { U(0, 15 + fl, 6, 9, W); U(16, 15 + fl, 6, 9, W); U(1, 18 + fl, 4, 1, WD); U(17, 18 + fl, 4, 1, WD); U(1, 21 + fl, 4, 1, WD); U(17, 21 + fl, 4, 1, WD); }
+    };
+    if (wings && d !== 'up') drawWings();
+    // ---------- ⭐ ผ้าคลุมราชา (ด้านหลัง) ----------
+    if (top === 'royal' && d !== 'up') { U(5, 19, 12, 10, '#a3203a'); U(5, 28, 12, 1, '#ffd34d'); }
 
     // ---------- ขา ----------
     if (sit) {
@@ -140,6 +163,7 @@ function charSprite(look, dir, frame, pose, blink) {
 
     // ---------- ฮู้ดด้านหลัง ----------
     if (look.top === 'hoodie' && d === 'up') U(6, 17, 10, 3, tcD);
+    if (top === 'sweater') U(8, 17, 6, 2, tcL);
 
     // ---------- ลำตัว ----------
     U(7, 19, 8, 7, tc);
@@ -148,13 +172,16 @@ function charSprite(look, dir, frame, pose, blink) {
     if (skirt) { U(7, 24, 8, 2, bc); U(6, 25, 10, 2, bc); U(5, 27, 12, 1, bc); U(5, 28, 12, 1, bcD); U(9, 26, 1, 2, bcD); U(13, 26, 1, 2, bcD); }
     if (fem) { U(7, 22, 1, 2, tcD); U(14, 22, 1, 2, tcD); } // เอวคอด
     else { U(6, 19, 10, 1, tc); U(15, 19, 1, 1, tcD); }     // ไหล่กว้าง
+    if (top === 'stripe') { for (const y of [20, 22, 24]) U(7, y, 8, 1, tcL); }
+    if (top === 'tank') { U(6, 19, 1, 1, skin); U(15, 19, 1, 1, skinD); U(7, 19, 1, 2, skin); U(14, 19, 1, 2, skinD); }
+    if (top === 'sweater') { U(7, 25, 8, 1, tcL); U(7, 19, 8, 1, tcL); }
     if (side) {
       const sw = frame === 1 ? -1 : frame === 3 ? 1 : 0;
-      U(10 + sw, 20, 2, 3, tcD); U(10 + sw, 23, 2, 1, skin);
+      U(10 + sw, 20, 2, 3, sleeveD); U(10 + sw, 23, 2, 1, skin);
     } else {
       const sl = frame === 1 ? -1 : 0, sr = frame === 3 ? -1 : 0;
-      U(6, 20 + sl, 1, 2, tc); U(6, 22 + sl, 1, 2, skin);
-      U(15, 20 + sr, 1, 2, tcD); U(15, 22 + sr, 1, 2, skinD);
+      U(6, 20 + sl, 1, 2, sleeve); U(6, 22 + sl, 1, 2, skin);
+      U(15, 20 + sr, 1, 2, sleeveD); U(15, 22 + sr, 1, 2, skinD);
     }
     if (d === 'down') {
       if (look.top === 'hoodie') { U(8, 19, 6, 1, tcD); U(9, 20, 1, 2, '#ffffff'); U(12, 20, 1, 2, '#ffffff'); U(8, 23, 6, 2, tcD); }
@@ -162,10 +189,19 @@ function charSprite(look, dir, frame, pose, blink) {
       if (look.top === 'shirt') { U(8, 19, 2, 1, '#ffffff'); U(12, 19, 2, 1, '#ffffff'); U(10, 19, 2, 1, '#e05a6a'); U(10, 20, 2, 3, '#c94a5a'); }
       if (look.top === 'overall') { U(8, 21, 6, 5, bc); U(8, 19, 1, 2, bc); U(13, 19, 1, 2, bc); U(8, 21, 1, 1, '#ffe07a'); U(13, 21, 1, 1, '#ffe07a'); U(10, 23, 2, 1, bcD); }
       if (dress) { U(9, 19, 4, 1, tcL); U(7, 23, 8, 1, tcD); }
+      if (top === 'jacket') { U(9, 19, 4, 7, '#f4f1e8'); U(9, 19, 1, 7, tcD); U(12, 19, 1, 7, tcD); U(10, 21, 2, 1, tcL); }
+      if (top === 'suit') { U(9, 19, 4, 4, '#ffffff'); U(10, 19, 2, 5, '#c94a5a'); U(8, 19, 1, 4, tcD); U(13, 19, 1, 4, tcD); U(10, 24, 1, 1, tcL); }
+      if (top === 'royal') { U(7, 19, 8, 1, '#ffd34d'); U(6, 19, 1, 8, '#a3203a'); U(15, 19, 1, 8, '#a3203a'); U(10, 20, 2, 5, '#ffd34d'); U(10, 21, 2, 1, '#ff6b8a'); U(10, 23, 2, 1, '#6cc6d9'); }
+      if (top === 'sweater') { U(9, 18, 4, 1, tcL); }
     } else if (side) {
+      if (top === 'jacket') U(7, 19, 2, 7, '#f4f1e8');
+      if (top === 'suit') { U(6, 19, 3, 3, '#ffffff'); U(7, 20, 1, 3, '#c94a5a'); }
+      if (top === 'royal') { U(11, 19, 6, 10, '#a3203a'); U(11, 28, 6, 1, '#ffd34d'); U(7, 19, 4, 1, '#ffd34d'); }
       if (look.top === 'overall') { U(7, 21, 8, 5, bc); U(8, 19, 1, 2, bc); }
       if (look.top === 'hoodie') U(11, 18, 4, 2, tcD);
     } else if (look.top === 'overall') { U(7, 21, 8, 5, bc); U(8, 19, 1, 2, bc); U(13, 19, 1, 2, bc); }
+    else if (top === 'royal') { U(5, 18, 12, 11, '#a3203a'); U(5, 28, 12, 1, '#ffd34d'); U(6, 18, 10, 1, '#ffd34d'); U(10, 21, 2, 3, '#ffd34d'); }
+    if (wings && d === 'up') drawWings();
 
     // ---------- หัว ----------
     U(6, 5, 10, 1, skin); U(5, 6, 12, 1, skin); U(4, 7, 14, 10, skin); U(5, 17, 12, 1, skin); U(6, 18, 10, 1, skin);
@@ -195,23 +231,34 @@ function charSprite(look, dir, frame, pose, blink) {
     // ส่วนบนที่ทุกทรงมี
     U(6, 3, 10, 1, hc); U(5, 4, 12, 1, hc); U(4, 5, 14, 4, hc);
     if (d === 'down') {
-      U(4, 9, 3, 3, hc); U(15, 9, 3, 3, hc); U(7, 9, 8, 1, hc); U(8, 10, 2, 1, hc); U(12, 10, 1, 1, hc);
+      if (style !== 'buzz' && style !== 'mohawk') { U(4, 9, 3, 3, hc); U(15, 9, 3, 3, hc); U(7, 9, 8, 1, hc); U(8, 10, 2, 1, hc); U(12, 10, 1, 1, hc); }
       if (style === 'short' || style === 'spiky') { U(4, 12, 1, 2, hc); U(17, 12, 1, 2, hc); }
       if (style === 'long') { U(3, 8, 2, 14, hc); U(17, 8, 2, 14, hc); U(3, 20, 2, 2, hcD); U(17, 20, 2, 2, hcD); }
       if (style === 'bob') { U(3, 8, 2, 9, hc); U(17, 8, 2, 9, hc); U(4, 16, 1, 1, hcD); U(17, 16, 1, 1, hcD); }
       if (style === 'twin') { U(1, 9, 3, 9, hc); U(18, 9, 3, 9, hc); U(1, 9, 3, 1, '#ff6b8a'); U(18, 9, 3, 1, '#ff6b8a'); U(1, 16, 3, 2, hcD); U(18, 16, 3, 2, hcD); }
+      if (style === 'wavy' || style === 'rainbow') { U(3, 8, 2, 14, hc); U(17, 8, 2, 14, hc); U(2, 11, 1, 3, hc); U(19, 11, 1, 3, hc); U(2, 17, 1, 3, hc); U(19, 17, 1, 3, hc); U(3, 14, 2, 1, hcD); U(17, 14, 2, 1, hcD); U(3, 21, 2, 1, hcD); U(17, 21, 2, 1, hcD); }
+      if (style === 'side') { U(4, 9, 7, 3, hc); U(4, 12, 4, 1, hc); U(5, 10, 3, 1, hcL); }
+      if (style === 'ponytail') { U(4, 12, 1, 2, hc); U(17, 12, 1, 2, hc); U(18, 9, 2, 5, hc); }
+      if (style === 'afro') { U(2, 8, 3, 8, hc); U(17, 8, 3, 8, hc); }
     } else if (d === 'up') {
       U(4, 9, 14, 8, hc); U(5, 17, 12, 1, hc); U(9, 18, 4, 1, skinD);
       U(5, 13, 12, 1, hcD);
       if (style === 'long') { U(4, 17, 14, 6, hc); U(5, 22, 12, 1, hcD); }
       if (style === 'bob') { U(3, 9, 16, 8, hc); U(4, 16, 14, 1, hcD); }
       if (style === 'twin') { U(1, 9, 3, 9, hc); U(18, 9, 3, 9, hc); U(1, 9, 3, 1, '#ff6b8a'); U(18, 9, 3, 1, '#ff6b8a'); }
+      if (style === 'wavy' || style === 'rainbow') { U(3, 9, 16, 14, hc); U(4, 15, 14, 1, hcD); U(4, 22, 14, 1, hcD); U(2, 12, 1, 4, hc); U(19, 12, 1, 4, hc); }
+      if (style === 'ponytail') { U(9, 16, 4, 1, '#ff6b8a'); U(9, 17, 4, 7, hc); U(10, 24, 2, 1, hc); U(10, 23, 2, 1, hcD); }
+      if (style === 'afro') { U(2, 8, 18, 9, hc); }
     } else {
       U(11, 9, 7, 8, hc); U(12, 17, 5, 1, hc); U(4, 9, 4, 2, hc); U(4, 11, 1, 1, hc);
       U(13, 13, 4, 1, hcD);
       if (style === 'long') { U(13, 9, 5, 13, hc); U(13, 21, 5, 1, hcD); }
       if (style === 'bob') { U(12, 9, 6, 9, hc); U(12, 17, 6, 1, hcD); }
       if (style === 'twin') { U(17, 9, 3, 9, hc); U(17, 9, 3, 1, '#ff6b8a'); }
+      if (style === 'wavy' || style === 'rainbow') { U(12, 9, 7, 14, hc); U(19, 12, 1, 4, hc); U(13, 15, 6, 1, hcD); U(13, 22, 6, 1, hcD); }
+      if (style === 'ponytail') { U(17, 9, 1, 1, '#ff6b8a'); U(18, 9, 2, 8, hc); U(19, 16, 2, 2, hc); U(18, 15, 2, 1, hcD); }
+      if (style === 'side') { U(4, 9, 3, 2, hc); }
+      if (style === 'afro') { U(11, 8, 9, 10, hc); }
     }
     const shortStyle = style === 'short' || style === 'spiky' || style === 'bun';
     if (fem && shortStyle) { // ผู้หญิงผมสั้นก็ยังมีปอยผมยาวถึงไหล่
@@ -222,6 +269,9 @@ function charSprite(look, dir, frame, pose, blink) {
     if (fem && (look.acc === 'none' || look.acc === 'glasses' || look.acc === 'shades') && d !== 'up') {
       const cx = side ? 7 : 14; U(cx, 6, 3, 2, '#ff6b8a'); U(cx + 1, 6, 1, 1, '#ffd0dc'); // กิ๊บติดผม
     }
+    if (style === 'mohawk') { U(4, 7, 14, 2, skin); U(4, 5, 14, 2, skinD); U(5, 4, 12, 1, skinD); U(6, 3, 10, 1, skinD); U(9, -3, 4, 11, hc); U(10, -4, 2, 1, hc); U(10, -2, 1, 6, hcL); }
+    if (style === 'afro') { U(2, 0, 18, 9, hc); U(1, 2, 20, 6, hc); U(4, -1, 14, 1, hc); for (const [x, y] of [[5, 1], [9, 0], [14, 1], [17, 3], [3, 4], [12, 3]]) U(x, y, 1, 1, hcL); }
+    if (style === 'buzz') { U(4, 7, 14, 2, skin); U(4, 5, 14, 2, hcD); U(6, 3, 10, 2, hcD); U(5, 4, 12, 1, hcD); }
     if (style === 'spiky') { U(4, 3, 1, 2, hc); U(5, 2, 2, 1, hc); U(8, 1, 2, 2, hc); U(12, 1, 2, 2, hc); U(15, 2, 2, 1, hc); U(17, 3, 1, 2, hc); }
     if (style === 'bun') { U(8, 0, 6, 3, hc); U(9, -1, 4, 1, hc); U(9, 0, 2, 1, hcL); }
     if (style === 'curly') {
@@ -262,6 +312,20 @@ function charSprite(look, dir, frame, pose, blink) {
     if (acc === 'crown') { U(6, 1, 10, 3, '#ffd34d'); U(6, 0, 1, 1, '#ffd34d'); U(10, -1, 2, 2, '#ffd34d'); U(15, 0, 1, 1, '#ffd34d'); U(8, 2, 1, 1, '#ff6b8a'); U(13, 2, 1, 1, '#6cc6d9'); U(7, 1, 2, 1, '#fff2a8'); }
     if (acc === 'halo') { U(7, -2, 8, 1, '#ffe680'); U(6, -1, 1, 1, '#ffe680'); U(15, -1, 1, 1, '#ffe680'); U(7, 0, 8, 1, '#ffe680'); }
 
+    if (rainbow) {
+      // แทนที่สีพิเศษด้วยสีรุ้งไล่ตามแถว
+      const RB = ['#ff5a6e', '#ff9a3c', '#ffd84d', '#7ed37a', '#5ab4ff', '#8f7dff', '#e07dff'];
+      const im = g.getImageData(0, 0, CHAR_W, CHAR_H), dd = im.data;
+      for (let y = 0; y < CHAR_H; y++) for (let x = 0; x < CHAR_W; x++) {
+        const i = (y * CHAR_W + x) * 4;
+        if (dd[i] === 0xfe && dd[i + 2] === 0xfe && dd[i + 1] >= 1 && dd[i + 1] <= 3 && dd[i + 3] > 0) {
+          const base = RB[Math.floor((y + 2) / 3) % RB.length];
+          const col = dd[i + 1] === 2 ? shade(base, 0.25) : dd[i + 1] === 3 ? shade(base, -0.2) : base;
+          const [r, gg, bb] = hexToRgb(col); dd[i] = r; dd[i + 1] = gg; dd[i + 2] = bb;
+        }
+      }
+      g.putImageData(im, 0, 0);
+    }
     addOutline(c);
     return flip ? mirror(c) : c;
   });
@@ -277,7 +341,7 @@ function petSprite(kind, frame, faceRight, pc = 0) {
     const P = painter(g, 1, 1);
     const EYE = '#2e2235';
     const step = frame % 2;
-    const pick = (natural) => PET_COLORS[pc] || natural;
+    const pick = (natural) => (isHex(pc) ? pc : PET_COLORS[pc]) || natural;
     if (kind === 'cat' || kind === 'dog') {
       const col = pick(kind === 'cat' ? '#f2a65a' : '#c08552');
       const dk = shade(col, -0.25);
@@ -318,6 +382,43 @@ function petSprite(kind, frame, faceRight, pc = 0) {
       for (const [x, y2] of [[4, 1], [6, 5], [8, 5], [10, 6]]) P(x, y2, 1, 1, dk);
       P(4, 8, 2, 1, dk);
       P(6, 11, 2, 1 + step, dk); P(9, 11, 2, 2 - step, dk);
+    } else if (kind === 'fox') {
+      const col = pick('#f08a3c'), dk = shade(col, -0.25);
+      P(4, 6, 7, 4, col); P(1, 3, 5, 5, col); P(1, 1, 1, 2, col); P(4, 1, 1, 2, col); P(1, 6, 2, 2, '#ffffff');
+      P(10, 4 + step, 3, 4, col); P(11, 3 + step, 2, 1, col); P(12, 7 + step, 1, 1, '#ffffff'); P(11, 8 + step, 2, 1, '#ffffff');
+      P(2, 5, 1, 1, EYE); P(0, 6, 1, 1, EYE); P(5, 8, 4, 1, '#ffffff');
+      P(4, 10, 1, 2 - step, dk); P(9, 10, 1, 1 + step, dk); P(6, 10, 1, 1 + step, col); P(8, 10, 1, 2 - step, col);
+    } else if (kind === 'penguin') {
+      const col = pick('#2e3550');
+      const y = step;
+      P(3, 2 + y, 7, 9, col); P(4, 1 + y, 5, 1, col); P(4, 4 + y, 5, 6, '#ffffff'); P(5, 3 + y, 1, 1, EYE); P(8, 3 + y, 1, 1, EYE);
+      P(6, 4 + y, 2, 1, '#ff9a3c'); P(2, 5 + y, 1, 4, col); P(10, 5 + y, 1, 4, col);
+      P(4, 11, 2, 1, '#ff9a3c'); P(7, 11, 2, 1, '#ff9a3c');
+    } else if (kind === 'duck') {
+      const col = pick('#f4f1e8');
+      const y = step;
+      P(4, 6 + y, 8, 5, col); P(2, 2 + y, 4, 5, col); P(0, 4 + y, 2, 2, '#ff9a3c'); P(3, 3 + y, 1, 1, EYE); P(9, 7 + y, 3, 2, shade(col, -0.1)); P(11, 5 + y, 1, 2, col);
+      P(5, 11, 1, 1, '#ff9a3c'); P(8, 11, 1, 1, '#ff9a3c');
+    } else if (kind === 'hamster') {
+      const col = pick('#e8b070');
+      const y = step;
+      P(2, 5 + y, 10, 6, col); P(3, 4 + y, 8, 1, col); P(3, 3 + y, 2, 1, col); P(9, 3 + y, 2, 1, col); P(3, 8 + y, 8, 3, '#fff3e0');
+      P(4, 6 + y, 1, 1, EYE); P(9, 6 + y, 1, 1, EYE); P(6, 7 + y, 2, 1, '#ff8fab'); P(2, 7 + y, 1, 1, '#ff9fb0'); P(11, 7 + y, 1, 1, '#ff9fb0');
+      P(4, 11, 1, 1, shade(col, -0.25)); P(9, 11, 1, 1, shade(col, -0.25));
+    } else if (kind === 'dragon') {
+      const col = pick('#8f5bd6'), dk = shade(col, -0.3), wing = shade(col, 0.25);
+      P(5, 6, 6, 5, col); P(1, 3, 5, 4, col); P(0, 5, 2, 2, col); P(10, 7, 3, 2, col); P(12, 6, 1, 1, col); P(13, 5, 1, 1, '#ff6b4a');
+      P(5, 1 - step, 5, 4 + step, wing); P(6, 0 - step, 3, 1, wing); P(6, 2, 3, 1, dk);
+      P(2, 1, 1, 2, '#ffd34d'); P(4, 1, 1, 2, '#ffd34d'); P(2, 4, 1, 1, '#ffe07a'); P(5, 9, 5, 2, '#ffd8a8');
+      P(5, 11, 2, 1 + step, dk); P(9, 11, 2, 2 - step, dk);
+      if (step) { P(-1, 5, 1, 1, '#ff9a3c'); }
+    } else if (kind === 'unicorn') {
+      const col = pick('#ffffff'), dk = shade(col, -0.15);
+      P(4, 5, 8, 5, col); P(1, 2, 4, 5, col); P(0, 4, 1, 2, col); P(2, -1, 1, 3, '#ffd34d'); P(1, 0, 1, 1, '#ffd34d');
+      P(5, 2, 1, 1, '#ff6b8a'); P(5, 3, 2, 1, '#ffd84d'); P(6, 4, 2, 1, '#7ed37a'); P(4, 1, 1, 1, '#5ab4ff');
+      P(11, 5 + step, 2, 4, '#ff9fd8'); P(12, 9 + step, 1, 1, '#8f7dff');
+      P(2, 4, 1, 1, EYE); P(1, 6, 1, 1, '#ff9fb0');
+      P(4, 10, 1, 2 - step, dk); P(6, 10, 1, 1 + step, col); P(9, 10, 1, 1 + step, dk); P(11, 10, 1, 2 - step, col);
     } else if (kind === 'panda') {
       const patch = pick('#2e2235');
       P(2, 3, 7, 6, '#ffffff'); P(5, 7, 7, 4, '#ffffff');

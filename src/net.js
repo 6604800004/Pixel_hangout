@@ -112,7 +112,7 @@ function makeWsNet(cfg) {
     ws = new WebSocket(`${proto}://${location.host}/ws`);
     ws.binaryType = 'arraybuffer';
     const me = ws;
-    ws.onopen = () => send({ t: 'hello', uid, p: myPresence, password: net.password || '' });
+    ws.onopen = () => { let ak = ''; try { ak = JSON.parse(localStorage.getItem('pixel.admin') || '""') || ''; } catch {} send({ t: 'hello', uid, p: myPresence, password: net.password || '', ak }); };
     ws.onmessage = (ev) => {
       if (ev.data instanceof ArrayBuffer) {
         // เสียงสำรองผ่านเซิร์ฟเวอร์: [1][ยาวคีย์][คีย์ผู้ส่ง][เสียง μ-law]
