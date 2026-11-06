@@ -271,9 +271,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .mem.talk canvas { box-shadow: 0 0 0 2px #3ba55d; }
 .mem.talk .nm { color: var(--ink); font-weight: 600; }
 .mem .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mem .mi { flex: none; font-size: 11px; opacity: .8; }
-.mem .mi.off { position: relative; opacity: .55; }
-.mem .mi.off::after { content: ''; position: absolute; left: -1px; right: -1px; top: 50%; height: 2px; background: var(--red); transform: rotate(-45deg); }
+.mem .mi { flex: none; display: flex; gap: 2px; }
+.mem .mi img { width: 18px; height: 18px; image-rendering: pixelated; }
 .roomsTab { position: fixed; left: 12px; top: calc(64px + var(--safe-t)); z-index: 5; }
 /* ---------- ออกจากห้อง / ออกจากเว็บ ---------- */
 .leave-top { height: 40px; padding: 0 12px; font-size: 16px; font-weight: 600; }
@@ -605,7 +604,7 @@ const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
 const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['swim', 'ชุดว่ายน้ำ'], ['bikini', 'บิกินี่'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['trex', '🦖 ที-เร็กซ์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
 const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
 const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
@@ -927,6 +926,27 @@ function charSprite(look, dir, frame, pose, blink) {
     if (acc === 'crown') { U(6, 1, 10, 3, '#ffd34d'); U(6, 0, 1, 1, '#ffd34d'); U(10, -1, 2, 2, '#ffd34d'); U(15, 0, 1, 1, '#ffd34d'); U(8, 2, 1, 1, '#ff6b8a'); U(13, 2, 1, 1, '#6cc6d9'); U(7, 1, 2, 1, '#fff2a8'); }
     if (acc === 'halo') { U(7, -2, 8, 1, '#ffe680'); U(6, -1, 1, 1, '#ffe680'); U(15, -1, 1, 1, '#ffe680'); U(7, 0, 8, 1, '#ffe680'); }
 
+    // ---------- ท่าร้องเพลง / เต้น (NPC คอนเสิร์ต) ----------
+    if ((pose === 'sing' || pose === 'dance') && d === 'down') {
+      const OL = '#4a2430';
+      const arm = (right, mode) => {
+        const X = (x) => (right ? 21 - x : x), sc = right ? sleeveD : sleeve, sk = right ? skinD : skin;
+        g.clearRect(right ? 15 : 6, 4 + bob + 20, 1, 4);
+        if (mode === 'up') { U(X(5), 19, 1, 1, sc); U(X(4), 18, 1, 1, sc); U(X(3), 17, 1, 1, sc); U(X(2), 14, 1, 3, sk); U(right ? 19 : 1, 11, 2, 3, sk); }
+        else if (mode === 'out') { U(X(5), 20, 1, 1, sc); U(X(4), 20, 1, 1, sc); U(X(3), 18, 1, 3, sk); }
+      };
+      if (pose === 'sing') {
+        // มือขวาถือไมค์จ่อปาก (หัวไมค์มีขอบเข้ม เห็นชัดบนหน้า) อีกข้างโบกตามจังหวะ
+        g.clearRect(15, 4 + bob + 20, 1, 4);
+        U(15, 19, 1, 2, sleeveD); U(14, 18, 2, 2, skin); U(13, 18, 1, 1, OL); U(16, 18, 1, 1, OL); U(14, 17, 1, 1, OL);
+        U(12, 16, 2, 1, '#1d1f2e'); U(13, 17, 1, 1, '#1d1f2e');
+        U(9, 13, 4, 4, OL); U(10, 14, 2, 2, '#c8ccd8'); U(10, 14, 1, 1, '#ffffff');
+        arm(false, frame % 4 < 2 ? 'out' : 'up');
+      } else {
+        const f = frame % 4;
+        arm(false, f === 0 || f === 1 ? 'up' : 'out'); arm(true, f === 0 || f === 3 ? 'up' : 'out');
+      }
+    }
     if (rainbow) {
       // แทนที่สีพิเศษด้วยสีรุ้งไล่ตามแถว
       const RB = ['#ff5a6e', '#ff9a3c', '#ffd84d', '#7ed37a', '#5ab4ff', '#8f7dff', '#e07dff'];
@@ -950,7 +970,7 @@ function charSprite(look, dir, frame, pose, blink) {
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
 // ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
-const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
+const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], trex: [27, 25], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
 const FARM_OUT = [74, 36, 48];
 function farmSprite(kind, frame, faceRight, pc) {
   return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
@@ -1033,6 +1053,32 @@ function farmSprite(kind, frame, faceRight, pc) {
       P(4, 6, 4, 6, b); P(1, 2, 7, 5, b); P(2, 1, 5, 1, b); P(2, 2, 4, 1, hi); P(0, 5, 3, 2, b); P(1, 6, 3, 1, '#ffffff');
       P(4, 3, 1, 1, EYE); P(5, 3, 1, 1, '#ffffff'); P(1, 3, 1, 1, lo2); P(7, 11, 2, 1, lo);
       P(9, 15, 2, 3 - st, lo); P(14, 15, 2, 2 + st, b); P(8, 18 - st, 3, 1, lo2); P(14, 17 + st, 3, 1, lo2);
+    } else if (kind === 'trex') {
+      // 🦖 ที-เร็กซ์: หัวโต ฟันแหลม แขนสั้นจิ๋ว หางยาว ขาหลังใหญ่ ลายทางบนหลัง
+      const [hi, b, lo, lo2] = tone(pick('#6fae5a')), belly = '#f2e4b4', bellyD = '#dccb92', mouth = '#8a2f3e', TOOTH = '#fffdf4';
+      // หาง (แกว่งปลายตอนเดิน)
+      for (let i = 0; i < 11; i++) { const h = Math.max(1, 6 - Math.floor(i / 2)), y = 10 - Math.floor(i / 4) + (i > 7 ? st : 0); P(16 + i, y, 1, h, b); P(16 + i, y + h - 1, 1, 1, lo); if (i < 6) P(16 + i, y, 1, 1, hi); }
+      // ขาข้างไกล (สีเข้ม)
+      P(10, 16, 3, 3, lo); P(10, 18, 2, 4 - st, lo2); P(9, 21 - st, 4, 1, lo2);
+      // ลำตัว + ท้อง + ลายบนหลัง
+      E(14, 13, 6, 5, lo); E(14, 12, 6, 5, b); P(10, 8, 9, 1, hi); P(9, 9, 2, 1, hi);
+      E(12, 15, 4, 2, belly); P(10, 17, 5, 1, bellyD);
+      P(13, 8, 1, 3, lo2); P(16, 8, 1, 3, lo2); P(19, 10, 1, 3, lo2); P(22, 10, 1, 2, lo2);
+      // คอ
+      P(6, 6, 5, 7, b); P(6, 6, 1, 5, hi); P(7, 10, 3, 3, belly);
+      // หัวโต
+      P(1, 1, 10, 6, b); P(2, 0, 7, 1, b); P(0, 2, 1, 4, b); P(2, 1, 6, 1, hi); P(1, 2, 2, 1, hi);
+      P(6, 1, 3, 1, lo); P(10, 3, 1, 3, lo); P(0, 3, 1, 1, lo2);
+      P(7, 2, 1, 2, EYE); P(8, 2, 1, 1, '#ffffff'); P(8, 5, 2, 1, BLUSH);
+      // ปาก: เดินแล้วอ้างับ (คำราม!)
+      if (st) { P(0, 7, 9, 2, mouth); P(1, 7, 1, 1, TOOTH); P(4, 7, 1, 1, TOOTH); P(7, 7, 1, 1, TOOTH); P(2, 8, 1, 1, TOOTH); P(5, 8, 1, 1, TOOTH); P(1, 9, 8, 2, b); P(1, 10, 8, 1, lo); }
+      else { P(0, 7, 9, 1, mouth); P(1, 7, 1, 1, TOOTH); P(4, 7, 1, 1, TOOTH); P(7, 7, 1, 1, TOOTH); P(1, 8, 8, 2, b); P(1, 9, 8, 1, lo); }
+      // แขนสั้นจิ๋ว
+      P(9, 12, 2, 1, lo); P(8, 12, 1, 2, lo); P(7, 13 + st, 1, 1, TOOTH);
+      // ขาข้างใกล้: ต้นขาใหญ่ หน้าแข้ง เท้ามีเล็บ
+      E(16, 15, 3, 3, b); P(15, 13, 3, 1, hi);
+      P(16, 18, 2, 3 + st, b); P(17, 18, 1, 3 + st, lo);
+      P(14, 21 + st, 5, 1, lo2); P(14, 21 + st, 1, 1, TOOTH); P(16, 21 + st, 1, 1, TOOTH);
     } else if (kind === 'panda') {
       const blk = pick('#2e2235'), wh = '#f8f6f2', whL = '#e6e0d8';
       E(11, 10, 6, 4, whL); E(11, 9, 6, 4, wh); P(7, 6, 4, 6, blk); P(16, 8, 1, 2, wh);
@@ -1169,6 +1215,39 @@ function farmSprite(kind, frame, faceRight, pc) {
     }
     addOutline(c, FARM_OUT);
     return faceRight ? mirror(c) : c;
+  });
+}
+// โน้ตดนตรี: 'clef' = กุญแจซอล, 'n1' = ♪, 'n2' = ♫
+const MUSIC_PIX = {
+  clef: ['...#...', '..#.#..', '..#.#..', '..#.#..', '...##..', '...#...', '..##...', '.#.#...', '#..###.', '#.#.#.#', '#.#.#.#', '.#..#.#', '..###..', '....#..', '.##.#..', '.###...'],
+  n1: ['...#..', '...##.', '...#.#', '...#..', '...#..', '.###..', '####..', '.##...'],
+  n2: ['..######', '..#....#', '..######', '..#....#', '..#....#', '###..###', '###..###', '.#....#.'],
+};
+function musicSprite(kind, col = '#ffd34d') {
+  return cached(`mu|${kind}|${col}`, () => {
+    const rows = MUSIC_PIX[kind], c = mkCanvas(rows[0].length + 2, rows.length + 2), g = c.getContext('2d');
+    rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') { g.fillStyle = x === 0 || y === 0 ? shade(col, 0.3) : col; g.fillRect(x + 1, y + 1, 1, 1); } });
+    addOutline(c, [74, 36, 48]);
+    return c;
+  });
+}
+// ป้ายสถานะเสียงแบบ Discord: 'mic' = ปิดไมค์, 'hp' = ปิดหูฟัง (วงกลมแดง ไอคอนขาว มีขีดฆ่า)
+function statusIcon(kind) {
+  return cached('si|' + kind, () => {
+    const N = 15, c = mkCanvas(N + 2, N + 2), g = c.getContext('2d'), P = painter(g, 1, 1);
+    const RED = '#e8505b', RED_D = '#c23744', WH = '#ffffff';
+    for (let y = 0; y < N; y++) { const w = Math.round(7.5 * Math.sqrt(Math.max(0, 1 - ((y - 7) / 7.6) ** 2))); P(7 - w, y, w * 2 + 1, 1, y > 10 ? RED_D : RED); }
+    if (kind === 'mic') {
+      P(6, 1, 3, 1, WH); P(5, 2, 5, 7, WH); P(6, 9, 3, 1, WH);
+      P(3, 6, 1, 3, WH); P(11, 6, 1, 3, WH); P(4, 9, 1, 1, WH); P(10, 9, 1, 1, WH); P(5, 10, 5, 1, WH); P(7, 11, 1, 1, WH); P(5, 12, 5, 1, WH);
+    } else {
+      P(5, 2, 5, 1, WH); P(4, 3, 1, 1, WH); P(10, 3, 1, 1, WH); P(3, 4, 1, 1, WH); P(11, 4, 1, 1, WH); P(2, 5, 1, 3, WH); P(12, 5, 1, 3, WH);
+      P(1, 7, 4, 5, WH); P(10, 7, 4, 5, WH); P(2, 8, 2, 3, RED_D); P(11, 8, 2, 3, RED_D);
+    }
+    for (let i = 2; i < 13; i++) { const col = i > 10 ? RED_D : RED; P(i - 1, i, 1, 1, col); P(i + 1, i, 1, 1, col); P(i, i - 1, 1, 1, col); }
+    for (let i = 2; i < 13; i++) P(i, i, 1, 1, WH); // ขีดฆ่า
+    addOutline(c, [74, 36, 48]);
+    return c;
   });
 }
 function petSprite(kind, frame, faceRight, pc = 0) {
@@ -1737,6 +1816,138 @@ const FURN = {
     P(14, 14, 3, 3, '#ffffff'); P(42, 10, 3, 3, '#e8505b'); P(46, 13, 3, 3, '#ffd34d'); P(42, 16, 3, 3, '#7d9cf0'); P(49, 10, 3, 3, '#2f3245');
     P(18, 15, 22, 1, '#e6b07a');
   } },
+  // ---------------- 🎸 คอนเสิร์ต ----------------
+  drumKit: { label: '🥁 กลองชุด', emo: '🥁', w: 38, h: 28, solid: true, foot: 10, draw(P) {
+    const R = '#c8323c', RD = '#8f1d26', CH = '#c8ccd8', CD = '#7a8098', SK = '#f4ead2';
+    P(3, 2, 1, 22, CD); P(0, 2, 8, 2, '#ffd34d'); P(1, 1, 6, 1, '#ffe98a'); P(34, 4, 1, 20, CD); P(30, 4, 8, 2, '#ffd34d');
+    P(8, 7, 9, 6, R); P(8, 7, 9, 2, SK); P(8, 12, 9, 1, RD); P(21, 7, 9, 6, R); P(21, 7, 9, 2, SK); P(21, 12, 9, 1, RD);
+    P(11, 12, 16, 14, R); P(13, 14, 12, 10, SK); P(17, 17, 4, 4, '#ffd34d'); P(11, 25, 16, 1, RD);
+    P(1, 16, 8, 8, R); P(1, 16, 8, 2, SK); P(1, 23, 8, 1, RD); P(29, 16, 8, 8, R); P(29, 16, 8, 2, SK); P(29, 23, 8, 1, RD);
+    for (const x of [2, 7, 30, 35]) P(x, 24, 1, 4, CD);
+  } },
+  synth: { label: '🎹 คีย์บอร์ด', emo: '🎹', w: 34, h: 24, solid: true, foot: 6, draw(P) {
+    P(2, 0, 30, 10, '#2f3245'); P(3, 1, 28, 1, '#43475e'); P(4, 2, 8, 3, '#5fd8ff'); P(14, 3, 2, 2, '#ff6b8a'); P(18, 3, 2, 2, '#ffd34d'); P(22, 3, 2, 2, '#7dff8a'); P(26, 3, 3, 2, '#9aa0b8');
+    P(2, 6, 30, 5, '#ffffff'); for (let x = 3; x < 32; x += 3) P(x, 6, 1, 5, '#c8ccd8'); for (let x = 4; x < 31; x += 3) if (x % 7 !== 0) P(x, 6, 2, 3, '#1d1f2e');
+    P(2, 11, 30, 2, '#1d1f2e'); P(6, 13, 2, 9, '#5a5f7a'); P(26, 13, 2, 9, '#5a5f7a'); P(8, 16, 18, 1, '#5a5f7a'); P(4, 22, 6, 2, '#43475e'); P(24, 22, 6, 2, '#43475e');
+  } },
+  stageLight: { label: '💡 ไฟเวที', emo: '💡', w: 18, h: 32, solid: true, foot: 4, fw: 10, variants: 4, draw(P) {
+    P(8, 12, 2, 16, '#5a5f7a'); P(3, 28, 12, 2, '#43475e'); P(2, 30, 3, 2, '#2f3245'); P(13, 30, 3, 2, '#2f3245');
+    P(3, 1, 12, 11, '#2f3245'); P(4, 2, 10, 1, '#43475e'); P(2, 4, 1, 6, '#5a5f7a'); P(15, 4, 1, 6, '#5a5f7a'); P(5, 4, 8, 6, '#1d1f2e');
+  },
+  anim(ctx, sx, sy, t, it) {
+    const C = ['#ff5fa2', '#5fd8ff', '#ffe066', '#7dff8a'][(it && it.v) || 0], on = Math.sin(t * 5 + ((it && it.x) || 0)) > -0.6;
+    ctx.fillStyle = on ? C : '#3a3a4a'; ctx.fillRect(sx + 5, sy + 4, 8, 6); if (on) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 7, sy + 6, 3, 2); }
+  } },
+  // ---------------- 🎄 คริสต์มาส ----------------
+  xmasTree: { label: '🎄 ต้นคริสต์มาส', emo: '🎄', w: 40, h: 62, solid: true, foot: 8, fw: 14, draw(P) {
+    const D = '#2a6e44', M = '#3a8f55', L = '#5cb870', GOLD = '#ffd34d';
+    P(17, 54, 6, 4, '#7a4a24'); P(13, 57, 14, 5, '#c8323c'); P(13, 57, 14, 1, '#e8505b'); P(13, 59, 14, 1, GOLD);
+    for (let k = 0; k < 4; k++) {
+      const y0 = 9 + k * 11;
+      for (let r = 0; r < 14; r++) {
+        const half = Math.round((6 + k * 4.5) * (r + 2) / 15), y = y0 + r;
+        if (y > 55) break;
+        P(20 - half, y, half * 2, 1, r === 13 ? D : r < 2 ? L : M); P(20 - half, y, 2, 1, L); P(20 + half - 2, y, 2, 1, D);
+      }
+      const hw = Math.round((6 + k * 4.5) * 11 / 15);
+      for (let x = -hw + 1; x < hw; x += 2) P(20 + x, y0 + 9 + Math.round(x / 5), 1, 1, GOLD); // สายรุ้งทอง
+    }
+    for (const [x, y, c] of [[15, 18, '#e8505b'], [24, 23, '#5ab4ff'], [11, 30, GOLD], [28, 33, '#e8505b'], [18, 37, '#c070ff'], [8, 43, '#5ab4ff'], [25, 45, GOLD], [33, 47, '#e8505b'], [14, 50, '#ff9a3c']]) { P(x, y, 3, 3, c); P(x, y, 1, 1, '#ffffff'); }
+    P(19, 0, 2, 9, GOLD); P(16, 3, 8, 2, GOLD); P(17, 5, 2, 2, GOLD); P(21, 5, 2, 2, GOLD); P(18, 2, 4, 4, GOLD); P(19, 3, 1, 1, '#fff6c8');
+  },
+  anim(ctx, sx, sy, t) {
+    const COL = ['#ff5a5a', '#ffe066', '#5fd8ff', '#7dff8a', '#ff8fe0'], f = Math.floor(t * 2.5);
+    const pts = [[19, 13], [16, 21], [23, 20], [12, 27], [27, 28], [20, 30], [9, 36], [31, 37], [16, 41], [24, 40], [6, 47], [34, 49], [12, 52], [21, 51], [29, 53]];
+    pts.forEach(([x, y], i) => { if ((i + f) % 3 === 0) return; ctx.fillStyle = COL[(i + f) % COL.length]; ctx.fillRect(sx + x, sy + y, 2, 2); });
+    if (Math.sin(t * 3) > 0.2) { ctx.fillStyle = '#fff6c8'; ctx.fillRect(sx + 19, sy - 2, 2, 2); ctx.fillRect(sx + 14, sy + 3, 2, 1); ctx.fillRect(sx + 24, sy + 3, 2, 1); ctx.fillRect(sx + 19, sy + 3, 2, 2); }
+  } },
+  gift: { label: '🎁 กล่องของขวัญ', emo: '🎁', w: 16, h: 17, solid: true, foot: 6, variants: 4, draw(P, v) {
+    const [b, r] = [['#e8505b', '#ffd34d'], ['#3fa35a', '#e8505b'], ['#3f7fe0', '#ffffff'], ['#a868e8', '#ff9fd8']][v % 4];
+    P(1, 6, 14, 11, b); P(1, 15, 14, 2, shade(b, -0.22)); P(12, 6, 3, 11, shade(b, -0.12));
+    P(0, 4, 16, 4, shade(b, 0.12)); P(0, 7, 16, 1, shade(b, -0.25));
+    P(7, 4, 2, 13, r); P(0, 5, 16, 1, r);
+    P(3, 0, 4, 3, r); P(9, 0, 4, 3, r); P(4, 1, 2, 1, shade(r, -0.25)); P(10, 1, 2, 1, shade(r, -0.25)); P(7, 2, 2, 2, shade(r, -0.15));
+  } },
+  giftPile: { label: '🎁 กองของขวัญ', emo: '🎁', w: 36, h: 24, solid: true, foot: 9, draw(P) {
+    const box = (x, y, w, h, b, r) => { P(x, y + 3, w, h - 3, b); P(x, y + h - 2, w, 2, shade(b, -0.22)); P(x - 1, y + 1, w + 2, 3, shade(b, 0.12)); P(x + (w >> 1) - 1, y + 1, 2, h - 1, r); P(x - 1, y + 2, w + 2, 1, r); P(x + (w >> 1) - 4, y - 2, 3, 3, r); P(x + (w >> 1) + 1, y - 2, 3, 3, r); };
+    box(3, 6, 16, 17, '#3fa35a', '#e8505b'); box(9, 1, 9, 8, '#ffd34d', '#c8323c'); box(19, 11, 14, 12, '#e8505b', '#ffffff'); box(29, 17, 6, 6, '#3f7fe0', '#ffd34d');
+  } },
+  snowman: { label: '⛄ ตุ๊กตาหิมะ', emo: '⛄', w: 22, h: 34, solid: true, foot: 7, variants: 2, draw(P, v) {
+    const WH = '#ffffff', SH = '#d8e4f4', sc = v % 2 ? '#3f7fe0' : '#e8505b';
+    const E = (cx, cy, rx, ry) => { for (let y = -ry; y <= ry; y++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.5)) ** 2))); P(cx - w, cy + y, w * 2 + 1, 1, WH); P(cx + w - 1, cy + y, 2, 1, SH); } };
+    P(1, 13, 5, 1, '#7a5236'); P(0, 12, 2, 1, '#7a5236'); P(16, 13, 5, 1, '#7a5236'); P(20, 12, 2, 1, '#7a5236');
+    E(11, 27, 8, 6); E(11, 18, 6, 5); E(11, 9, 5, 4); P(4, 32, 15, 1, SH);
+    P(6, 4, 11, 2, '#2e2235'); P(8, 0, 7, 5, '#2e2235'); P(8, 3, 7, 1, sc);
+    P(9, 8, 1, 1, '#2e2235'); P(13, 8, 1, 1, '#2e2235'); P(11, 10, 3, 1, '#ff9a3c'); P(9, 12, 1, 1, '#2e2235'); P(10, 12, 3, 1, '#2e2235'); P(13, 12, 1, 1, '#2e2235');
+    P(6, 14, 11, 2, sc); P(13, 16, 3, 4, sc); P(13, 19, 3, 1, shade(sc, -0.25));
+    P(11, 18, 1, 1, '#2e2235'); P(11, 21, 1, 1, '#2e2235'); P(11, 26, 1, 1, '#2e2235');
+  } },
+  candyCane: { label: '🍭 ลูกกวาดไม้เท้า', emo: '🍭', w: 12, h: 32, solid: true, foot: 3, fw: 6, draw(P) {
+    const pts = [];
+    for (let y = 31; y >= 6; y--) pts.push([7, y]);
+    for (const [x, y] of [[7, 5], [7, 4], [6, 3], [5, 2], [4, 2], [3, 2], [2, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8]]) pts.push([x, y]);
+    pts.forEach(([x, y], i) => P(x - 1, y - 1, 3, 3, Math.floor(i / 3) % 2 ? '#ffffff' : '#e8323c'));
+    P(7, 8, 1, 22, 'rgba(255,255,255,.5)');
+  } },
+  reindeer: { label: '🦌 กวางเรนเดียร์', emo: '🦌', w: 32, h: 30, solid: true, foot: 8, facing: true, draw(P, v, f) {
+    const B = '#a8743c', BD = '#7a5228', BL = '#c8945a', AN = '#d9b98a', HO = '#3a2418';
+    const pp = f ? (x, y, w, h, c) => P(32 - x - w, y, w, h, c) : P;
+    for (const x of [12, 14, 21, 23]) { pp(x, 20, 2, 9, x === 14 || x === 23 ? BD : B); pp(x, 28, 2, 2, HO); }
+    for (let y = -5; y <= 5; y++) { const w = Math.round(9 * Math.sqrt(Math.max(0, 1 - (y / 5.5) ** 2))); pp(18 - w, 16 + y, w * 2 + 1, 1, y > 2 ? BD : y < -3 ? BL : B); }
+    pp(14, 19, 8, 2, '#f0dcc0'); pp(27, 12, 3, 3, '#f4ece0');
+    pp(8, 8, 5, 9, B); pp(8, 8, 1, 7, BL);
+    pp(3, 5, 9, 6, B); pp(4, 4, 6, 1, BL); pp(1, 8, 4, 3, BL);
+    pp(7, 6, 1, 1, '#2e2235'); pp(8, 6, 1, 1, '#ffffff'); pp(10, 3, 3, 2, BD);
+    pp(5, 0, 1, 4, AN); pp(3, 1, 2, 1, AN); pp(8, 0, 1, 4, AN); pp(9, 1, 2, 1, AN); pp(6, 2, 2, 1, AN);
+    pp(8, 13, 6, 2, '#c8323c'); pp(10, 15, 2, 2, '#ffd34d');
+  },
+  anim(ctx, sx, sy, t, it) {
+    const on = Math.sin(t * 4) > -0.3, x = it && it.f ? 32 - 0 - 3 : 0;
+    ctx.fillStyle = on ? '#ff3a3a' : '#a8242e'; ctx.fillRect(sx + x, sy + 8, 3, 3);
+    if (on) { ctx.fillStyle = 'rgba(255,80,80,.3)'; ctx.fillRect(sx + x - 2, sy + 6, 7, 7); }
+  } },
+  sleigh: { label: '🛷 เลื่อนซานต้า', emo: '🛷', w: 46, h: 28, solid: true, foot: 12,
+    seats: () => [{ dx: -10, dy: -5, dir: 'down' }, { dx: 10, dy: -5, dir: 'down' }],
+    draw(P) {
+      const R = '#c8323c', RD = '#8f1d26', RL = '#e8505b', G = '#ffd34d', GD = '#c8962a';
+      P(2, 0, 42, 13, R); P(3, 1, 40, 2, RL); P(2, 0, 42, 1, G); for (let x = 6; x < 42; x += 8) P(x, 5, 3, 3, G);
+      P(0, 6, 7, 18, R); P(39, 6, 7, 18, R); P(0, 6, 7, 1, G); P(39, 6, 7, 1, G); P(1, 9, 1, 12, RL);
+      P(7, 12, 32, 8, '#6a1a3a'); P(7, 12, 32, 2, '#8a2a52');
+      P(0, 20, 46, 5, R); P(0, 20, 46, 1, G); P(0, 24, 46, 1, RD);
+      P(4, 25, 3, 2, GD); P(39, 25, 3, 2, GD); P(1, 27, 44, 1, G); P(44, 23, 2, 4, G); P(45, 22, 1, 1, G); P(0, 26, 2, 1, G);
+    } },
+  xmasWreath: { label: '💚 พวงหรีดคริสต์มาส', emo: '💚', w: 22, h: 25, solid: false, draw(P) {
+    for (let y = -9; y <= 9; y++) for (let x = -9; x <= 9; x++) { const d = Math.hypot(x, y); if (d <= 9.4 && d >= 4.6) P(11 + x, 10 + y, 1, 1, (x * 3 + y * 5) % 4 === 0 ? '#5cb870' : d > 8.2 ? '#2a6e44' : '#3a8f55'); }
+    for (const [x, y] of [[4, 5], [16, 4], [18, 12], [6, 15], [11, 2], [2, 10]]) { P(x, y, 2, 2, '#e8323c'); P(x, y, 1, 1, '#ff9a9a'); }
+    P(7, 17, 3, 3, '#e8323c'); P(12, 17, 3, 3, '#e8323c'); P(10, 18, 2, 2, '#b8242e'); P(8, 20, 2, 5, '#e8323c'); P(12, 20, 2, 5, '#e8323c');
+  } },
+  xmasLights: { label: '✨ ไฟประดับ', emo: '✨', w: 50, h: 34, solid: false, draw(P) {
+    for (const x of [1, 46]) { for (let y = 3; y < 34; y++) P(x, y, 3, 1, Math.floor(y / 3) % 2 ? '#ffffff' : '#e8323c'); P(x - 1, 1, 5, 2, '#ffd34d'); }
+    for (let x = 4; x < 46; x++) P(x, 5 + Math.round(9 * Math.sin(Math.PI * (x - 4) / 42)), 1, 1, '#2e3a2e');
+  },
+  anim(ctx, sx, sy, t) {
+    const COL = ['#ff5a5a', '#ffe066', '#5fd8ff', '#7dff8a', '#ff8fe0'], f = Math.floor(t * 3);
+    for (let i = 0, x = 7; x < 44; x += 5, i++) { const y = 5 + Math.round(9 * Math.sin(Math.PI * (x - 4) / 42)); const c = COL[(i + f) % COL.length]; ctx.fillStyle = c; ctx.fillRect(sx + x, sy + y + 1, 2, 3); if ((i + f) % 2) { ctx.fillStyle = c + '55'; ctx.fillRect(sx + x - 1, sy + y, 4, 5); } }
+  } },
+  gingerHouse: { label: '🏠 บ้านขนมปังขิง', emo: '🍪', w: 32, h: 30, solid: true, foot: 12, draw(P) {
+    const BR = '#b5743c', BD = '#8a5228', IC = '#ffffff';
+    P(3, 13, 26, 17, BR); P(3, 28, 26, 2, BD); P(24, 13, 5, 17, BD);
+    for (let r = 0; r < 14; r++) { const half = r + 2; P(16 - half, r, half * 2, 1, r % 4 === 3 ? IC : '#8a4a24'); }
+    P(0, 14, 32, 2, IC); for (let x = 1; x < 31; x += 3) P(x, 16, 1, 2, IC);
+    P(13, 20, 6, 10, '#6a3a1a'); P(13, 20, 6, 1, IC); P(17, 25, 1, 1, '#ffd34d');
+    P(6, 19, 5, 5, '#ffe9a0'); P(6, 19, 5, 1, IC); P(8, 19, 1, 5, IC); P(22, 19, 5, 5, '#ffe9a0'); P(22, 19, 5, 1, IC); P(24, 19, 1, 5, IC);
+    for (const [x, y, c] of [[5, 26, '#e8505b'], [9, 27, '#3fa35a'], [21, 27, '#5ab4ff'], [26, 26, '#ffd34d'], [14, 5, '#e8505b'], [17, 8, '#3fa35a'], [11, 10, '#ffd34d']]) P(x, y, 2, 2, c);
+    P(20, 0, 3, 5, '#c8323c'); P(20, 0, 3, 1, IC);
+  } },
+  snowPatch: { label: '❄️ ลานหิมะ', emo: '❄️', w: 60, h: 34, floor: true, solid: false, draw(P) {
+    const rows = [[14, 32], [8, 44], [4, 52], [2, 56], [1, 58], [0, 60], [0, 60], [1, 58], [2, 56], [4, 52], [7, 46], [12, 36]];
+    rows.forEach(([x, w], i) => { const y = 1 + i * 2.8 | 0; P(x, y, w, 3, '#f4f8ff'); });
+    P(6, 26, 48, 3, '#dce6f4'); P(14, 30, 32, 2, '#dce6f4');
+    for (const [x, y] of [[10, 8], [24, 5], [40, 10], [50, 16], [18, 18], [33, 22], [8, 20], [44, 25]]) P(x, y, 2, 1, '#cfdcf0');
+  },
+  anim(ctx, sx, sy, t) {
+    for (let i = 0; i < 5; i++) { const ph = (t * 0.6 + i * 0.37) % 1; if (ph > 0.3) continue; ctx.fillStyle = '#ffffff'; const x = sx + ((i * 23) % 52) + 4, y = sy + ((i * 13) % 24) + 4; ctx.fillRect(x, y - 1, 1, 3); ctx.fillRect(x - 1, y, 3, 1); }
+  } },
 };
 
 // ---------- สไปรต์เฟอร์นิเจอร์จาก FURN ----------
@@ -1860,6 +2071,10 @@ const SEA_X = W + 262;
 const shoreX = (y) => SEA_X + Math.round(Math.sin(y / 37) * 7 + Math.sin(y / 13) * 3);
 const POND = { x: W + 40, y: 28, w: 72, h: 44 };
 const DOOR_CINEMA = { x: 0, y: 112, h: 34, zone: 'cinema', side: true, left: true };
+// ฮอลล์คอนเสิร์ต: ใต้โรงหนัง เข้าจากผนังซ้ายของห้องประชุมและห้องคาราโอเกะ
+const CONCERT = { y0: CINEMA.y1, floor: CINEMA.y1 + 30 };
+const STAGE = { x: LEFT + 22, y: CINEMA.y1 + 30, w: -LEFT - 44, h: 92 };
+const DOORS_CONCERT = [{ x: 0, y: 468, h: 34, zone: 'concert', side: true, left: true }, { x: 0, y: 700, h: 34, zone: 'concert', side: true, left: true }];
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
 const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
@@ -1881,13 +2096,14 @@ const ZONES = {
   pub: { id: 'pub', name: 'ผับ', icon: '🍻' },
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
   cinema: { id: 'cinema', name: 'โรงหนัง', icon: '🎬' },
+  concert: { id: 'concert', name: 'คอนเสิร์ต', icon: '🎸' },
   mountain: { id: 'mountain', name: 'ภูเขา', icon: '⛰️' },
   beach: { id: 'beach', name: 'ทะเล', icon: '🏖️' },
 };
 // ชื่อห้อง: แอดมินตั้งเองได้ (ไม่ตั้ง = ชื่อเดิม)
 const zoneName = (z) => (typeof G !== 'undefined' && G.roomNames && G.roomNames[z]) || ZONES[z].name;
 function zoneAt(x, y) {
-  if (x < 0) return 'cinema';
+  if (x < 0) return y < CINEMA.y1 + 16 ? 'cinema' : 'concert';
   if (x >= W) return y < RIDGE_Y + 12 ? 'mountain' : 'beach';
   if (y < 0) return 'shrine';
   if (y < LOWER_Y + 16) return 'hall';
@@ -1960,8 +2176,13 @@ const DEFAULT_LAYOUT = [
   { t: 'pine', v: 1, x: 560, y: 300 }, { t: 'pine', v: 1, x: 784, y: -50 }, { t: 'pine', x: 540, y: 180 },
   { t: 'rock', x: 660, y: 24 }, { t: 'rock', v: 1, x: 800, y: 190 }, { t: 'rock', v: 1, x: 880, y: 140 },
   { t: 'campfire', x: 760, y: 128 }, { t: 'logSeat', x: 760, y: 106 }, { t: 'tent', v: 0, x: 844, y: 104 }, { t: 'tent', v: 1, x: 812, y: 318 },
+  // ---- v11: 🎸 คอนเสิร์ต ----
+  { t: 'drumKit', x: -146, y: 420 }, { t: 'synth', x: -212, y: 436 }, { t: 'micStand', x: -146, y: 462 }, { t: 'micStand', x: -86, y: 456 },
+  { t: 'speaker', x: -256, y: 410 }, { t: 'speaker', x: -36, y: 410 }, { t: 'speaker', x: -256, y: 474 }, { t: 'speaker', x: -36, y: 474 },
+  { t: 'stageLight', v: 0, x: -270, y: 560 }, { t: 'stageLight', v: 2, x: -18, y: 560 }, { t: 'stageLight', v: 1, x: -270, y: 840 }, { t: 'stageLight', v: 3, x: -18, y: 840 },
 ];
-const LAYOUT_VERSION = 10;
+const LAYOUT_VERSION = 11;
+const LAYOUT_V11_FROM = 151; // def151+: ฮอลล์คอนเสิร์ต
 const LAYOUT_V10_FROM = 125; // def125+: ของตกแต่งทะเล + ภูเขา
 // v9: เอาต้นไม้หน้าประตูห้องประชุมออก (ลบตามตำแหน่ง ไม่ว่าใครจะย้าย/วางไว้)
 const LAYOUT_V9_REMOVE = [{ t: 'plant', x: 236, y: 342, r: 12 }];
@@ -2242,6 +2463,31 @@ function buildBackground() {
     P(-6, d.y, 9, d.h, '#521a2b'); P(-7, d.y - 3, 11, 3, '#d9a441'); P(-7, d.y + d.h, 11, 3, '#d9a441');
     P(0, d.y, 3, d.h, '#d9a374');
   }
+  // ================= 🎸 ฮอลล์คอนเสิร์ต =================
+  { const fx = LEFT + 3, fw = -6 - fx, y0 = CONCERT.y0, fy = CONCERT.floor;
+    for (let y = fy; y < H - 3; y += 8) for (let x = fx; x < -6; x += 8) {
+      P(x, y, 8, 8, ((x / 8 + y / 8) | 0) % 2 ? '#201a2e' : '#251e35');
+      if (((x * 5 + y * 7) & 63) === 0) P(x + 3, y + 3, 2, 2, '#352b4d');
+    }
+    // ผนังหลัง + จอ LED (เนื้อหาในจอขยับใน drawLiveWall)
+    P(fx, y0, fw + 6, 30, '#15111e'); P(fx, y0, fw + 6, 2, '#2a2238'); P(fx, y0 + 28, fw + 6, 2, '#0c0a12');
+    P(STAGE.x + 26, y0 + 2, STAGE.w - 52, 26, '#3a3450'); P(STAGE.x + 28, y0 + 4, STAGE.w - 56, 22, '#07060c');
+    for (const x of [STAGE.x + 6, STAGE.x + STAGE.w - 16]) { P(x, y0 + 3, 10, 24, '#1d1f2e'); for (let k = 0; k < 3; k++) P(x + 2, y0 + 5 + k * 7, 6, 5, '#2f3245'); }
+    // เวที (ยกพื้น) + ขอบหน้าเวที + บันได
+    const s = STAGE;
+    P(s.x - 2, s.y, s.w + 4, s.h, '#2c2638');
+    for (let y = s.y + 5; y < s.y + s.h; y += 7) P(s.x, y, s.w, 1, '#352e45');
+    for (let x = s.x + 12; x < s.x + s.w; x += 31) P(x, s.y, 1, s.h, '#262031');
+    P(s.x - 2, s.y + s.h, s.w + 4, 9, '#4a3f62'); P(s.x - 2, s.y + s.h, s.w + 4, 1, '#ffd34d'); P(s.x - 2, s.y + s.h + 8, s.w + 4, 1, '#120e1a');
+    const cx = s.x + s.w / 2;
+    for (let i = 0; i < 3; i++) P(cx - 16, s.y + s.h + 2 + i * 3, 32, 2, i % 2 ? '#3a3150' : '#5a4f78');
+    P(s.x + 30, s.y + 10, s.w - 60, 1, '#ff5fa222');
+    // ผนังข้าง/ล่าง
+    P(LEFT, y0, 3, H - y0, '#3a2c3f'); P(LEFT, H - 3, -LEFT, 3, '#3a2c3f');
+    // ผนังบ้านด้านซ้าย (กั้นห้องประชุม/คาราโอเกะ) + ประตูนีออน
+    P(-6, y0, 9, H - y0, '#3a2c3f');
+    for (const d of DOORS_CONCERT) { P(-6, d.y, 9, d.h, '#251e35'); P(-7, d.y - 3, 11, 3, '#8a3fd0'); P(-7, d.y + d.h, 11, 3, '#8a3fd0'); }
+  }
   // ================= นอกบ้านฝั่งขวา: ภูเขา (บน) + ทะเล (ล่าง) =================
   {
     const X0 = W, X1 = RIGHT;
@@ -2263,9 +2509,11 @@ function buildBackground() {
         else if (i > h * 0.6 && (i + cx) % 3 === 0) P(cx - half + 2, y, 3, 1, '#f4f8ff');
       }
     };
+    g.save(); g.beginPath(); g.rect(X0, TOP, X1 - X0, MTN_TOP - TOP + 20); g.clip(); // ไม่ให้ภูเขาล้นเข้าห้องไหว้พระ
     peak(X0 + 60, 92, 170, '#8494b4', '#9fb0cc');
     peak(X0 + 330, 104, 200, '#7d8daf', '#98a9c8');
     peak(X0 + 200, 128, 230, '#71819f', '#8ea0bf');
+    g.restore();
     for (let x = X0; x < X1; x += 7) { const h = 10 + ((x * 13) % 9); P(x + 2, MTN_TOP + 6 - h, 3, h, '#2f6e4a'); P(x, MTN_TOP + 6 - h + 4, 7, h - 4, '#3a7d55'); P(x + 1, MTN_TOP + 6 - h + 2, 5, 2, '#3a7d55'); }
     P(X0, MTN_TOP + 4, X1 - X0, 4, '#4f8f50');
     // ---- ทางเดินดินขึ้นเขา ----
@@ -2303,10 +2551,10 @@ function buildBackground() {
     // ทางเดินไม้จากประตูสวน
     { const g = GATE_EAST; for (let x = X0; x < X0 + 70; x += 6) { P(x, g.y + 4, 5, g.h - 8, '#c08a5a'); P(x, g.y + 4, 5, 1, '#d9a374'); P(x + 5, g.y + 4, 1, g.h - 8, '#8a5a36'); } }
     // ---- ผนังบ้านด้านขวา (เว้นประตูรั้วสวน) + ขอบโลก ----
-    const g = GATE_EAST;
+    { const g = GATE_EAST;
     P(W - 3, LOWER_Y, 6, g.y - LOWER_Y, '#3f7d4a'); P(W - 3, g.y + g.h, 6, LOWER2_Y - g.y - g.h, '#3f7d4a');
     P(W - 4, g.y - 6, 8, 6, '#a8752a'); P(W - 4, g.y + g.h, 8, 6, '#a8752a'); P(W - 3, g.y - 6, 6, 1, '#d9a441'); P(W - 3, g.y + g.h, 6, 1, '#d9a441');
-    for (let y = g.y; y < g.y + g.h; y += 4) P(W - 3, y, 6, 4, '#92d07c');
+    for (let y = g.y; y < g.y + g.h; y += 4) P(W - 3, y, 6, 4, '#92d07c'); }
     P(X1 - 3, TOP, 3, H - TOP, '#3a2c3f'); P(X0, H - 3, X1 - X0, 3, '#3a2c3f'); P(X0, TOP, X1 - X0, 3, '#3a2c3f');
   }
   return c;
@@ -2396,6 +2644,24 @@ function drawLiveWall(ctx, now, t) {
     const on = Math.floor(t * 3) % 2;
     for (let i = 0; i < 6; i++) { ctx.fillStyle = (i + on) % 2 ? '#ffd34d' : '#ff8f2a'; ctx.fillRect(5 + (i % 2) * 2, DOOR_CINEMA.y + 2 + i * 5, 2, 2); }
   }
+  // ---- 🎸 คอนเสิร์ต: จอ LED อีควอไลเซอร์ ไฟส่องเวที ไฟหน้าเวที ป้ายนีออนที่ประตู ----
+  { const y0 = CONCERT.y0, s = STAGE, sx0 = s.x + 28, sw = s.w - 56, COL = ['#ff5fa2', '#c46bff', '#5fd8ff', '#7dff8a', '#ffe066'];
+    const hue = Math.floor(t * 0.5) % COL.length;
+    for (let x = 0, i = 0; x < sw - 2; x += 5, i++) {
+      const h = 3 + Math.round(Math.abs(Math.sin(t * 4.5 + i * 0.55) * Math.cos(t * 1.7 + i * 0.21)) * 18);
+      ctx.fillStyle = COL[(i + hue) % COL.length]; ctx.fillRect(sx0 + 1 + x, y0 + 25 - h, 4, h);
+    }
+    ctx.globalAlpha = 0.08;
+    for (let i = 0; i < 4; i++) {
+      const ox = s.x + 30 + i * (s.w - 60) / 3, ang = Math.sin(t * 0.9 + i * 1.7) * 0.5, len = 250, spread = 0.11;
+      ctx.fillStyle = COL[(i * 2 + hue) % COL.length];
+      ctx.beginPath(); ctx.moveTo(ox, y0 + 28); ctx.lineTo(ox + Math.sin(ang - spread) * len, y0 + 28 + Math.cos(ang - spread) * len); ctx.lineTo(ox + Math.sin(ang + spread) * len, y0 + 28 + Math.cos(ang + spread) * len); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (let x = s.x + 4, i = 0; x < s.x + s.w - 4; x += 12, i++) { ctx.fillStyle = (i + Math.floor(t * 4)) % 3 ? COL[i % COL.length] : '#3a3150'; ctx.fillRect(x, s.y + s.h + 4, 3, 2); }
+    const on = Math.floor(t * 3) % 2;
+    for (const d of DOORS_CONCERT) for (let i = 0; i < 6; i++) { ctx.fillStyle = (i + on) % 2 ? '#ff5fa2' : '#c46bff'; ctx.fillRect(5 + (i % 2) * 2, d.y + 2 + i * 5, 2, 2); }
+  }
   // ---- ผับ: ป้ายนีออน PUB ----
   ctx.fillStyle = Math.floor(t * 1.3) % 7 ? '#ffb86b' : '#7a4e34';
   const px = 470, py = LOWER2_Y + 10;
@@ -2436,7 +2702,8 @@ function solidRects(furniture) {
   list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: H - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
   // โรงหนัง: นอกห้อง = ทึบ, ผนังกั้นกับห้องรวม (เว้นประตู)
   list.push({ x: LEFT - 20, y: TOP - 20, w: -LEFT + 20, h: WALL - TOP + 20 });
-  list.push({ x: LEFT - 20, y: CINEMA.y1, w: -LEFT + 20, h: H - CINEMA.y1 + 20 });
+  list.push({ x: LEFT - 20, y: CINEMA.y1, w: -LEFT + 20, h: 30 }); // ผนังหลังฮอลล์คอนเสิร์ต
+  { let wy = CINEMA.y1; for (const d of DOORS_CONCERT) { list.push({ x: -6, y: wy, w: 9, h: d.y - wy }); wy = d.y + d.h; } list.push({ x: -6, y: wy, w: 9, h: H - wy + 20 }); }
   list.push({ x: -6, y: WALL - 4, w: 9, h: DOOR_CINEMA.y - WALL + 4 });
   list.push({ x: -6, y: DOOR_CINEMA.y + DOOR_CINEMA.h, w: 9, h: CINEMA.y1 - DOOR_CINEMA.y - DOOR_CINEMA.h });
   // ผนังด้านบนของห้องรวม = ผนังกั้นห้องไหว้พระ (เว้นประตู) + โต๊ะหมู่บูชา + เสา
@@ -3798,7 +4065,7 @@ function fullPresence() {
   return {
     n: me.nick, l: me.look, x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 0, s: me.sit || '', st: me.st,
     say: G.mySay, em: null, dk: G.myDesk ? { slot: G.myDesk, style: G.myDeskStyle } : null, dr: null,
-    uid: G.net.uid || null, mic: G.voice && G.voice.mic ? 1 : 0, cam: G.voice && G.voice.cam ? 1 : 0,
+    uid: G.net.uid || null, mic: G.voice && G.voice.mic ? 1 : 0, hp: G.voice && G.voice.deaf ? 1 : null, cam: G.voice && G.voice.cam ? 1 : 0,
     mu: currentMusic() ? { ...currentMusic() } : null,
     mr: G.micSet.r, mc: G.micSet.c,
   };
@@ -4201,6 +4468,8 @@ function showHelp() {
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
     '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา เจ้าหญิง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
+    '🎤 npc ร้อง [ชื่อ] — เรียกนักร้อง NPC มาข้างตัว (ถือไมค์ มีกุญแจซอลเด้ง)',
+    '🕺 npc เต้น [ชื่อ] — เรียกนักเต้น NPC · npc ลบ = ลบตัวที่ใกล้สุด · npc ลบหมด = ลบทั้งหมด',
     '📋 ของพิเศษ — ดูว่าให้ใครใช้อะไรไว้บ้าง',
     '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
     '🚪 admin off — เลิกเป็นแอดมินในเครื่องนี้',
@@ -4244,9 +4513,32 @@ function chatCommand(text) {
   m = text.match(/^\/?(?:take|revoke|ยึด|ยึดคืน)\s+(.+)\s+(\S+)$/i);                        // ยึด หมี มังกร / ยึด หมี ทั้งหมด
   if (m && G.isAdmin && ITEM_WORDS.test(m[2])) { G.net.admin('revoke', key, { name: m[1].trim(), item: m[2] }); return true; }
   if (G.isAdmin && /^\/?(?:grants|ของพิเศษ)$/i.test(text)) { G.net.admin('grants', key, ''); return true; }
+  // NPC คอนเสิร์ต (แอดมิน): npc ร้อง [ชื่อ] · npc เต้น [ชื่อ] · npc ลบ · npc ลบหมด
+  if (!G.isAdmin && /^\/?npc(\s|$)/i.test(text)) { toast('🎤 คำสั่ง npc ใช้ได้เฉพาะแอดมิน'); return true; }
+  if (G.isAdmin) {
+    m = text.match(/^\/?(?:npc\s+(?:ลบหมด|ลบทั้งหมด|clear|clearall)|ลบ\s*npc\s*(?:หมด|ทั้งหมด))$/i);
+    if (m) { npcCmd('clear'); return true; }
+    m = text.match(/^\/?(?:npc\s+(?:ลบ|del|remove)|ลบ\s*npc)$/i);
+    if (m) { npcCmd('del'); return true; }
+    m = text.match(/^\/?(?:npc\s+(ร้องเพลง|ร้อง|sing|singer|นักร้อง|เต้น|dance|dancer|นักเต้น)|เรียก\s*(นักร้อง|นักเต้น))(?:\s+(.+))?$/i);
+    if (m) { npcCmd('add', /ร้อง|sing/i.test(m[1] || m[2]) ? 'sing' : 'dance', (m[3] || '').trim()); return true; }
+  }
   m = text.match(/^\/?(?:kick|เตะ)\s+(.+)$/i);                                             // kick หมี / kick all
   if (m) { G.net.admin('kick', key, m[1].trim(), 0); return true; }
   return false;
+}
+function randomNpcLook(sing) {
+  const r = (a) => Math.floor(Math.random() * a.length), pk = (list, skip = []) => { const ok = list.filter((x) => !skip.includes(x[0])); return ok[r(ok)][0]; };
+  const sex = Math.random() < 0.5 ? 'f' : 'm';
+  return cleanLook({ sex, skin: r(SKINS), hair: pk(HAIR_STYLES), hc: r(HAIR_COLORS), top: pk(TOPS, sex === 'm' ? ['princess', 'dress', 'bikini'] : []), tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: sing && Math.random() < 0.4 ? 'shades' : pk(ACCS, ['wings']), pet: 'none', pc: 0 });
+}
+function npcCmd(op, a, name) {
+  const key = lsGet('pixel.admin', '') || '', me = G.me;
+  if (op === 'add') {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    G.net.admin('npc', key, { op, a, n: name || '', x: Math.round(me.x + side * (16 + Math.random() * 10)), y: Math.round(me.y + 4 - Math.random() * 8), l: randomNpcLook(a === 'sing') });
+  } else G.net.admin('npc', key, { op, x: Math.round(me.x), y: Math.round(me.y) });
+  G.actionSig = '';
 }
 function sendChat(text, file) {
   text = text.trim().slice(0, 200);
@@ -4286,7 +4578,7 @@ let typingSent = '', typingT = 0;
 function shareTyping(force) {
   const raw = $('#chatInput').value;
   let t = raw.trim().slice(0, 80);
-  if (!G.showTyping || !G.joined || /^\/?(admin|kick|เตะ|clear|ล้าง)/i.test(t) || /^\/?(help|\?|คำสั่ง)$/i.test(t)) t = '';
+  if (!G.showTyping || !G.joined || /^\/?(admin|kick|เตะ|clear|ล้าง|npc)/i.test(t) || /^\/?(help|\?|คำสั่ง)$/i.test(t)) t = '';
   if (t === typingSent) return;
   const now = Date.now();
   if (!force && t && now - typingT < 300) { clearTimeout(shareTyping.tm); shareTyping.tm = setTimeout(() => shareTyping(true), 320); return; }
@@ -4647,6 +4939,36 @@ function drawCharacter(c, ch, t) {
   const s = charSprite(look, ch.dir, ch.frame, pose, blink);
   c.drawImage(s, snap(ch.x - 11 + shake), snap(ch.y - 35));
 }
+// NPC คอนเสิร์ต: นักร้อง (ถือไมค์ + กุญแจซอลเด้ง + โน้ตลอย) / นักเต้น (กระโดด ยกแขน หมุนตัว)
+const NOTE_COLS = ['#ff8fe0', '#5fd8ff', '#7dff8a'];
+function npcPose(n, t) {
+  const ph = t + n.seed;
+  if (n.a === 'sing') return { ph, dir: 'down', pose: 'sing', frame: Math.floor(ph * 1.6) % 4, dx: Math.round(Math.sin(ph * 2)), dy: 0 };
+  const beat = Math.floor(ph * 4), spin = Math.floor(ph) % 6 === 5;
+  return { ph, dir: spin ? ['left', 'up', 'right', 'down'][beat % 4] : 'down', pose: 'dance', frame: beat % 4, dx: 0, dy: -Math.round(Math.abs(Math.sin(ph * Math.PI * 2)) * 3) };
+}
+function drawNpc(c, n, t) {
+  const { ph, dir, pose, frame, dx, dy } = npcPose(n, t);
+  drawShadow(c, n.x, n.y, dy < -1 ? 10 : 12);
+  c.drawImage(charSprite(n.l, dir, frame, pose, (ph * 3) % 4.1 < 0.13), snap(n.x - 11 + dx), snap(n.y - 35 + dy));
+  if (n.a === 'sing') {
+    const cl = musicSprite('clef');
+    c.drawImage(cl, snap(n.x + 10), snap(n.y - 50 - Math.abs(Math.sin(ph * 4)) * 6));
+    for (let i = 0; i < 3; i++) {
+      const q = (ph * 0.45 + i / 3) % 1;
+      c.globalAlpha = q < 0.15 ? q / 0.15 : 1 - (q - 0.15) / 0.85;
+      c.drawImage(musicSprite(i === 1 ? 'n2' : 'n1', NOTE_COLS[i]), snap(n.x - 16 + Math.sin(q * 6 + i) * 4 - i * 2), snap(n.y - 38 - q * 28));
+    }
+    c.globalAlpha = 1;
+  } else {
+    for (let i = 0; i < 4; i++) {
+      const q = (ph * 1.3 + i / 4) % 1;
+      if (q > 0.45) continue;
+      const a = i * 1.7 + Math.floor(ph * 1.3 + i / 4) * 2.3, x = Math.round(n.x + Math.cos(a) * 14), y = Math.round(n.y - 20 + Math.sin(a) * 12);
+      c.fillStyle = NOTE_COLS[i % 3]; c.fillRect(x, y - 2, 1, 5); c.fillRect(x - 2, y, 5, 1); c.fillStyle = '#ffffff'; c.fillRect(x, y, 1, 1);
+    }
+  }
+}
 function drawPet(c, ch, t) {
   const pet = ch.pet;
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
@@ -4733,6 +5055,7 @@ function render(t) {
     if (c.look.pet !== 'none' && !isRiding(c)) list.push({ y: c.pet.y, kind: 'pet', c });
     else if (c.pet && isRiding(c)) { c.pet.x = c.x + 10; c.pet.y = c.y; }
   }
+  for (const n of G.npcs || []) list.push({ y: n.y + 0.1, kind: 'npc', n });
   list.sort((a, b2) => a.y - b2.y);
   for (const o of list) {
     if (o.kind === 'f') {
@@ -4749,6 +5072,7 @@ function render(t) {
       const info = deskInfos.get(o.s.id);
       drawSprite(b, chairSprite(info ? info.style.ch : 5), o.s.x, o.s.y + CHAIR_DY);
     } else if (o.kind === 'char') drawCharacter(b, o.c, t);
+    else if (o.kind === 'npc') drawNpc(b, o.n, t);
     else if (o.kind === 'pet') drawPet(b, o.c, t);
   }
   for (const it of G.furniture) {
@@ -4873,14 +5197,19 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const name = (ch === G.me ? G.me.nick : p.n) || 'เพื่อน';
     const st = (ch === G.me ? G.me.st : p.st) || '';
     const micOff = G.voice && (ch === G.me ? !G.voice.mic : p.mic === 0);
+    const deaf = G.voice && (ch === G.me ? G.voice.deaf : p.hp === 1);
     const sharing = ch === G.me ? !!(G.voice && G.voice.screenTrack) : p.scr === 1;
-    const label = (sharing ? '🔴 LIVE · ' : '') + (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
+    const label = (sharing ? '🔴 LIVE · ' : '') + (st ? st + ' ' : '') + name;
     c.font = '500 12px Mitr, sans-serif';
     const w = c.measureText(label).width + 14;
     const ly = top - 20;
+    // ไอคอนปิดไมค์ / ปิดหูฟัง แยกกัน วางต่อท้ายป้ายชื่อ (วงกลมแดง เห็นชัด)
+    const badges = [micOff || deaf ? 'mic' : null, deaf ? 'hp' : null].filter(Boolean), BS = 20;
+    const tw = w + badges.length * (BS + 2), lx = sx - tw / 2;
     c.fillStyle = speaking ? '#3fd07a' : ch === G.me ? '#ff8fab' : 'rgba(46,34,53,.88)';
-    rrect(c, sx - w / 2, ly, w, 18, 6); c.fill();
-    c.fillStyle = '#ffffff'; fillCenter(c, label, sx, ly + 9.5);
+    rrect(c, lx, ly, w, 18, 6); c.fill();
+    c.fillStyle = '#ffffff'; fillCenter(c, label, lx + w / 2, ly + 9.5);
+    badges.forEach((b, i) => c.drawImage(statusIcon(b), Math.round(lx + w + 2 + i * (BS + 2)), ly - 1, BS, BS));
     top = ly;
     // เพลงที่กำลังฟัง
     const mu = ch === G.me ? currentMusic() : (p.mu && typeof p.mu.t === 'string' ? p.mu : null);
@@ -4937,6 +5266,17 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     ch._top = top;
     c.globalAlpha = 1;
   }
+  // ป้ายชื่อ NPC
+  for (const n of G.npcs || []) {
+    const [sx, sy0] = S(n.x, n.y);
+    if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
+    const label = (n.a === 'sing' ? '🎤 ' : '🕺 ') + n.n;
+    c.font = '500 12px Mitr, sans-serif';
+    const w = c.measureText(label).width + 14, ly = sy0 - (n.a === 'sing' ? 58 : 44) * scale;
+    c.fillStyle = n.a === 'sing' ? '#8a3fd0' : '#d0408a';
+    rrect(c, sx - w / 2, ly, w, 18, 6); c.fill();
+    c.fillStyle = '#ffffff'; fillCenter(c, label, sx, ly + 9.5);
+  }
   // อีโมต
   G.emotes = G.emotes.filter((e) => now - e.start < 2200);
   for (const e of G.emotes) {
@@ -4963,6 +5303,10 @@ function updateActions() {
     if (bd) acts.push(['🖼️ เปิดกระดาน', 'board:' + bd.id]);
     const sc = G.furniture.find((it) => SCREEN_TYPES.has(it.t) && nearScreen(it));
     if (sc) acts.push([sc.t === 'speaker' ? '🔊 เปิดเพลงที่ลำโพง' : '📺 YouTube บนจอ', 'screen:' + sc.id]);
+  }
+  if (!G.edit && G.isAdmin && !me.sit && !me.path && zoneAt(me.x, me.y) === 'concert') {
+    acts.push(['🎤 เรียกนักร้อง', 'npc:sing'], ['🕺 เรียกนักเต้น', 'npc:dance']);
+    if ((G.npcs || []).some((n) => Math.hypot(n.x - me.x, n.y - me.y) < 60)) acts.push(['🧹 ลบ NPC ใกล้ตัว', 'npc:del']);
   }
   if (!G.edit) {
     if (me.sit) {
@@ -4999,6 +5343,7 @@ function updateActions() {
       if (act === 'stand') standUp();
       if (act === 'turn') turnMe();
       if (act === 'ride') toggleRide();
+      else if (act.startsWith('npc:')) { const k = act.slice(4); if (k === 'del') npcCmd('del'); else npcCmd('add', k); }
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
       else if (act.startsWith('screen:')) { const it = G.furniture.find((f) => f.id === act.slice(7)); if (it) openScreenModal(it); }
@@ -5467,7 +5812,7 @@ function setupVoice() {
     if (kind === 'mic-dead') { pres({ md: 1 }); toast('⚠️ ไมค์เปิดอยู่แต่ไม่มีเสียงเข้าเลย — ลองเลือกไมค์ตัวอื่นในตั้งค่าเสียง ⚙️ หรือปิดแอปอื่นที่ใช้ไมค์ แล้วรีเฟรช', 8000); }
     if (kind === 'mic-alive') pres({ md: null });
     if (kind === 'unlock-mic' && !G.unlockMicShown) { G.unlockMicShown = true; setTimeout(() => (G.unlockMicShown = false), 20000); toast('👆 แตะหน้าจอ 1 ครั้ง เพื่อให้เสียงของคุณไปถึงเพื่อน', 6000); }
-    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
+    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, hp: V.deaf ? 1 : null, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
   });
   G.voice = V;
   V.remoteMicOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.mic === 1); };
@@ -5832,6 +6177,10 @@ function frame(ms) {
     const s = docs.find((d) => d.id === 'room');
     G.settings = s ? { call: typeof s.call === 'string' ? s.call : '' } : {};
     $('#callBtn').classList.toggle('on', !!G.settings.call);
+    const nd = docs.find((d) => d.id === 'npcs');
+    const prev = new Map((G.npcs || []).map((n) => [n.id, n]));
+    G.npcs = (nd && Array.isArray(nd.list) ? nd.list : []).filter((n) => n && Number.isFinite(n.x) && Number.isFinite(n.y)).slice(0, 40)
+      .map((n) => ({ id: String(n.id), x: n.x, y: n.y, a: n.a === 'sing' ? 'sing' : 'dance', n: String(n.n || '').slice(0, 24) || (n.a === 'sing' ? 'นักร้อง' : 'นักเต้น'), l: cleanLook(n.l || {}), seed: prev.has(String(n.id)) ? prev.get(String(n.id)).seed : Math.random() * 10 }));
     const gr = docs.find((d) => d.id === 'grants');
     const mine = gr && G.net.myUid && gr[G.net.myUid];
     G.myGrants = mine && Array.isArray(mine.items) ? mine.items : [];
@@ -5915,6 +6264,7 @@ const ZONE_TIPS = {
   karaoke: 'ห้องส่วนตัว — ร้องเพลงได้เต็มที่ คนข้างนอกไม่ได้ยิน',
   pub: 'ห้องส่วนตัว — ได้ยินทุกคนในผับ คนข้างนอกไม่ได้ยิน',
   shrine: 'ห้องส่วนตัว เงียบสงบ — ได้ยินเฉพาะคนในห้อง · นั่งเบาะกราบเพื่อไหว้พระ 🙏',
+  concert: 'เวทีใหญ่ จอ LED ไฟเวที ขึ้นไปร้องเพลงได้ — แอดมินเรียกนักร้อง/นักเต้น NPC ได้ 🎸',
   cinema: 'ห้องส่วนตัว — แตะจอใหญ่เพื่อฉายหนังจาก YouTube แล้วเลือกที่นั่ง ธรรมดา / VIP / เตียง VVIP 🍿',
   mountain: 'ได้ยินทุกคนบนเขา · นั่งล้อมกองไฟที่ขอนไม้ได้ 🔥',
   beach: 'ได้ยินทุกคนบนชายหาด · นั่งเก้าอี้ชายหาด/ผ้าเช็ดตัวได้ 🏖️ (ใส่ชุดว่ายน้ำได้ที่ 👕)',
@@ -6137,7 +6487,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 8 ? LAYOUT_V10_FROM : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 10 ? LAYOUT_V11_FROM : G.layoutV >= 8 ? LAYOUT_V10_FROM : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -6759,7 +7109,7 @@ $('#micPopClose').onclick = () => setMicPop(false);
 G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|TikTok/i.test(navigator.userAgent);
 
 // สำหรับทดสอบ: เปิดด้วย #debug
-if (location.hash === '#debug') window.__pixel = { G, walkTo, sitOn, petSprite, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
+if (location.hash === '#debug') window.__pixel = { G, walkTo, sitOn, petSprite, furnSprite, FURN, statusIcon, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
 
 // ---------- ลากหน้าต่างคลิป/เพลง/แชร์จอ ไปวางตรงไหนก็ได้ (ลากที่แถบชื่อ) ----------
 // แตะแถบชื่อสองครั้ง = กลับที่เดิม · ตำแหน่งจำไว้ในเครื่องนี้
@@ -6970,6 +7320,7 @@ function voiceStatus(rt) {
   const st = peer ? peer.state : 'new';
   const viaServer = V.relayActive && V.relayActive(peer);
   if (!viaServer && st !== 'connected') return '🟡 กำลังเชื่อมต่อเสียง…';
+  if (rt.p.hp === 1) return '🎧 เขาปิดหูฟังอยู่ (ไม่ได้ยินใคร)';
   if (rt.p.mic !== 1) return '🎙️ เขาปิดไมค์อยู่';
   if (rt.p.md) return '⚠️ เขาเปิดไมค์ แต่ไมค์เขาไม่มีเสียงเข้า (เลือกไมค์ผิดตัว/แอปอื่นใช้ไมค์อยู่) — ให้เขาเปลี่ยนไมค์ในตั้งค่าเสียง แล้วรีเฟรช';
   if (V.deaf) return '🔇 คุณปิดหูฟังอยู่';
@@ -7050,9 +7401,9 @@ $('#diagBtn').onclick = () => { $('#people').classList.add('hidden'); openVoiceD
 
 // ================================================= รายชื่อห้องด้านข้าง (แบบช่องเสียง) ====
 // แต่ละห้อง = ช่องเสียงหนึ่งช่อง · แตะชื่อห้องเพื่อเดินไป · แตะชื่อคนเพื่อเดินไปหา · ขอบเขียว = กำลังพูด
-const ROOM_ORDER = ['shrine', 'cinema', 'hall', 'meet', 'garden', 'pub', 'karaoke', 'mountain', 'beach'];
+const ROOM_ORDER = ['shrine', 'cinema', 'hall', 'meet', 'garden', 'pub', 'karaoke', 'concert', 'mountain', 'beach'];
 const ROOM_SPOTS = {
-  shrine: [240, -40], cinema: [-40, 130], hall: [256, 250], meet: [230, 420],
+  shrine: [240, -40], cinema: [-40, 130], concert: [-146, 640], hall: [256, 250], meet: [230, 420],
   garden: [408, 420], pub: [440, 660], karaoke: [228, 757], mountain: [636, 300], beach: [580, 472],
 };
 function roomTarget(z) {
@@ -7091,7 +7442,7 @@ function roomMembers() {
   for (const rt of G.others.values()) {
     if (!Number.isFinite(rt.p.x)) continue;
     const z = zoneAt(rt.p.x, rt.p.y);
-    if (by[z]) by[z].push({ key: rt.key, rt, n: rt.p.n, l: rt.p.l, mic: rt.p.mic === 1 });
+    if (by[z]) by[z].push({ key: rt.key, rt, n: rt.p.n, l: rt.p.l, mic: rt.p.mic === 1, deaf: rt.p.hp === 1 });
   }
   return by;
 }
@@ -7131,8 +7482,7 @@ function renderRooms() {
         const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (m.n || 'เพื่อน') + (m.me ? ' (คุณ)' : '');
         const mi = document.createElement('span'); mi.className = 'mi';
         const live = m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr === 1;
-        if (inCall && m.deaf) { mi.textContent = '🔇'; mi.title = 'ปิดหูฟัง'; }
-        else if (inCall && !m.mic) { mi.textContent = '🎙️'; mi.className = 'mi off'; mi.title = 'ปิดไมค์'; }
+        if (inCall && (m.deaf || !m.mic)) { const ic = (k, t) => { const im = new Image(); im.src = statusIcon(k).toDataURL(); im.title = t; return im; }; mi.append(ic('mic', 'ปิดไมค์')); if (m.deaf) mi.append(ic('hp', 'ปิดหูฟัง')); }
         if (live) { const lv = document.createElement('span'); lv.className = 'live'; lv.textContent = 'LIVE'; lv.title = 'กำลังแชร์จอ — แตะเพื่อดู'; lv.onclick = (e) => { e.stopPropagation(); if (m.me) watchStream('me'); else watchStream(m.key); }; row.append(cv, nm, lv, mi); }
         else row.append(cv, nm, mi);
         if (m.rt) row.onclick = () => { walkTo(m.rt.x + 14, m.rt.y + 4); if (isMobile()) setRoomsOpen(false); };

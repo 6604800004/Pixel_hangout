@@ -31,6 +31,7 @@ const ZONE_TIPS = {
   karaoke: 'ห้องส่วนตัว — ร้องเพลงได้เต็มที่ คนข้างนอกไม่ได้ยิน',
   pub: 'ห้องส่วนตัว — ได้ยินทุกคนในผับ คนข้างนอกไม่ได้ยิน',
   shrine: 'ห้องส่วนตัว เงียบสงบ — ได้ยินเฉพาะคนในห้อง · นั่งเบาะกราบเพื่อไหว้พระ 🙏',
+  concert: 'เวทีใหญ่ จอ LED ไฟเวที ขึ้นไปร้องเพลงได้ — แอดมินเรียกนักร้อง/นักเต้น NPC ได้ 🎸',
   cinema: 'ห้องส่วนตัว — แตะจอใหญ่เพื่อฉายหนังจาก YouTube แล้วเลือกที่นั่ง ธรรมดา / VIP / เตียง VVIP 🍿',
   mountain: 'ได้ยินทุกคนบนเขา · นั่งล้อมกองไฟที่ขอนไม้ได้ 🔥',
   beach: 'ได้ยินทุกคนบนชายหาด · นั่งเก้าอี้ชายหาด/ผ้าเช็ดตัวได้ 🏖️ (ใส่ชุดว่ายน้ำได้ที่ 👕)',
@@ -253,7 +254,7 @@ function maybeMigrateLayout() {
   if (!G.furnDocs.length || G.layoutV >= LAYOUT_VERSION) { layoutMigrated = true; return; }
   layoutMigrated = true;
   (async () => {
-    const from = G.layoutV >= 8 ? LAYOUT_V10_FROM : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
+    const from = G.layoutV >= 10 ? LAYOUT_V11_FROM : G.layoutV >= 8 ? LAYOUT_V10_FROM : G.layoutV >= 7 ? LAYOUT_V8_FROM : G.layoutV >= 6 ? LAYOUT_V7_FROM : G.layoutV >= 5 ? LAYOUT_V6_FROM : G.layoutV >= 3 ? LAYOUT_V4_FROM : G.layoutV >= 2 ? LAYOUT_V3_FROM : LAYOUT_V2_FROM;
     for (let i = from; i < DEFAULT_LAYOUT.length; i++) {
       const id = 'def' + i;
       const ex = G.furnDocs.find((d) => d.id === id);
@@ -875,7 +876,7 @@ $('#micPopClose').onclick = () => setMicPop(false);
 G.inAppBrowser = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|TikTok/i.test(navigator.userAgent);
 
 // สำหรับทดสอบ: เปิดด้วย #debug
-if (location.hash === '#debug') window.__pixel = { G, walkTo, sitOn, petSprite, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
+if (location.hash === '#debug') window.__pixel = { G, walkTo, sitOn, petSprite, furnSprite, FURN, statusIcon, openBoard, zoneAt, openScreenModal, YT, cleanLook, charSprite };
 
 // ---------- ลากหน้าต่างคลิป/เพลง/แชร์จอ ไปวางตรงไหนก็ได้ (ลากที่แถบชื่อ) ----------
 // แตะแถบชื่อสองครั้ง = กลับที่เดิม · ตำแหน่งจำไว้ในเครื่องนี้
@@ -1086,6 +1087,7 @@ function voiceStatus(rt) {
   const st = peer ? peer.state : 'new';
   const viaServer = V.relayActive && V.relayActive(peer);
   if (!viaServer && st !== 'connected') return '🟡 กำลังเชื่อมต่อเสียง…';
+  if (rt.p.hp === 1) return '🎧 เขาปิดหูฟังอยู่ (ไม่ได้ยินใคร)';
   if (rt.p.mic !== 1) return '🎙️ เขาปิดไมค์อยู่';
   if (rt.p.md) return '⚠️ เขาเปิดไมค์ แต่ไมค์เขาไม่มีเสียงเข้า (เลือกไมค์ผิดตัว/แอปอื่นใช้ไมค์อยู่) — ให้เขาเปลี่ยนไมค์ในตั้งค่าเสียง แล้วรีเฟรช';
   if (V.deaf) return '🔇 คุณปิดหูฟังอยู่';
@@ -1166,9 +1168,9 @@ $('#diagBtn').onclick = () => { $('#people').classList.add('hidden'); openVoiceD
 
 // ================================================= รายชื่อห้องด้านข้าง (แบบช่องเสียง) ====
 // แต่ละห้อง = ช่องเสียงหนึ่งช่อง · แตะชื่อห้องเพื่อเดินไป · แตะชื่อคนเพื่อเดินไปหา · ขอบเขียว = กำลังพูด
-const ROOM_ORDER = ['shrine', 'cinema', 'hall', 'meet', 'garden', 'pub', 'karaoke', 'mountain', 'beach'];
+const ROOM_ORDER = ['shrine', 'cinema', 'hall', 'meet', 'garden', 'pub', 'karaoke', 'concert', 'mountain', 'beach'];
 const ROOM_SPOTS = {
-  shrine: [240, -40], cinema: [-40, 130], hall: [256, 250], meet: [230, 420],
+  shrine: [240, -40], cinema: [-40, 130], concert: [-146, 640], hall: [256, 250], meet: [230, 420],
   garden: [408, 420], pub: [440, 660], karaoke: [228, 757], mountain: [636, 300], beach: [580, 472],
 };
 function roomTarget(z) {
@@ -1207,7 +1209,7 @@ function roomMembers() {
   for (const rt of G.others.values()) {
     if (!Number.isFinite(rt.p.x)) continue;
     const z = zoneAt(rt.p.x, rt.p.y);
-    if (by[z]) by[z].push({ key: rt.key, rt, n: rt.p.n, l: rt.p.l, mic: rt.p.mic === 1 });
+    if (by[z]) by[z].push({ key: rt.key, rt, n: rt.p.n, l: rt.p.l, mic: rt.p.mic === 1, deaf: rt.p.hp === 1 });
   }
   return by;
 }
@@ -1247,8 +1249,7 @@ function renderRooms() {
         const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (m.n || 'เพื่อน') + (m.me ? ' (คุณ)' : '');
         const mi = document.createElement('span'); mi.className = 'mi';
         const live = m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr === 1;
-        if (inCall && m.deaf) { mi.textContent = '🔇'; mi.title = 'ปิดหูฟัง'; }
-        else if (inCall && !m.mic) { mi.textContent = '🎙️'; mi.className = 'mi off'; mi.title = 'ปิดไมค์'; }
+        if (inCall && (m.deaf || !m.mic)) { const ic = (k, t) => { const im = new Image(); im.src = statusIcon(k).toDataURL(); im.title = t; return im; }; mi.append(ic('mic', 'ปิดไมค์')); if (m.deaf) mi.append(ic('hp', 'ปิดหูฟัง')); }
         if (live) { const lv = document.createElement('span'); lv.className = 'live'; lv.textContent = 'LIVE'; lv.title = 'กำลังแชร์จอ — แตะเพื่อดู'; lv.onclick = (e) => { e.stopPropagation(); if (m.me) watchStream('me'); else watchStream(m.key); }; row.append(cv, nm, lv, mi); }
         else row.append(cv, nm, mi);
         if (m.rt) row.onclick = () => { walkTo(m.rt.x + 14, m.rt.y + 4); if (isMobile()) setRoomsOpen(false); };

@@ -155,7 +155,7 @@ function fullPresence() {
   return {
     n: me.nick, l: me.look, x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 0, s: me.sit || '', st: me.st,
     say: G.mySay, em: null, dk: G.myDesk ? { slot: G.myDesk, style: G.myDeskStyle } : null, dr: null,
-    uid: G.net.uid || null, mic: G.voice && G.voice.mic ? 1 : 0, cam: G.voice && G.voice.cam ? 1 : 0,
+    uid: G.net.uid || null, mic: G.voice && G.voice.mic ? 1 : 0, hp: G.voice && G.voice.deaf ? 1 : null, cam: G.voice && G.voice.cam ? 1 : 0,
     mu: currentMusic() ? { ...currentMusic() } : null,
     mr: G.micSet.r, mc: G.micSet.c,
   };
@@ -558,6 +558,8 @@ function showHelp() {
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
     '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา เจ้าหญิง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
+    '🎤 npc ร้อง [ชื่อ] — เรียกนักร้อง NPC มาข้างตัว (ถือไมค์ มีกุญแจซอลเด้ง)',
+    '🕺 npc เต้น [ชื่อ] — เรียกนักเต้น NPC · npc ลบ = ลบตัวที่ใกล้สุด · npc ลบหมด = ลบทั้งหมด',
     '📋 ของพิเศษ — ดูว่าให้ใครใช้อะไรไว้บ้าง',
     '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
     '🚪 admin off — เลิกเป็นแอดมินในเครื่องนี้',
@@ -601,9 +603,32 @@ function chatCommand(text) {
   m = text.match(/^\/?(?:take|revoke|ยึด|ยึดคืน)\s+(.+)\s+(\S+)$/i);                        // ยึด หมี มังกร / ยึด หมี ทั้งหมด
   if (m && G.isAdmin && ITEM_WORDS.test(m[2])) { G.net.admin('revoke', key, { name: m[1].trim(), item: m[2] }); return true; }
   if (G.isAdmin && /^\/?(?:grants|ของพิเศษ)$/i.test(text)) { G.net.admin('grants', key, ''); return true; }
+  // NPC คอนเสิร์ต (แอดมิน): npc ร้อง [ชื่อ] · npc เต้น [ชื่อ] · npc ลบ · npc ลบหมด
+  if (!G.isAdmin && /^\/?npc(\s|$)/i.test(text)) { toast('🎤 คำสั่ง npc ใช้ได้เฉพาะแอดมิน'); return true; }
+  if (G.isAdmin) {
+    m = text.match(/^\/?(?:npc\s+(?:ลบหมด|ลบทั้งหมด|clear|clearall)|ลบ\s*npc\s*(?:หมด|ทั้งหมด))$/i);
+    if (m) { npcCmd('clear'); return true; }
+    m = text.match(/^\/?(?:npc\s+(?:ลบ|del|remove)|ลบ\s*npc)$/i);
+    if (m) { npcCmd('del'); return true; }
+    m = text.match(/^\/?(?:npc\s+(ร้องเพลง|ร้อง|sing|singer|นักร้อง|เต้น|dance|dancer|นักเต้น)|เรียก\s*(นักร้อง|นักเต้น))(?:\s+(.+))?$/i);
+    if (m) { npcCmd('add', /ร้อง|sing/i.test(m[1] || m[2]) ? 'sing' : 'dance', (m[3] || '').trim()); return true; }
+  }
   m = text.match(/^\/?(?:kick|เตะ)\s+(.+)$/i);                                             // kick หมี / kick all
   if (m) { G.net.admin('kick', key, m[1].trim(), 0); return true; }
   return false;
+}
+function randomNpcLook(sing) {
+  const r = (a) => Math.floor(Math.random() * a.length), pk = (list, skip = []) => { const ok = list.filter((x) => !skip.includes(x[0])); return ok[r(ok)][0]; };
+  const sex = Math.random() < 0.5 ? 'f' : 'm';
+  return cleanLook({ sex, skin: r(SKINS), hair: pk(HAIR_STYLES), hc: r(HAIR_COLORS), top: pk(TOPS, sex === 'm' ? ['princess', 'dress', 'bikini'] : []), tc: r(CLOTH_COLORS), bc: r(CLOTH_COLORS), acc: sing && Math.random() < 0.4 ? 'shades' : pk(ACCS, ['wings']), pet: 'none', pc: 0 });
+}
+function npcCmd(op, a, name) {
+  const key = lsGet('pixel.admin', '') || '', me = G.me;
+  if (op === 'add') {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    G.net.admin('npc', key, { op, a, n: name || '', x: Math.round(me.x + side * (16 + Math.random() * 10)), y: Math.round(me.y + 4 - Math.random() * 8), l: randomNpcLook(a === 'sing') });
+  } else G.net.admin('npc', key, { op, x: Math.round(me.x), y: Math.round(me.y) });
+  G.actionSig = '';
 }
 function sendChat(text, file) {
   text = text.trim().slice(0, 200);
@@ -643,7 +668,7 @@ let typingSent = '', typingT = 0;
 function shareTyping(force) {
   const raw = $('#chatInput').value;
   let t = raw.trim().slice(0, 80);
-  if (!G.showTyping || !G.joined || /^\/?(admin|kick|เตะ|clear|ล้าง)/i.test(t) || /^\/?(help|\?|คำสั่ง)$/i.test(t)) t = '';
+  if (!G.showTyping || !G.joined || /^\/?(admin|kick|เตะ|clear|ล้าง|npc)/i.test(t) || /^\/?(help|\?|คำสั่ง)$/i.test(t)) t = '';
   if (t === typingSent) return;
   const now = Date.now();
   if (!force && t && now - typingT < 300) { clearTimeout(shareTyping.tm); shareTyping.tm = setTimeout(() => shareTyping(true), 320); return; }
@@ -1004,6 +1029,36 @@ function drawCharacter(c, ch, t) {
   const s = charSprite(look, ch.dir, ch.frame, pose, blink);
   c.drawImage(s, snap(ch.x - 11 + shake), snap(ch.y - 35));
 }
+// NPC คอนเสิร์ต: นักร้อง (ถือไมค์ + กุญแจซอลเด้ง + โน้ตลอย) / นักเต้น (กระโดด ยกแขน หมุนตัว)
+const NOTE_COLS = ['#ff8fe0', '#5fd8ff', '#7dff8a'];
+function npcPose(n, t) {
+  const ph = t + n.seed;
+  if (n.a === 'sing') return { ph, dir: 'down', pose: 'sing', frame: Math.floor(ph * 1.6) % 4, dx: Math.round(Math.sin(ph * 2)), dy: 0 };
+  const beat = Math.floor(ph * 4), spin = Math.floor(ph) % 6 === 5;
+  return { ph, dir: spin ? ['left', 'up', 'right', 'down'][beat % 4] : 'down', pose: 'dance', frame: beat % 4, dx: 0, dy: -Math.round(Math.abs(Math.sin(ph * Math.PI * 2)) * 3) };
+}
+function drawNpc(c, n, t) {
+  const { ph, dir, pose, frame, dx, dy } = npcPose(n, t);
+  drawShadow(c, n.x, n.y, dy < -1 ? 10 : 12);
+  c.drawImage(charSprite(n.l, dir, frame, pose, (ph * 3) % 4.1 < 0.13), snap(n.x - 11 + dx), snap(n.y - 35 + dy));
+  if (n.a === 'sing') {
+    const cl = musicSprite('clef');
+    c.drawImage(cl, snap(n.x + 10), snap(n.y - 50 - Math.abs(Math.sin(ph * 4)) * 6));
+    for (let i = 0; i < 3; i++) {
+      const q = (ph * 0.45 + i / 3) % 1;
+      c.globalAlpha = q < 0.15 ? q / 0.15 : 1 - (q - 0.15) / 0.85;
+      c.drawImage(musicSprite(i === 1 ? 'n2' : 'n1', NOTE_COLS[i]), snap(n.x - 16 + Math.sin(q * 6 + i) * 4 - i * 2), snap(n.y - 38 - q * 28));
+    }
+    c.globalAlpha = 1;
+  } else {
+    for (let i = 0; i < 4; i++) {
+      const q = (ph * 1.3 + i / 4) % 1;
+      if (q > 0.45) continue;
+      const a = i * 1.7 + Math.floor(ph * 1.3 + i / 4) * 2.3, x = Math.round(n.x + Math.cos(a) * 14), y = Math.round(n.y - 20 + Math.sin(a) * 12);
+      c.fillStyle = NOTE_COLS[i % 3]; c.fillRect(x, y - 2, 1, 5); c.fillRect(x - 2, y, 5, 1); c.fillStyle = '#ffffff'; c.fillRect(x, y, 1, 1);
+    }
+  }
+}
 function drawPet(c, ch, t) {
   const pet = ch.pet;
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
@@ -1090,6 +1145,7 @@ function render(t) {
     if (c.look.pet !== 'none' && !isRiding(c)) list.push({ y: c.pet.y, kind: 'pet', c });
     else if (c.pet && isRiding(c)) { c.pet.x = c.x + 10; c.pet.y = c.y; }
   }
+  for (const n of G.npcs || []) list.push({ y: n.y + 0.1, kind: 'npc', n });
   list.sort((a, b2) => a.y - b2.y);
   for (const o of list) {
     if (o.kind === 'f') {
@@ -1106,6 +1162,7 @@ function render(t) {
       const info = deskInfos.get(o.s.id);
       drawSprite(b, chairSprite(info ? info.style.ch : 5), o.s.x, o.s.y + CHAIR_DY);
     } else if (o.kind === 'char') drawCharacter(b, o.c, t);
+    else if (o.kind === 'npc') drawNpc(b, o.n, t);
     else if (o.kind === 'pet') drawPet(b, o.c, t);
   }
   for (const it of G.furniture) {
@@ -1230,14 +1287,19 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const name = (ch === G.me ? G.me.nick : p.n) || 'เพื่อน';
     const st = (ch === G.me ? G.me.st : p.st) || '';
     const micOff = G.voice && (ch === G.me ? !G.voice.mic : p.mic === 0);
+    const deaf = G.voice && (ch === G.me ? G.voice.deaf : p.hp === 1);
     const sharing = ch === G.me ? !!(G.voice && G.voice.screenTrack) : p.scr === 1;
-    const label = (sharing ? '🔴 LIVE · ' : '') + (st ? st + ' ' : '') + name + (micOff ? ' 🔇' : '');
+    const label = (sharing ? '🔴 LIVE · ' : '') + (st ? st + ' ' : '') + name;
     c.font = '500 12px Mitr, sans-serif';
     const w = c.measureText(label).width + 14;
     const ly = top - 20;
+    // ไอคอนปิดไมค์ / ปิดหูฟัง แยกกัน วางต่อท้ายป้ายชื่อ (วงกลมแดง เห็นชัด)
+    const badges = [micOff || deaf ? 'mic' : null, deaf ? 'hp' : null].filter(Boolean), BS = 20;
+    const tw = w + badges.length * (BS + 2), lx = sx - tw / 2;
     c.fillStyle = speaking ? '#3fd07a' : ch === G.me ? '#ff8fab' : 'rgba(46,34,53,.88)';
-    rrect(c, sx - w / 2, ly, w, 18, 6); c.fill();
-    c.fillStyle = '#ffffff'; fillCenter(c, label, sx, ly + 9.5);
+    rrect(c, lx, ly, w, 18, 6); c.fill();
+    c.fillStyle = '#ffffff'; fillCenter(c, label, lx + w / 2, ly + 9.5);
+    badges.forEach((b, i) => c.drawImage(statusIcon(b), Math.round(lx + w + 2 + i * (BS + 2)), ly - 1, BS, BS));
     top = ly;
     // เพลงที่กำลังฟัง
     const mu = ch === G.me ? currentMusic() : (p.mu && typeof p.mu.t === 'string' ? p.mu : null);
@@ -1294,6 +1356,17 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     ch._top = top;
     c.globalAlpha = 1;
   }
+  // ป้ายชื่อ NPC
+  for (const n of G.npcs || []) {
+    const [sx, sy0] = S(n.x, n.y);
+    if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
+    const label = (n.a === 'sing' ? '🎤 ' : '🕺 ') + n.n;
+    c.font = '500 12px Mitr, sans-serif';
+    const w = c.measureText(label).width + 14, ly = sy0 - (n.a === 'sing' ? 58 : 44) * scale;
+    c.fillStyle = n.a === 'sing' ? '#8a3fd0' : '#d0408a';
+    rrect(c, sx - w / 2, ly, w, 18, 6); c.fill();
+    c.fillStyle = '#ffffff'; fillCenter(c, label, sx, ly + 9.5);
+  }
   // อีโมต
   G.emotes = G.emotes.filter((e) => now - e.start < 2200);
   for (const e of G.emotes) {
@@ -1320,6 +1393,10 @@ function updateActions() {
     if (bd) acts.push(['🖼️ เปิดกระดาน', 'board:' + bd.id]);
     const sc = G.furniture.find((it) => SCREEN_TYPES.has(it.t) && nearScreen(it));
     if (sc) acts.push([sc.t === 'speaker' ? '🔊 เปิดเพลงที่ลำโพง' : '📺 YouTube บนจอ', 'screen:' + sc.id]);
+  }
+  if (!G.edit && G.isAdmin && !me.sit && !me.path && zoneAt(me.x, me.y) === 'concert') {
+    acts.push(['🎤 เรียกนักร้อง', 'npc:sing'], ['🕺 เรียกนักเต้น', 'npc:dance']);
+    if ((G.npcs || []).some((n) => Math.hypot(n.x - me.x, n.y - me.y) < 60)) acts.push(['🧹 ลบ NPC ใกล้ตัว', 'npc:del']);
   }
   if (!G.edit) {
     if (me.sit) {
@@ -1356,6 +1433,7 @@ function updateActions() {
       if (act === 'stand') standUp();
       if (act === 'turn') turnMe();
       if (act === 'ride') toggleRide();
+      else if (act.startsWith('npc:')) { const k = act.slice(4); if (k === 'del') npcCmd('del'); else npcCmd('add', k); }
       else if (act === 'deskEdit') openDeskEditor();
       else if (act.startsWith('claim:')) claimDesk(act.slice(6));
       else if (act.startsWith('screen:')) { const it = G.furniture.find((f) => f.id === act.slice(7)); if (it) openScreenModal(it); }
@@ -1824,7 +1902,7 @@ function setupVoice() {
     if (kind === 'mic-dead') { pres({ md: 1 }); toast('⚠️ ไมค์เปิดอยู่แต่ไม่มีเสียงเข้าเลย — ลองเลือกไมค์ตัวอื่นในตั้งค่าเสียง ⚙️ หรือปิดแอปอื่นที่ใช้ไมค์ แล้วรีเฟรช', 8000); }
     if (kind === 'mic-alive') pres({ md: null });
     if (kind === 'unlock-mic' && !G.unlockMicShown) { G.unlockMicShown = true; setTimeout(() => (G.unlockMicShown = false), 20000); toast('👆 แตะหน้าจอ 1 ครั้ง เพื่อให้เสียงของคุณไปถึงเพื่อน', 6000); }
-    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
+    if (kind === 'media') { pres({ mic: V.mic ? 1 : 0, hp: V.deaf ? 1 : null, cam: V.cam ? 1 : 0, scr: V.screenTrack ? 1 : 0 }); paintVoiceButtons(); syncShare(); if (G.voicePanelOpen) paintVoiceSettings(); }
   });
   G.voice = V;
   V.remoteMicOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.mic === 1); };
@@ -2189,6 +2267,10 @@ function frame(ms) {
     const s = docs.find((d) => d.id === 'room');
     G.settings = s ? { call: typeof s.call === 'string' ? s.call : '' } : {};
     $('#callBtn').classList.toggle('on', !!G.settings.call);
+    const nd = docs.find((d) => d.id === 'npcs');
+    const prev = new Map((G.npcs || []).map((n) => [n.id, n]));
+    G.npcs = (nd && Array.isArray(nd.list) ? nd.list : []).filter((n) => n && Number.isFinite(n.x) && Number.isFinite(n.y)).slice(0, 40)
+      .map((n) => ({ id: String(n.id), x: n.x, y: n.y, a: n.a === 'sing' ? 'sing' : 'dance', n: String(n.n || '').slice(0, 24) || (n.a === 'sing' ? 'นักร้อง' : 'นักเต้น'), l: cleanLook(n.l || {}), seed: prev.has(String(n.id)) ? prev.get(String(n.id)).seed : Math.random() * 10 }));
     const gr = docs.find((d) => d.id === 'grants');
     const mine = gr && G.net.myUid && gr[G.net.myUid];
     G.myGrants = mine && Array.isArray(mine.items) ? mine.items : [];

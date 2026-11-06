@@ -12,7 +12,7 @@ const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
 const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['swim', 'ชุดว่ายน้ำ'], ['bikini', 'บิกินี่'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['trex', '🦖 ที-เร็กซ์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
 const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
 const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
@@ -334,6 +334,27 @@ function charSprite(look, dir, frame, pose, blink) {
     if (acc === 'crown') { U(6, 1, 10, 3, '#ffd34d'); U(6, 0, 1, 1, '#ffd34d'); U(10, -1, 2, 2, '#ffd34d'); U(15, 0, 1, 1, '#ffd34d'); U(8, 2, 1, 1, '#ff6b8a'); U(13, 2, 1, 1, '#6cc6d9'); U(7, 1, 2, 1, '#fff2a8'); }
     if (acc === 'halo') { U(7, -2, 8, 1, '#ffe680'); U(6, -1, 1, 1, '#ffe680'); U(15, -1, 1, 1, '#ffe680'); U(7, 0, 8, 1, '#ffe680'); }
 
+    // ---------- ท่าร้องเพลง / เต้น (NPC คอนเสิร์ต) ----------
+    if ((pose === 'sing' || pose === 'dance') && d === 'down') {
+      const OL = '#4a2430';
+      const arm = (right, mode) => {
+        const X = (x) => (right ? 21 - x : x), sc = right ? sleeveD : sleeve, sk = right ? skinD : skin;
+        g.clearRect(right ? 15 : 6, 4 + bob + 20, 1, 4);
+        if (mode === 'up') { U(X(5), 19, 1, 1, sc); U(X(4), 18, 1, 1, sc); U(X(3), 17, 1, 1, sc); U(X(2), 14, 1, 3, sk); U(right ? 19 : 1, 11, 2, 3, sk); }
+        else if (mode === 'out') { U(X(5), 20, 1, 1, sc); U(X(4), 20, 1, 1, sc); U(X(3), 18, 1, 3, sk); }
+      };
+      if (pose === 'sing') {
+        // มือขวาถือไมค์จ่อปาก (หัวไมค์มีขอบเข้ม เห็นชัดบนหน้า) อีกข้างโบกตามจังหวะ
+        g.clearRect(15, 4 + bob + 20, 1, 4);
+        U(15, 19, 1, 2, sleeveD); U(14, 18, 2, 2, skin); U(13, 18, 1, 1, OL); U(16, 18, 1, 1, OL); U(14, 17, 1, 1, OL);
+        U(12, 16, 2, 1, '#1d1f2e'); U(13, 17, 1, 1, '#1d1f2e');
+        U(9, 13, 4, 4, OL); U(10, 14, 2, 2, '#c8ccd8'); U(10, 14, 1, 1, '#ffffff');
+        arm(false, frame % 4 < 2 ? 'out' : 'up');
+      } else {
+        const f = frame % 4;
+        arm(false, f === 0 || f === 1 ? 'up' : 'out'); arm(true, f === 0 || f === 3 ? 'up' : 'out');
+      }
+    }
     if (rainbow) {
       // แทนที่สีพิเศษด้วยสีรุ้งไล่ตามแถว
       const RB = ['#ff5a6e', '#ff9a3c', '#ffd84d', '#7ed37a', '#5ab4ff', '#8f7dff', '#e07dff'];
@@ -357,7 +378,7 @@ function charSprite(look, dir, frame, pose, blink) {
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
 // ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
-const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
+const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], trex: [27, 25], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
 const FARM_OUT = [74, 36, 48];
 function farmSprite(kind, frame, faceRight, pc) {
   return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
@@ -440,6 +461,32 @@ function farmSprite(kind, frame, faceRight, pc) {
       P(4, 6, 4, 6, b); P(1, 2, 7, 5, b); P(2, 1, 5, 1, b); P(2, 2, 4, 1, hi); P(0, 5, 3, 2, b); P(1, 6, 3, 1, '#ffffff');
       P(4, 3, 1, 1, EYE); P(5, 3, 1, 1, '#ffffff'); P(1, 3, 1, 1, lo2); P(7, 11, 2, 1, lo);
       P(9, 15, 2, 3 - st, lo); P(14, 15, 2, 2 + st, b); P(8, 18 - st, 3, 1, lo2); P(14, 17 + st, 3, 1, lo2);
+    } else if (kind === 'trex') {
+      // 🦖 ที-เร็กซ์: หัวโต ฟันแหลม แขนสั้นจิ๋ว หางยาว ขาหลังใหญ่ ลายทางบนหลัง
+      const [hi, b, lo, lo2] = tone(pick('#6fae5a')), belly = '#f2e4b4', bellyD = '#dccb92', mouth = '#8a2f3e', TOOTH = '#fffdf4';
+      // หาง (แกว่งปลายตอนเดิน)
+      for (let i = 0; i < 11; i++) { const h = Math.max(1, 6 - Math.floor(i / 2)), y = 10 - Math.floor(i / 4) + (i > 7 ? st : 0); P(16 + i, y, 1, h, b); P(16 + i, y + h - 1, 1, 1, lo); if (i < 6) P(16 + i, y, 1, 1, hi); }
+      // ขาข้างไกล (สีเข้ม)
+      P(10, 16, 3, 3, lo); P(10, 18, 2, 4 - st, lo2); P(9, 21 - st, 4, 1, lo2);
+      // ลำตัว + ท้อง + ลายบนหลัง
+      E(14, 13, 6, 5, lo); E(14, 12, 6, 5, b); P(10, 8, 9, 1, hi); P(9, 9, 2, 1, hi);
+      E(12, 15, 4, 2, belly); P(10, 17, 5, 1, bellyD);
+      P(13, 8, 1, 3, lo2); P(16, 8, 1, 3, lo2); P(19, 10, 1, 3, lo2); P(22, 10, 1, 2, lo2);
+      // คอ
+      P(6, 6, 5, 7, b); P(6, 6, 1, 5, hi); P(7, 10, 3, 3, belly);
+      // หัวโต
+      P(1, 1, 10, 6, b); P(2, 0, 7, 1, b); P(0, 2, 1, 4, b); P(2, 1, 6, 1, hi); P(1, 2, 2, 1, hi);
+      P(6, 1, 3, 1, lo); P(10, 3, 1, 3, lo); P(0, 3, 1, 1, lo2);
+      P(7, 2, 1, 2, EYE); P(8, 2, 1, 1, '#ffffff'); P(8, 5, 2, 1, BLUSH);
+      // ปาก: เดินแล้วอ้างับ (คำราม!)
+      if (st) { P(0, 7, 9, 2, mouth); P(1, 7, 1, 1, TOOTH); P(4, 7, 1, 1, TOOTH); P(7, 7, 1, 1, TOOTH); P(2, 8, 1, 1, TOOTH); P(5, 8, 1, 1, TOOTH); P(1, 9, 8, 2, b); P(1, 10, 8, 1, lo); }
+      else { P(0, 7, 9, 1, mouth); P(1, 7, 1, 1, TOOTH); P(4, 7, 1, 1, TOOTH); P(7, 7, 1, 1, TOOTH); P(1, 8, 8, 2, b); P(1, 9, 8, 1, lo); }
+      // แขนสั้นจิ๋ว
+      P(9, 12, 2, 1, lo); P(8, 12, 1, 2, lo); P(7, 13 + st, 1, 1, TOOTH);
+      // ขาข้างใกล้: ต้นขาใหญ่ หน้าแข้ง เท้ามีเล็บ
+      E(16, 15, 3, 3, b); P(15, 13, 3, 1, hi);
+      P(16, 18, 2, 3 + st, b); P(17, 18, 1, 3 + st, lo);
+      P(14, 21 + st, 5, 1, lo2); P(14, 21 + st, 1, 1, TOOTH); P(16, 21 + st, 1, 1, TOOTH);
     } else if (kind === 'panda') {
       const blk = pick('#2e2235'), wh = '#f8f6f2', whL = '#e6e0d8';
       E(11, 10, 6, 4, whL); E(11, 9, 6, 4, wh); P(7, 6, 4, 6, blk); P(16, 8, 1, 2, wh);
@@ -576,6 +623,39 @@ function farmSprite(kind, frame, faceRight, pc) {
     }
     addOutline(c, FARM_OUT);
     return faceRight ? mirror(c) : c;
+  });
+}
+// โน้ตดนตรี: 'clef' = กุญแจซอล, 'n1' = ♪, 'n2' = ♫
+const MUSIC_PIX = {
+  clef: ['...#...', '..#.#..', '..#.#..', '..#.#..', '...##..', '...#...', '..##...', '.#.#...', '#..###.', '#.#.#.#', '#.#.#.#', '.#..#.#', '..###..', '....#..', '.##.#..', '.###...'],
+  n1: ['...#..', '...##.', '...#.#', '...#..', '...#..', '.###..', '####..', '.##...'],
+  n2: ['..######', '..#....#', '..######', '..#....#', '..#....#', '###..###', '###..###', '.#....#.'],
+};
+function musicSprite(kind, col = '#ffd34d') {
+  return cached(`mu|${kind}|${col}`, () => {
+    const rows = MUSIC_PIX[kind], c = mkCanvas(rows[0].length + 2, rows.length + 2), g = c.getContext('2d');
+    rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') { g.fillStyle = x === 0 || y === 0 ? shade(col, 0.3) : col; g.fillRect(x + 1, y + 1, 1, 1); } });
+    addOutline(c, [74, 36, 48]);
+    return c;
+  });
+}
+// ป้ายสถานะเสียงแบบ Discord: 'mic' = ปิดไมค์, 'hp' = ปิดหูฟัง (วงกลมแดง ไอคอนขาว มีขีดฆ่า)
+function statusIcon(kind) {
+  return cached('si|' + kind, () => {
+    const N = 15, c = mkCanvas(N + 2, N + 2), g = c.getContext('2d'), P = painter(g, 1, 1);
+    const RED = '#e8505b', RED_D = '#c23744', WH = '#ffffff';
+    for (let y = 0; y < N; y++) { const w = Math.round(7.5 * Math.sqrt(Math.max(0, 1 - ((y - 7) / 7.6) ** 2))); P(7 - w, y, w * 2 + 1, 1, y > 10 ? RED_D : RED); }
+    if (kind === 'mic') {
+      P(6, 1, 3, 1, WH); P(5, 2, 5, 7, WH); P(6, 9, 3, 1, WH);
+      P(3, 6, 1, 3, WH); P(11, 6, 1, 3, WH); P(4, 9, 1, 1, WH); P(10, 9, 1, 1, WH); P(5, 10, 5, 1, WH); P(7, 11, 1, 1, WH); P(5, 12, 5, 1, WH);
+    } else {
+      P(5, 2, 5, 1, WH); P(4, 3, 1, 1, WH); P(10, 3, 1, 1, WH); P(3, 4, 1, 1, WH); P(11, 4, 1, 1, WH); P(2, 5, 1, 3, WH); P(12, 5, 1, 3, WH);
+      P(1, 7, 4, 5, WH); P(10, 7, 4, 5, WH); P(2, 8, 2, 3, RED_D); P(11, 8, 2, 3, RED_D);
+    }
+    for (let i = 2; i < 13; i++) { const col = i > 10 ? RED_D : RED; P(i - 1, i, 1, 1, col); P(i + 1, i, 1, 1, col); P(i, i - 1, 1, 1, col); }
+    for (let i = 2; i < 13; i++) P(i, i, 1, 1, WH); // ขีดฆ่า
+    addOutline(c, [74, 36, 48]);
+    return c;
   });
 }
 function petSprite(kind, frame, faceRight, pc = 0) {
@@ -1143,6 +1223,138 @@ const FURN = {
     P(0, 30, 66, 4, '#5a3824'); P(3, 34, 4, 4, '#3a2418'); P(59, 34, 4, 4, '#3a2418');
     P(14, 14, 3, 3, '#ffffff'); P(42, 10, 3, 3, '#e8505b'); P(46, 13, 3, 3, '#ffd34d'); P(42, 16, 3, 3, '#7d9cf0'); P(49, 10, 3, 3, '#2f3245');
     P(18, 15, 22, 1, '#e6b07a');
+  } },
+  // ---------------- 🎸 คอนเสิร์ต ----------------
+  drumKit: { label: '🥁 กลองชุด', emo: '🥁', w: 38, h: 28, solid: true, foot: 10, draw(P) {
+    const R = '#c8323c', RD = '#8f1d26', CH = '#c8ccd8', CD = '#7a8098', SK = '#f4ead2';
+    P(3, 2, 1, 22, CD); P(0, 2, 8, 2, '#ffd34d'); P(1, 1, 6, 1, '#ffe98a'); P(34, 4, 1, 20, CD); P(30, 4, 8, 2, '#ffd34d');
+    P(8, 7, 9, 6, R); P(8, 7, 9, 2, SK); P(8, 12, 9, 1, RD); P(21, 7, 9, 6, R); P(21, 7, 9, 2, SK); P(21, 12, 9, 1, RD);
+    P(11, 12, 16, 14, R); P(13, 14, 12, 10, SK); P(17, 17, 4, 4, '#ffd34d'); P(11, 25, 16, 1, RD);
+    P(1, 16, 8, 8, R); P(1, 16, 8, 2, SK); P(1, 23, 8, 1, RD); P(29, 16, 8, 8, R); P(29, 16, 8, 2, SK); P(29, 23, 8, 1, RD);
+    for (const x of [2, 7, 30, 35]) P(x, 24, 1, 4, CD);
+  } },
+  synth: { label: '🎹 คีย์บอร์ด', emo: '🎹', w: 34, h: 24, solid: true, foot: 6, draw(P) {
+    P(2, 0, 30, 10, '#2f3245'); P(3, 1, 28, 1, '#43475e'); P(4, 2, 8, 3, '#5fd8ff'); P(14, 3, 2, 2, '#ff6b8a'); P(18, 3, 2, 2, '#ffd34d'); P(22, 3, 2, 2, '#7dff8a'); P(26, 3, 3, 2, '#9aa0b8');
+    P(2, 6, 30, 5, '#ffffff'); for (let x = 3; x < 32; x += 3) P(x, 6, 1, 5, '#c8ccd8'); for (let x = 4; x < 31; x += 3) if (x % 7 !== 0) P(x, 6, 2, 3, '#1d1f2e');
+    P(2, 11, 30, 2, '#1d1f2e'); P(6, 13, 2, 9, '#5a5f7a'); P(26, 13, 2, 9, '#5a5f7a'); P(8, 16, 18, 1, '#5a5f7a'); P(4, 22, 6, 2, '#43475e'); P(24, 22, 6, 2, '#43475e');
+  } },
+  stageLight: { label: '💡 ไฟเวที', emo: '💡', w: 18, h: 32, solid: true, foot: 4, fw: 10, variants: 4, draw(P) {
+    P(8, 12, 2, 16, '#5a5f7a'); P(3, 28, 12, 2, '#43475e'); P(2, 30, 3, 2, '#2f3245'); P(13, 30, 3, 2, '#2f3245');
+    P(3, 1, 12, 11, '#2f3245'); P(4, 2, 10, 1, '#43475e'); P(2, 4, 1, 6, '#5a5f7a'); P(15, 4, 1, 6, '#5a5f7a'); P(5, 4, 8, 6, '#1d1f2e');
+  },
+  anim(ctx, sx, sy, t, it) {
+    const C = ['#ff5fa2', '#5fd8ff', '#ffe066', '#7dff8a'][(it && it.v) || 0], on = Math.sin(t * 5 + ((it && it.x) || 0)) > -0.6;
+    ctx.fillStyle = on ? C : '#3a3a4a'; ctx.fillRect(sx + 5, sy + 4, 8, 6); if (on) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 7, sy + 6, 3, 2); }
+  } },
+  // ---------------- 🎄 คริสต์มาส ----------------
+  xmasTree: { label: '🎄 ต้นคริสต์มาส', emo: '🎄', w: 40, h: 62, solid: true, foot: 8, fw: 14, draw(P) {
+    const D = '#2a6e44', M = '#3a8f55', L = '#5cb870', GOLD = '#ffd34d';
+    P(17, 54, 6, 4, '#7a4a24'); P(13, 57, 14, 5, '#c8323c'); P(13, 57, 14, 1, '#e8505b'); P(13, 59, 14, 1, GOLD);
+    for (let k = 0; k < 4; k++) {
+      const y0 = 9 + k * 11;
+      for (let r = 0; r < 14; r++) {
+        const half = Math.round((6 + k * 4.5) * (r + 2) / 15), y = y0 + r;
+        if (y > 55) break;
+        P(20 - half, y, half * 2, 1, r === 13 ? D : r < 2 ? L : M); P(20 - half, y, 2, 1, L); P(20 + half - 2, y, 2, 1, D);
+      }
+      const hw = Math.round((6 + k * 4.5) * 11 / 15);
+      for (let x = -hw + 1; x < hw; x += 2) P(20 + x, y0 + 9 + Math.round(x / 5), 1, 1, GOLD); // สายรุ้งทอง
+    }
+    for (const [x, y, c] of [[15, 18, '#e8505b'], [24, 23, '#5ab4ff'], [11, 30, GOLD], [28, 33, '#e8505b'], [18, 37, '#c070ff'], [8, 43, '#5ab4ff'], [25, 45, GOLD], [33, 47, '#e8505b'], [14, 50, '#ff9a3c']]) { P(x, y, 3, 3, c); P(x, y, 1, 1, '#ffffff'); }
+    P(19, 0, 2, 9, GOLD); P(16, 3, 8, 2, GOLD); P(17, 5, 2, 2, GOLD); P(21, 5, 2, 2, GOLD); P(18, 2, 4, 4, GOLD); P(19, 3, 1, 1, '#fff6c8');
+  },
+  anim(ctx, sx, sy, t) {
+    const COL = ['#ff5a5a', '#ffe066', '#5fd8ff', '#7dff8a', '#ff8fe0'], f = Math.floor(t * 2.5);
+    const pts = [[19, 13], [16, 21], [23, 20], [12, 27], [27, 28], [20, 30], [9, 36], [31, 37], [16, 41], [24, 40], [6, 47], [34, 49], [12, 52], [21, 51], [29, 53]];
+    pts.forEach(([x, y], i) => { if ((i + f) % 3 === 0) return; ctx.fillStyle = COL[(i + f) % COL.length]; ctx.fillRect(sx + x, sy + y, 2, 2); });
+    if (Math.sin(t * 3) > 0.2) { ctx.fillStyle = '#fff6c8'; ctx.fillRect(sx + 19, sy - 2, 2, 2); ctx.fillRect(sx + 14, sy + 3, 2, 1); ctx.fillRect(sx + 24, sy + 3, 2, 1); ctx.fillRect(sx + 19, sy + 3, 2, 2); }
+  } },
+  gift: { label: '🎁 กล่องของขวัญ', emo: '🎁', w: 16, h: 17, solid: true, foot: 6, variants: 4, draw(P, v) {
+    const [b, r] = [['#e8505b', '#ffd34d'], ['#3fa35a', '#e8505b'], ['#3f7fe0', '#ffffff'], ['#a868e8', '#ff9fd8']][v % 4];
+    P(1, 6, 14, 11, b); P(1, 15, 14, 2, shade(b, -0.22)); P(12, 6, 3, 11, shade(b, -0.12));
+    P(0, 4, 16, 4, shade(b, 0.12)); P(0, 7, 16, 1, shade(b, -0.25));
+    P(7, 4, 2, 13, r); P(0, 5, 16, 1, r);
+    P(3, 0, 4, 3, r); P(9, 0, 4, 3, r); P(4, 1, 2, 1, shade(r, -0.25)); P(10, 1, 2, 1, shade(r, -0.25)); P(7, 2, 2, 2, shade(r, -0.15));
+  } },
+  giftPile: { label: '🎁 กองของขวัญ', emo: '🎁', w: 36, h: 24, solid: true, foot: 9, draw(P) {
+    const box = (x, y, w, h, b, r) => { P(x, y + 3, w, h - 3, b); P(x, y + h - 2, w, 2, shade(b, -0.22)); P(x - 1, y + 1, w + 2, 3, shade(b, 0.12)); P(x + (w >> 1) - 1, y + 1, 2, h - 1, r); P(x - 1, y + 2, w + 2, 1, r); P(x + (w >> 1) - 4, y - 2, 3, 3, r); P(x + (w >> 1) + 1, y - 2, 3, 3, r); };
+    box(3, 6, 16, 17, '#3fa35a', '#e8505b'); box(9, 1, 9, 8, '#ffd34d', '#c8323c'); box(19, 11, 14, 12, '#e8505b', '#ffffff'); box(29, 17, 6, 6, '#3f7fe0', '#ffd34d');
+  } },
+  snowman: { label: '⛄ ตุ๊กตาหิมะ', emo: '⛄', w: 22, h: 34, solid: true, foot: 7, variants: 2, draw(P, v) {
+    const WH = '#ffffff', SH = '#d8e4f4', sc = v % 2 ? '#3f7fe0' : '#e8505b';
+    const E = (cx, cy, rx, ry) => { for (let y = -ry; y <= ry; y++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.5)) ** 2))); P(cx - w, cy + y, w * 2 + 1, 1, WH); P(cx + w - 1, cy + y, 2, 1, SH); } };
+    P(1, 13, 5, 1, '#7a5236'); P(0, 12, 2, 1, '#7a5236'); P(16, 13, 5, 1, '#7a5236'); P(20, 12, 2, 1, '#7a5236');
+    E(11, 27, 8, 6); E(11, 18, 6, 5); E(11, 9, 5, 4); P(4, 32, 15, 1, SH);
+    P(6, 4, 11, 2, '#2e2235'); P(8, 0, 7, 5, '#2e2235'); P(8, 3, 7, 1, sc);
+    P(9, 8, 1, 1, '#2e2235'); P(13, 8, 1, 1, '#2e2235'); P(11, 10, 3, 1, '#ff9a3c'); P(9, 12, 1, 1, '#2e2235'); P(10, 12, 3, 1, '#2e2235'); P(13, 12, 1, 1, '#2e2235');
+    P(6, 14, 11, 2, sc); P(13, 16, 3, 4, sc); P(13, 19, 3, 1, shade(sc, -0.25));
+    P(11, 18, 1, 1, '#2e2235'); P(11, 21, 1, 1, '#2e2235'); P(11, 26, 1, 1, '#2e2235');
+  } },
+  candyCane: { label: '🍭 ลูกกวาดไม้เท้า', emo: '🍭', w: 12, h: 32, solid: true, foot: 3, fw: 6, draw(P) {
+    const pts = [];
+    for (let y = 31; y >= 6; y--) pts.push([7, y]);
+    for (const [x, y] of [[7, 5], [7, 4], [6, 3], [5, 2], [4, 2], [3, 2], [2, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8]]) pts.push([x, y]);
+    pts.forEach(([x, y], i) => P(x - 1, y - 1, 3, 3, Math.floor(i / 3) % 2 ? '#ffffff' : '#e8323c'));
+    P(7, 8, 1, 22, 'rgba(255,255,255,.5)');
+  } },
+  reindeer: { label: '🦌 กวางเรนเดียร์', emo: '🦌', w: 32, h: 30, solid: true, foot: 8, facing: true, draw(P, v, f) {
+    const B = '#a8743c', BD = '#7a5228', BL = '#c8945a', AN = '#d9b98a', HO = '#3a2418';
+    const pp = f ? (x, y, w, h, c) => P(32 - x - w, y, w, h, c) : P;
+    for (const x of [12, 14, 21, 23]) { pp(x, 20, 2, 9, x === 14 || x === 23 ? BD : B); pp(x, 28, 2, 2, HO); }
+    for (let y = -5; y <= 5; y++) { const w = Math.round(9 * Math.sqrt(Math.max(0, 1 - (y / 5.5) ** 2))); pp(18 - w, 16 + y, w * 2 + 1, 1, y > 2 ? BD : y < -3 ? BL : B); }
+    pp(14, 19, 8, 2, '#f0dcc0'); pp(27, 12, 3, 3, '#f4ece0');
+    pp(8, 8, 5, 9, B); pp(8, 8, 1, 7, BL);
+    pp(3, 5, 9, 6, B); pp(4, 4, 6, 1, BL); pp(1, 8, 4, 3, BL);
+    pp(7, 6, 1, 1, '#2e2235'); pp(8, 6, 1, 1, '#ffffff'); pp(10, 3, 3, 2, BD);
+    pp(5, 0, 1, 4, AN); pp(3, 1, 2, 1, AN); pp(8, 0, 1, 4, AN); pp(9, 1, 2, 1, AN); pp(6, 2, 2, 1, AN);
+    pp(8, 13, 6, 2, '#c8323c'); pp(10, 15, 2, 2, '#ffd34d');
+  },
+  anim(ctx, sx, sy, t, it) {
+    const on = Math.sin(t * 4) > -0.3, x = it && it.f ? 32 - 0 - 3 : 0;
+    ctx.fillStyle = on ? '#ff3a3a' : '#a8242e'; ctx.fillRect(sx + x, sy + 8, 3, 3);
+    if (on) { ctx.fillStyle = 'rgba(255,80,80,.3)'; ctx.fillRect(sx + x - 2, sy + 6, 7, 7); }
+  } },
+  sleigh: { label: '🛷 เลื่อนซานต้า', emo: '🛷', w: 46, h: 28, solid: true, foot: 12,
+    seats: () => [{ dx: -10, dy: -5, dir: 'down' }, { dx: 10, dy: -5, dir: 'down' }],
+    draw(P) {
+      const R = '#c8323c', RD = '#8f1d26', RL = '#e8505b', G = '#ffd34d', GD = '#c8962a';
+      P(2, 0, 42, 13, R); P(3, 1, 40, 2, RL); P(2, 0, 42, 1, G); for (let x = 6; x < 42; x += 8) P(x, 5, 3, 3, G);
+      P(0, 6, 7, 18, R); P(39, 6, 7, 18, R); P(0, 6, 7, 1, G); P(39, 6, 7, 1, G); P(1, 9, 1, 12, RL);
+      P(7, 12, 32, 8, '#6a1a3a'); P(7, 12, 32, 2, '#8a2a52');
+      P(0, 20, 46, 5, R); P(0, 20, 46, 1, G); P(0, 24, 46, 1, RD);
+      P(4, 25, 3, 2, GD); P(39, 25, 3, 2, GD); P(1, 27, 44, 1, G); P(44, 23, 2, 4, G); P(45, 22, 1, 1, G); P(0, 26, 2, 1, G);
+    } },
+  xmasWreath: { label: '💚 พวงหรีดคริสต์มาส', emo: '💚', w: 22, h: 25, solid: false, draw(P) {
+    for (let y = -9; y <= 9; y++) for (let x = -9; x <= 9; x++) { const d = Math.hypot(x, y); if (d <= 9.4 && d >= 4.6) P(11 + x, 10 + y, 1, 1, (x * 3 + y * 5) % 4 === 0 ? '#5cb870' : d > 8.2 ? '#2a6e44' : '#3a8f55'); }
+    for (const [x, y] of [[4, 5], [16, 4], [18, 12], [6, 15], [11, 2], [2, 10]]) { P(x, y, 2, 2, '#e8323c'); P(x, y, 1, 1, '#ff9a9a'); }
+    P(7, 17, 3, 3, '#e8323c'); P(12, 17, 3, 3, '#e8323c'); P(10, 18, 2, 2, '#b8242e'); P(8, 20, 2, 5, '#e8323c'); P(12, 20, 2, 5, '#e8323c');
+  } },
+  xmasLights: { label: '✨ ไฟประดับ', emo: '✨', w: 50, h: 34, solid: false, draw(P) {
+    for (const x of [1, 46]) { for (let y = 3; y < 34; y++) P(x, y, 3, 1, Math.floor(y / 3) % 2 ? '#ffffff' : '#e8323c'); P(x - 1, 1, 5, 2, '#ffd34d'); }
+    for (let x = 4; x < 46; x++) P(x, 5 + Math.round(9 * Math.sin(Math.PI * (x - 4) / 42)), 1, 1, '#2e3a2e');
+  },
+  anim(ctx, sx, sy, t) {
+    const COL = ['#ff5a5a', '#ffe066', '#5fd8ff', '#7dff8a', '#ff8fe0'], f = Math.floor(t * 3);
+    for (let i = 0, x = 7; x < 44; x += 5, i++) { const y = 5 + Math.round(9 * Math.sin(Math.PI * (x - 4) / 42)); const c = COL[(i + f) % COL.length]; ctx.fillStyle = c; ctx.fillRect(sx + x, sy + y + 1, 2, 3); if ((i + f) % 2) { ctx.fillStyle = c + '55'; ctx.fillRect(sx + x - 1, sy + y, 4, 5); } }
+  } },
+  gingerHouse: { label: '🏠 บ้านขนมปังขิง', emo: '🍪', w: 32, h: 30, solid: true, foot: 12, draw(P) {
+    const BR = '#b5743c', BD = '#8a5228', IC = '#ffffff';
+    P(3, 13, 26, 17, BR); P(3, 28, 26, 2, BD); P(24, 13, 5, 17, BD);
+    for (let r = 0; r < 14; r++) { const half = r + 2; P(16 - half, r, half * 2, 1, r % 4 === 3 ? IC : '#8a4a24'); }
+    P(0, 14, 32, 2, IC); for (let x = 1; x < 31; x += 3) P(x, 16, 1, 2, IC);
+    P(13, 20, 6, 10, '#6a3a1a'); P(13, 20, 6, 1, IC); P(17, 25, 1, 1, '#ffd34d');
+    P(6, 19, 5, 5, '#ffe9a0'); P(6, 19, 5, 1, IC); P(8, 19, 1, 5, IC); P(22, 19, 5, 5, '#ffe9a0'); P(22, 19, 5, 1, IC); P(24, 19, 1, 5, IC);
+    for (const [x, y, c] of [[5, 26, '#e8505b'], [9, 27, '#3fa35a'], [21, 27, '#5ab4ff'], [26, 26, '#ffd34d'], [14, 5, '#e8505b'], [17, 8, '#3fa35a'], [11, 10, '#ffd34d']]) P(x, y, 2, 2, c);
+    P(20, 0, 3, 5, '#c8323c'); P(20, 0, 3, 1, IC);
+  } },
+  snowPatch: { label: '❄️ ลานหิมะ', emo: '❄️', w: 60, h: 34, floor: true, solid: false, draw(P) {
+    const rows = [[14, 32], [8, 44], [4, 52], [2, 56], [1, 58], [0, 60], [0, 60], [1, 58], [2, 56], [4, 52], [7, 46], [12, 36]];
+    rows.forEach(([x, w], i) => { const y = 1 + i * 2.8 | 0; P(x, y, w, 3, '#f4f8ff'); });
+    P(6, 26, 48, 3, '#dce6f4'); P(14, 30, 32, 2, '#dce6f4');
+    for (const [x, y] of [[10, 8], [24, 5], [40, 10], [50, 16], [18, 18], [33, 22], [8, 20], [44, 25]]) P(x, y, 2, 1, '#cfdcf0');
+  },
+  anim(ctx, sx, sy, t) {
+    for (let i = 0; i < 5; i++) { const ph = (t * 0.6 + i * 0.37) % 1; if (ph > 0.3) continue; ctx.fillStyle = '#ffffff'; const x = sx + ((i * 23) % 52) + 4, y = sy + ((i * 13) % 24) + 4; ctx.fillRect(x, y - 1, 1, 3); ctx.fillRect(x - 1, y, 3, 1); }
   } },
 };
 

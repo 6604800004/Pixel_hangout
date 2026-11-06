@@ -16,6 +16,10 @@ const SEA_X = W + 262;
 const shoreX = (y) => SEA_X + Math.round(Math.sin(y / 37) * 7 + Math.sin(y / 13) * 3);
 const POND = { x: W + 40, y: 28, w: 72, h: 44 };
 const DOOR_CINEMA = { x: 0, y: 112, h: 34, zone: 'cinema', side: true, left: true };
+// ฮอลล์คอนเสิร์ต: ใต้โรงหนัง เข้าจากผนังซ้ายของห้องประชุมและห้องคาราโอเกะ
+const CONCERT = { y0: CINEMA.y1, floor: CINEMA.y1 + 30 };
+const STAGE = { x: LEFT + 22, y: CINEMA.y1 + 30, w: -LEFT - 44, h: 92 };
+const DOORS_CONCERT = [{ x: 0, y: 468, h: 34, zone: 'concert', side: true, left: true }, { x: 0, y: 700, h: 34, zone: 'concert', side: true, left: true }];
 // ผนังกั้นชั้นล่าง (ห้องประชุม + สวน)
 const LOWER_Y = 352, LOWER_FLOOR = 382, DIVIDER_X = 300;
 const DOORS = [{ x: 214, w: 32, zone: 'meet' }, { x: 392, w: 32, zone: 'garden' }];
@@ -37,13 +41,14 @@ const ZONES = {
   pub: { id: 'pub', name: 'ผับ', icon: '🍻' },
   shrine: { id: 'shrine', name: 'ห้องไหว้พระ', icon: '🙏' },
   cinema: { id: 'cinema', name: 'โรงหนัง', icon: '🎬' },
+  concert: { id: 'concert', name: 'คอนเสิร์ต', icon: '🎸' },
   mountain: { id: 'mountain', name: 'ภูเขา', icon: '⛰️' },
   beach: { id: 'beach', name: 'ทะเล', icon: '🏖️' },
 };
 // ชื่อห้อง: แอดมินตั้งเองได้ (ไม่ตั้ง = ชื่อเดิม)
 const zoneName = (z) => (typeof G !== 'undefined' && G.roomNames && G.roomNames[z]) || ZONES[z].name;
 function zoneAt(x, y) {
-  if (x < 0) return 'cinema';
+  if (x < 0) return y < CINEMA.y1 + 16 ? 'cinema' : 'concert';
   if (x >= W) return y < RIDGE_Y + 12 ? 'mountain' : 'beach';
   if (y < 0) return 'shrine';
   if (y < LOWER_Y + 16) return 'hall';
@@ -116,8 +121,13 @@ const DEFAULT_LAYOUT = [
   { t: 'pine', v: 1, x: 560, y: 300 }, { t: 'pine', v: 1, x: 784, y: -50 }, { t: 'pine', x: 540, y: 180 },
   { t: 'rock', x: 660, y: 24 }, { t: 'rock', v: 1, x: 800, y: 190 }, { t: 'rock', v: 1, x: 880, y: 140 },
   { t: 'campfire', x: 760, y: 128 }, { t: 'logSeat', x: 760, y: 106 }, { t: 'tent', v: 0, x: 844, y: 104 }, { t: 'tent', v: 1, x: 812, y: 318 },
+  // ---- v11: 🎸 คอนเสิร์ต ----
+  { t: 'drumKit', x: -146, y: 420 }, { t: 'synth', x: -212, y: 436 }, { t: 'micStand', x: -146, y: 462 }, { t: 'micStand', x: -86, y: 456 },
+  { t: 'speaker', x: -256, y: 410 }, { t: 'speaker', x: -36, y: 410 }, { t: 'speaker', x: -256, y: 474 }, { t: 'speaker', x: -36, y: 474 },
+  { t: 'stageLight', v: 0, x: -270, y: 560 }, { t: 'stageLight', v: 2, x: -18, y: 560 }, { t: 'stageLight', v: 1, x: -270, y: 840 }, { t: 'stageLight', v: 3, x: -18, y: 840 },
 ];
-const LAYOUT_VERSION = 10;
+const LAYOUT_VERSION = 11;
+const LAYOUT_V11_FROM = 151; // def151+: ฮอลล์คอนเสิร์ต
 const LAYOUT_V10_FROM = 125; // def125+: ของตกแต่งทะเล + ภูเขา
 // v9: เอาต้นไม้หน้าประตูห้องประชุมออก (ลบตามตำแหน่ง ไม่ว่าใครจะย้าย/วางไว้)
 const LAYOUT_V9_REMOVE = [{ t: 'plant', x: 236, y: 342, r: 12 }];
@@ -398,6 +408,31 @@ function buildBackground() {
     P(-6, d.y, 9, d.h, '#521a2b'); P(-7, d.y - 3, 11, 3, '#d9a441'); P(-7, d.y + d.h, 11, 3, '#d9a441');
     P(0, d.y, 3, d.h, '#d9a374');
   }
+  // ================= 🎸 ฮอลล์คอนเสิร์ต =================
+  { const fx = LEFT + 3, fw = -6 - fx, y0 = CONCERT.y0, fy = CONCERT.floor;
+    for (let y = fy; y < H - 3; y += 8) for (let x = fx; x < -6; x += 8) {
+      P(x, y, 8, 8, ((x / 8 + y / 8) | 0) % 2 ? '#201a2e' : '#251e35');
+      if (((x * 5 + y * 7) & 63) === 0) P(x + 3, y + 3, 2, 2, '#352b4d');
+    }
+    // ผนังหลัง + จอ LED (เนื้อหาในจอขยับใน drawLiveWall)
+    P(fx, y0, fw + 6, 30, '#15111e'); P(fx, y0, fw + 6, 2, '#2a2238'); P(fx, y0 + 28, fw + 6, 2, '#0c0a12');
+    P(STAGE.x + 26, y0 + 2, STAGE.w - 52, 26, '#3a3450'); P(STAGE.x + 28, y0 + 4, STAGE.w - 56, 22, '#07060c');
+    for (const x of [STAGE.x + 6, STAGE.x + STAGE.w - 16]) { P(x, y0 + 3, 10, 24, '#1d1f2e'); for (let k = 0; k < 3; k++) P(x + 2, y0 + 5 + k * 7, 6, 5, '#2f3245'); }
+    // เวที (ยกพื้น) + ขอบหน้าเวที + บันได
+    const s = STAGE;
+    P(s.x - 2, s.y, s.w + 4, s.h, '#2c2638');
+    for (let y = s.y + 5; y < s.y + s.h; y += 7) P(s.x, y, s.w, 1, '#352e45');
+    for (let x = s.x + 12; x < s.x + s.w; x += 31) P(x, s.y, 1, s.h, '#262031');
+    P(s.x - 2, s.y + s.h, s.w + 4, 9, '#4a3f62'); P(s.x - 2, s.y + s.h, s.w + 4, 1, '#ffd34d'); P(s.x - 2, s.y + s.h + 8, s.w + 4, 1, '#120e1a');
+    const cx = s.x + s.w / 2;
+    for (let i = 0; i < 3; i++) P(cx - 16, s.y + s.h + 2 + i * 3, 32, 2, i % 2 ? '#3a3150' : '#5a4f78');
+    P(s.x + 30, s.y + 10, s.w - 60, 1, '#ff5fa222');
+    // ผนังข้าง/ล่าง
+    P(LEFT, y0, 3, H - y0, '#3a2c3f'); P(LEFT, H - 3, -LEFT, 3, '#3a2c3f');
+    // ผนังบ้านด้านซ้าย (กั้นห้องประชุม/คาราโอเกะ) + ประตูนีออน
+    P(-6, y0, 9, H - y0, '#3a2c3f');
+    for (const d of DOORS_CONCERT) { P(-6, d.y, 9, d.h, '#251e35'); P(-7, d.y - 3, 11, 3, '#8a3fd0'); P(-7, d.y + d.h, 11, 3, '#8a3fd0'); }
+  }
   // ================= นอกบ้านฝั่งขวา: ภูเขา (บน) + ทะเล (ล่าง) =================
   {
     const X0 = W, X1 = RIGHT;
@@ -419,9 +454,11 @@ function buildBackground() {
         else if (i > h * 0.6 && (i + cx) % 3 === 0) P(cx - half + 2, y, 3, 1, '#f4f8ff');
       }
     };
+    g.save(); g.beginPath(); g.rect(X0, TOP, X1 - X0, MTN_TOP - TOP + 20); g.clip(); // ไม่ให้ภูเขาล้นเข้าห้องไหว้พระ
     peak(X0 + 60, 92, 170, '#8494b4', '#9fb0cc');
     peak(X0 + 330, 104, 200, '#7d8daf', '#98a9c8');
     peak(X0 + 200, 128, 230, '#71819f', '#8ea0bf');
+    g.restore();
     for (let x = X0; x < X1; x += 7) { const h = 10 + ((x * 13) % 9); P(x + 2, MTN_TOP + 6 - h, 3, h, '#2f6e4a'); P(x, MTN_TOP + 6 - h + 4, 7, h - 4, '#3a7d55'); P(x + 1, MTN_TOP + 6 - h + 2, 5, 2, '#3a7d55'); }
     P(X0, MTN_TOP + 4, X1 - X0, 4, '#4f8f50');
     // ---- ทางเดินดินขึ้นเขา ----
@@ -459,10 +496,10 @@ function buildBackground() {
     // ทางเดินไม้จากประตูสวน
     { const g = GATE_EAST; for (let x = X0; x < X0 + 70; x += 6) { P(x, g.y + 4, 5, g.h - 8, '#c08a5a'); P(x, g.y + 4, 5, 1, '#d9a374'); P(x + 5, g.y + 4, 1, g.h - 8, '#8a5a36'); } }
     // ---- ผนังบ้านด้านขวา (เว้นประตูรั้วสวน) + ขอบโลก ----
-    const g = GATE_EAST;
+    { const g = GATE_EAST;
     P(W - 3, LOWER_Y, 6, g.y - LOWER_Y, '#3f7d4a'); P(W - 3, g.y + g.h, 6, LOWER2_Y - g.y - g.h, '#3f7d4a');
     P(W - 4, g.y - 6, 8, 6, '#a8752a'); P(W - 4, g.y + g.h, 8, 6, '#a8752a'); P(W - 3, g.y - 6, 6, 1, '#d9a441'); P(W - 3, g.y + g.h, 6, 1, '#d9a441');
-    for (let y = g.y; y < g.y + g.h; y += 4) P(W - 3, y, 6, 4, '#92d07c');
+    for (let y = g.y; y < g.y + g.h; y += 4) P(W - 3, y, 6, 4, '#92d07c'); }
     P(X1 - 3, TOP, 3, H - TOP, '#3a2c3f'); P(X0, H - 3, X1 - X0, 3, '#3a2c3f'); P(X0, TOP, X1 - X0, 3, '#3a2c3f');
   }
   return c;
@@ -552,6 +589,24 @@ function drawLiveWall(ctx, now, t) {
     const on = Math.floor(t * 3) % 2;
     for (let i = 0; i < 6; i++) { ctx.fillStyle = (i + on) % 2 ? '#ffd34d' : '#ff8f2a'; ctx.fillRect(5 + (i % 2) * 2, DOOR_CINEMA.y + 2 + i * 5, 2, 2); }
   }
+  // ---- 🎸 คอนเสิร์ต: จอ LED อีควอไลเซอร์ ไฟส่องเวที ไฟหน้าเวที ป้ายนีออนที่ประตู ----
+  { const y0 = CONCERT.y0, s = STAGE, sx0 = s.x + 28, sw = s.w - 56, COL = ['#ff5fa2', '#c46bff', '#5fd8ff', '#7dff8a', '#ffe066'];
+    const hue = Math.floor(t * 0.5) % COL.length;
+    for (let x = 0, i = 0; x < sw - 2; x += 5, i++) {
+      const h = 3 + Math.round(Math.abs(Math.sin(t * 4.5 + i * 0.55) * Math.cos(t * 1.7 + i * 0.21)) * 18);
+      ctx.fillStyle = COL[(i + hue) % COL.length]; ctx.fillRect(sx0 + 1 + x, y0 + 25 - h, 4, h);
+    }
+    ctx.globalAlpha = 0.08;
+    for (let i = 0; i < 4; i++) {
+      const ox = s.x + 30 + i * (s.w - 60) / 3, ang = Math.sin(t * 0.9 + i * 1.7) * 0.5, len = 250, spread = 0.11;
+      ctx.fillStyle = COL[(i * 2 + hue) % COL.length];
+      ctx.beginPath(); ctx.moveTo(ox, y0 + 28); ctx.lineTo(ox + Math.sin(ang - spread) * len, y0 + 28 + Math.cos(ang - spread) * len); ctx.lineTo(ox + Math.sin(ang + spread) * len, y0 + 28 + Math.cos(ang + spread) * len); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (let x = s.x + 4, i = 0; x < s.x + s.w - 4; x += 12, i++) { ctx.fillStyle = (i + Math.floor(t * 4)) % 3 ? COL[i % COL.length] : '#3a3150'; ctx.fillRect(x, s.y + s.h + 4, 3, 2); }
+    const on = Math.floor(t * 3) % 2;
+    for (const d of DOORS_CONCERT) for (let i = 0; i < 6; i++) { ctx.fillStyle = (i + on) % 2 ? '#ff5fa2' : '#c46bff'; ctx.fillRect(5 + (i % 2) * 2, d.y + 2 + i * 5, 2, 2); }
+  }
   // ---- ผับ: ป้ายนีออน PUB ----
   ctx.fillStyle = Math.floor(t * 1.3) % 7 ? '#ffb86b' : '#7a4e34';
   const px = 470, py = LOWER2_Y + 10;
@@ -592,7 +647,8 @@ function solidRects(furniture) {
   list.push({ x: DIVIDER2_X - 1, y: DOOR_KARAOKE.y + DOOR_KARAOKE.h, w: 8, h: H - DOOR_KARAOKE.y - DOOR_KARAOKE.h });
   // โรงหนัง: นอกห้อง = ทึบ, ผนังกั้นกับห้องรวม (เว้นประตู)
   list.push({ x: LEFT - 20, y: TOP - 20, w: -LEFT + 20, h: WALL - TOP + 20 });
-  list.push({ x: LEFT - 20, y: CINEMA.y1, w: -LEFT + 20, h: H - CINEMA.y1 + 20 });
+  list.push({ x: LEFT - 20, y: CINEMA.y1, w: -LEFT + 20, h: 30 }); // ผนังหลังฮอลล์คอนเสิร์ต
+  { let wy = CINEMA.y1; for (const d of DOORS_CONCERT) { list.push({ x: -6, y: wy, w: 9, h: d.y - wy }); wy = d.y + d.h; } list.push({ x: -6, y: wy, w: 9, h: H - wy + 20 }); }
   list.push({ x: -6, y: WALL - 4, w: 9, h: DOOR_CINEMA.y - WALL + 4 });
   list.push({ x: -6, y: DOOR_CINEMA.y + DOOR_CINEMA.h, w: 9, h: CINEMA.y1 - DOOR_CINEMA.y - DOOR_CINEMA.h });
   // ผนังด้านบนของห้องรวม = ผนังกั้นห้องไหว้พระ (เว้นประตู) + โต๊ะหมู่บูชา + เสา

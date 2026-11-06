@@ -332,7 +332,7 @@ function stripAdminLook(l, uid) {
   for (const [f, list] of Object.entries(ADMIN_ONLY)) if (list.includes(l[f]) && !ok.includes(l[f])) { if (out === l) out = { ...l }; out[f] = ADMIN_DEF[f]; }
   return out;
 }
-const ZONE_IDS = ['hall', 'meet', 'garden', 'karaoke', 'pub', 'shrine', 'cinema', 'mountain', 'beach'];
+const ZONE_IDS = ['hall', 'meet', 'garden', 'karaoke', 'pub', 'shrine', 'cinema', 'mountain', 'beach', 'concert'];
 const okId = (id) => typeof id === 'string' && /^[\w.:-]{1,48}$/.test(id);
 
 wss.on('connection', (ws) => {
@@ -412,7 +412,7 @@ wss.on('connection', (ws) => {
       }
       case 'set': {
         if (!COLS.includes(m.col) || m.col === 'board' || !okId(m.id) || !m.doc || typeof m.doc !== 'object') break;
-        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants')) break; // ชื่อห้อง/ของพิเศษ: แอดมินเท่านั้น
+        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants' || m.id === 'npcs')) break; // ชื่อห้อง/ของพิเศษ/NPC: แอดมินเท่านั้น
         if (JSON.stringify(m.doc).length > 8192) break;
         if (!store[m.col][m.id] && Object.keys(store[m.col]).length >= (m.col === 'chat' ? 100000 : 200)) break;
         store[m.col][m.id] = m.doc;
@@ -426,7 +426,7 @@ wss.on('connection', (ws) => {
       }
       case 'del': {
         if (!COLS.includes(m.col) || !okId(m.id) || !store[m.col][m.id]) break;
-        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants')) break;
+        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants' || m.id === 'npcs')) break;
         if (m.col === 'board') removeImage(m.id);
         else delete store[m.col][m.id];
         broadcast({ t: 'col', col: m.col, id: m.id, doc: null }, key);
@@ -459,6 +459,32 @@ wss.on('connection', (ws) => {
           }
           broadcast({ t: 'chat-del', ids: all ? 'all' : ids });
           if (all) send(ws, { t: 'sys', message: 'ล้างแชตทั้งหมดแล้ว 🧹' });
+          save();
+          break;
+        }
+        if (m.cmd === 'npc') {
+          // NPC คอนเสิร์ต (นักร้อง/นักเต้น): เพิ่ม · ลบตัวที่ใกล้ที่สุด · ลบทั้งหมด
+          const a = m.arg && typeof m.arg === 'object' ? m.arg : {};
+          const cur = (store.settings.npcs && Array.isArray(store.settings.npcs.list)) ? store.settings.npcs.list : [];
+          let list = cur, msg = '';
+          if (a.op === 'add') {
+            if (cur.length >= 40) { send(ws, { t: 'sys', message: 'NPC เต็มแล้ว (สูงสุด 40 ตัว) — พิมพ์ npc ลบ ก่อน' }); break; }
+            if (!Number.isFinite(a.x) || !Number.isFinite(a.y)) break;
+            const l = a.l && typeof a.l === 'object' && JSON.stringify(a.l).length < 600 ? a.l : {};
+            const n = String(a.n || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 24);
+            const act = a.a === 'sing' ? 'sing' : 'dance';
+            list = [...cur, { id: crypto.randomBytes(4).toString('hex'), x: Math.round(a.x), y: Math.round(a.y), a: act, n, l }];
+            msg = act === 'sing' ? `🎤 เรียกนักร้อง${n ? ' ' + n : ''} แล้ว` : `🕺 เรียกนักเต้น${n ? ' ' + n : ''} แล้ว`;
+          } else if (a.op === 'del') {
+            let best = -1, bd = 60;
+            cur.forEach((it, i) => { const d = Math.hypot(it.x - a.x, it.y - a.y); if (d < bd) { bd = d; best = i; } });
+            if (best < 0) { send(ws, { t: 'sys', message: 'ไม่มี NPC อยู่ใกล้ๆ — เดินไปใกล้ตัวที่จะลบ หรือพิมพ์ npc ลบหมด' }); break; }
+            list = cur.filter((_, i) => i !== best); msg = 'ลบ NPC แล้ว';
+          } else if (a.op === 'clear') { list = []; msg = `ลบ NPC ทั้งหมดแล้ว (${cur.length} ตัว) 🧹`; }
+          else break;
+          store.settings.npcs = { list };
+          broadcast({ t: 'col', col: 'settings', id: 'npcs', doc: { list } });
+          send(ws, { t: 'sys', message: msg });
           save();
           break;
         }
