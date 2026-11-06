@@ -12,8 +12,8 @@ const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
 const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น']];
-const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn'] };
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
 const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
 // สี: เลือกจากชุดสี (เลข) หรือกำหนดเอง (#rrggbb)
@@ -336,7 +336,7 @@ function charSprite(look, dir, frame, pose, blink) {
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
 // ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
-const FARM = { cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [17, 13], dino: [23, 20], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
+const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [17, 13], dino: [23, 20], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
 const FARM_OUT = [74, 36, 48];
 function farmSprite(kind, frame, faceRight, pc) {
   return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
@@ -350,7 +350,16 @@ function farmSprite(kind, frame, faceRight, pc) {
     const st = frame % 2;
     // ขา: หน้า/หลังสลับกันตอนเดิน
     const legs = (xs, y0, len, col, hoof) => xs.forEach((x, i) => { const up = (i % 2 === 0) === !!st ? 1 : 0; P(x, y0, 1, len - up, col); if (hoof) P(x, y0 + len - up - 1, 1, 1, hoof); });
-    if (kind === 'cat') {
+    if (kind === 'cloud') {
+      // ⭐ ก้อนเมฆ: ฟูนุ่ม ลอยได้ ขี่ได้ (แอดมิน)
+      const [hi, b, lo, lo2] = tone(pick('#ffffff')), sh = shade(pick('#ffffff') === '#ffffff' ? '#dfe8ff' : pick('#ffffff'), -0.05);
+      E(13, 8, 11, 3, sh); E(13, 7, 11, 3, b);
+      E(6, 5, 4, 3, b); E(12, 3, 5, 3, b); E(19, 5, 4, 3, b);
+      E(11, 2, 3, 1, '#ffffff'); P(5, 3, 3, 1, '#ffffff'); P(18, 3, 3, 1, '#ffffff');
+      P(3, 9, 20, 1, sh); P(6, 10, 14, 1, shade(sh, -0.08));
+      P(9, 6, 1, 2, EYE); P(15, 6, 1, 2, EYE); P(11, 8, 3, 1, lo2); P(7, 8, 2, 1, BLUSH); P(16, 8, 2, 1, BLUSH);
+      if (st) { P(1, 7, 1, 1, '#ffffff'); P(24, 6, 1, 1, '#ffffff'); }
+    } else if (kind === 'cat') {
       const [hi, b, lo, lo2] = tone(pick('#f2a65a'));
       E(11, 10, 6, 3, lo); E(11, 9, 6, 3, b); P(7, 7, 8, 1, hi); P(10, 7, 1, 3, lo); P(13, 7, 1, 3, lo); P(8, 11, 6, 1, lo2);
       P(17, 3 + st, 1, 6, b); P(16, 2 + st, 1, 2, b); P(17, 3 + st, 1, 1, hi);

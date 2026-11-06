@@ -245,6 +245,7 @@ function footstep(ch, mine) {
   ch.lastStepF = f;
   if (!G.steps || !ch.walking || (f !== 1 && f !== 3) || document.hidden) return;
   const ride = isRiding(ch);
+  if (ride && ch.look.pet === 'cloud') return; // เมฆลอยเงียบ ไม่มีเสียงเท้า
   if (mine) { stepSound(ride ? 0.07 : 0.09, ride); return; }
   const d = Math.hypot(ch.x - G.me.x, ch.y - G.me.y);
   if (d > 170 || zoneAt(ch.x, ch.y) !== zoneAt(G.me.x, G.me.y)) return;
@@ -909,7 +910,7 @@ function drawCharacter(c, ch, t) {
     const pf = ch.walking ? Math.floor(t * 8) % 2 : 0;
     const ps = petSprite(look.pet, pf, !!ch.rideFace, look.pc || 0);
     const k = ps.width > 16 ? Math.max(1.15, 30 / ps.width) : 1.9, pw = ps.width * k, ph = ps.height * k;
-    const fly = look.pet === 'fish' || look.pet === 'dragon' ? 3 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
+    const fly = look.pet === 'cloud' ? 7 + Math.round(Math.sin(t * 2.2 + ch.seed) * 2) : look.pet === 'fish' || look.pet === 'dragon' ? 3 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
     drawShadow(c, ch.x, ch.y, 20);
     const bob = ch.walking && pf ? -1 : 0;
     c.drawImage(ps, snap(ch.x - pw / 2 + shake), snap(ch.y - ph + 2 - fly), pw, ph);
@@ -925,7 +926,7 @@ function drawPet(c, ch, t) {
   const pet = ch.pet;
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
   drawShadow(c, pet.x, pet.y, 8);
-  const fly = ch.look.pet === 'fish' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
+  const fly = ch.look.pet === 'fish' || ch.look.pet === 'cloud' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
   const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0);
   if (s.width > 16) drawShadow(c, pet.x, pet.y, Math.round(s.width * 0.45));
   c.drawImage(s, snap(pet.x - s.width / 2), snap(pet.y - s.height + 1 - fly));

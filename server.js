@@ -171,7 +171,7 @@ function broadcast(m, except) {
 }
 const MOVE_KEYS = new Set(['x', 'y', 'd', 'm', 't']);
 // ไอเท็มพิเศษเฉพาะแอดมิน (ตรงกับ ADMIN_ONLY ใน sprites.js)
-const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn'] };
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
 const ADMIN_DEF = { hair: 'short', top: 'hoodie', acc: 'none', pet: 'none' };
 function adminKeyOk(k) {
   return !!ADMIN_KEY && typeof k === 'string' && k.length === ADMIN_KEY.length && crypto.timingSafeEqual(Buffer.from(k), Buffer.from(ADMIN_KEY));
