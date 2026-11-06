@@ -423,8 +423,8 @@ function farmSprite(kind, frame, faceRight, pc) {
       P(9, 6, 1, 2, EYE); P(15, 6, 1, 2, EYE); P(11, 8, 3, 1, lo2); P(7, 8, 2, 1, BLUSH); P(16, 8, 2, 1, BLUSH);
       if (st) { P(1, 7, 1, 1, '#ffffff'); P(24, 6, 1, 1, '#ffffff'); }
     } else if (kind === 'f1') {
-      // ⭐ รถ F1 (ออกแบบเอง ไม่มีโลโก้ทีม) สีตัวรถเปลี่ยนได้ เบอร์ 3
-      const [hi, b, lo, lo2] = tone(pick('#2f9fd8')), AC = '#ff9a3c', CF = '#1d1f2e', CF2 = '#3a3d52', TY = '#17151d', RIM = '#ffd34d';
+      // ⭐ รถ F1 (ออกแบบเอง ไม่มีโลโก้ทีม) สีตัวรถเปลี่ยนได้ เบอร์ 3 · ยางซอฟต์ (แถบแดง)
+      const [hi, b, lo, lo2] = tone(pick('#2f9fd8')), AC = '#ff9a3c', CF = '#1d1f2e', CF2 = '#3a3d52', TY = '#17151d', RIM = '#e8323c';
       P(40, 1, 6, 2, CF); P(41, 1, 4, 1, AC); P(44, 1, 2, 10, CF); P(41, 3, 1, 5, CF2);
       for (let x = 21; x < 43; x++) { const t = Math.min(4, Math.round((x - 21) * 0.2)); P(x, 4 + t, 1, 8 - t, b); P(x, 4 + t, 1, 1, hi); }
       P(24, 1, 4, 4, CF); P(25, 2, 2, 1, CF2);
@@ -433,7 +433,7 @@ function farmSprite(kind, frame, faceRight, pc) {
       P(0, 12, 9, 1, CF); P(0, 11, 1, 2, AC); P(2, 13, 6, 1, AC);
       P(16, 6, 8, 2, CF); P(14, 7, 2, 1, CF2); P(15, 5, 1, 2, CF2); P(16, 4, 7, 1, CF2); P(22, 4, 1, 2, CF2);
       P(8, 12, 34, 1, CF); P(36, 6, 1, 1, '#ffffff');
-      ['###', '..#', '.##', '..#', '###'].forEach((r, y) => { for (let x = 0; x < 3; x++) if (r[x] === '#') P(27 + x, 5 + y, 1, 1, '#ffffff'); });
+      ['###', '..#', '.##', '..#', '###'].forEach((r, y) => { for (let x = 0; x < 3; x++) if (r[faceRight ? 2 - x : x] === '#') P(27 + x, 5 + y, 1, 1, '#ffffff'); }); // หันขวาจะถูกกลับด้าน → วาดเลขกลับไว้ก่อน
       const wheel = (cx, cy) => {
         for (let y = -4; y <= 4; y++) { const w = Math.round(4 * Math.sqrt(Math.max(0, 1 - (y / 4.5) ** 2))); P(cx - w, cy + y, w * 2 + 1, 1, TY); }
         for (const [x, y] of [[-2, -3], [-1, -3], [0, -3], [1, -3], [2, -3], [-3, -2], [3, -2], [-3, -1], [3, -1], [-3, 0], [3, 0], [-3, 1], [3, 1], [-3, 2], [3, 2], [-2, 3], [-1, 3], [0, 3], [1, 3], [2, 3]]) P(cx + x, cy + y, 1, 1, RIM);
