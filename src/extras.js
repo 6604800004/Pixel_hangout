@@ -1124,8 +1124,9 @@ function voiceDiag() {
     const relay = p && V.relayActive(p);
     const mode = !p ? 'ยังไม่เชื่อม' : relay ? '🛰️ ผ่านเซิร์ฟเวอร์' : p.state === 'connected' ? '🔗 ต่อตรง' : `🟡 ${p.state}`;
     const rx = p && p.stat ? Math.round(p.stat.rxRate / 1000) : '-', tx = p && p.stat ? Math.round(p.stat.txRate / 1000) : '-';
+    const lossTxt = p && p.loss != null && !relay ? ` · เสียงขาด ${Math.round(p.loss * 100)}%${p.jbt > 40 ? ' (บัฟเฟอร์ ' + p.jbt + 'ms)' : ''}` : '';
     const th = p && p.theyHear && Date.now() - p.theyHear.at < 15000 ? (p.theyHear.ok ? '✅' : '❌') : '?';
-    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · เขาได้ยินฉัน ${V.mic ? th : '(ฉันปิดไมค์)'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (Date.now() - (V.relaySentAt || 0) < 1500 && relayTargetsInfo(p) ? 'กำลังส่ง' : relayTargetsInfo(p) ? '⚠️ ส่งไม่ออก' + (V.relayErr ? ' (' + V.relayErr.slice(0, 40) + ')' : '') : 'ไม่ได้ส่ง') : tx + 'KB/s'} · ${voiceStatus(rt)}`);
+    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · เขาได้ยินฉัน ${V.mic ? th : '(ฉันปิดไมค์)'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (Date.now() - (V.relaySentAt || 0) < 1500 && relayTargetsInfo(p) ? 'กำลังส่ง' : relayTargetsInfo(p) ? '⚠️ ส่งไม่ออก' + (V.relayErr ? ' (' + V.relayErr.slice(0, 40) + ')' : '') : 'ไม่ได้ส่ง') : tx + 'KB/s'}${lossTxt} · ${voiceStatus(rt)}`);
     if (rt.p.cam === 1 && p) {
       const vi = p.vinfo;
       const bl = G.blackSt && G.blackSt.get(rt.key);

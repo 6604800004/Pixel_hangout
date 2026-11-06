@@ -2698,7 +2698,7 @@ function makeVoice(net, onChange) {
   function tuneOpus(sdp) {
     const m = sdp.match(/a=rtpmap:(\d+) opus\/48000/i);
     if (!m) return sdp;
-    const want = { minptime: '10', useinbandfec: '1', usedtx: '0', stereo: '0', maxplaybackrate: '48000', maxaveragebitrate: V.hq ? '128000' : '48000' };
+    const want = { minptime: '10', useinbandfec: '1', usedtx: '0', stereo: '0', maxplaybackrate: '48000', maxaveragebitrate: V.hq ? '128000' : '64000', 'sprop-maxcapturerate': '48000' };
     const re = new RegExp(`a=fmtp:${m[1]} ([^\\r\\n]*)`);
     return sdp.replace(re, (_, params) => {
       const p = {};
@@ -2708,13 +2708,16 @@ function makeVoice(net, onChange) {
     });
   }
   async function tune(peer) {
-    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 48000], [peer.videoTx, 700000], [peer.screenTx, 4500000]]) {
+    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 64000], [peer.videoTx, 700000], [peer.screenTx, 4500000]]) {
       if (!tx) continue;
       try {
         const p = tx.sender.getParameters();
         if (!p.encodings || !p.encodings.length) p.encodings = [{}];
         p.encodings[0].maxBitrate = max;
         p.encodings[0].active = true;
+        // เสียงสำคัญสุด: เน็ตไม่พอ ให้ลดภาพก่อน เสียงต้องไม่กระตุก
+        const pri = tx === peer.audioTx ? 'high' : tx === peer.videoTx ? 'medium' : 'low';
+        p.encodings[0].priority = pri; p.encodings[0].networkPriority = pri;
         if (tx === peer.videoTx) p.encodings[0].maxFramerate = 24;
         if (tx === peer.screenTx) {
           // แชร์จอแบบลื่น: 720p 60fps (จอใหญ่กว่า 720p = ย่อลงก่อนส่ง) · เน็ตไม่พอ = ลดความคมก่อน ไม่ลดเฟรม
@@ -2840,13 +2843,23 @@ function makeVoice(net, onChange) {
       peer.audioTx = pc.addTransceiver('audio', { direction: 'sendrecv' });
       peer.videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
       peer.screenTx = pc.addTransceiver('video', { direction: 'sendrecv' });
-      preferVP8(peer.videoTx); preferVP8(peer.screenTx);
+      preferVP8(peer.videoTx); preferVP8(peer.screenTx); preferRED(peer.audioTx);
       apply(peer);
       offer(peer);
     }
     return peer;
   }
   // วิดีโอ: ใช้ VP8 ก่อน (มือถือ iPhone ชอบส่ง H.264 ซึ่งคอมบางเครื่องถอดรหัสแล้วได้ภาพดำ)
+  // เสียง: ใช้ RED (ส่งข้อมูลซ้ำซ้อนในแพ็กเก็ต) ก่อน Opus ถ้ารองรับ → เน็ตหลุดบางแพ็กเก็ตเสียงก็ไม่ขาด
+  function preferRED(tx) {
+    try {
+      if (!tx || !tx.setCodecPreferences || !window.RTCRtpReceiver || !RTCRtpReceiver.getCapabilities) return;
+      const caps = RTCRtpReceiver.getCapabilities('audio');
+      if (!caps || !caps.codecs || !caps.codecs.some((c) => /red/i.test(c.mimeType))) return;
+      const rank = (c) => (/red/i.test(c.mimeType) ? 0 : /opus/i.test(c.mimeType) ? 1 : 2);
+      tx.setCodecPreferences([...caps.codecs].sort((a, b) => rank(a) - rank(b)));
+    } catch {}
+  }
   function preferVP8(tx) {
     try {
       if (!tx || !tx.setCodecPreferences || !window.RTCRtpReceiver || !RTCRtpReceiver.getCapabilities) return;
@@ -2901,6 +2914,7 @@ function makeVoice(net, onChange) {
           else if (k === 'video' && tx !== peer.videoTx && !peer.screenTx) peer.screenTx = tx;
           tx.direction = 'sendrecv';
           if (k === 'video') preferVP8(tx);
+          if (k === 'audio') preferRED(tx);
         }
         apply(peer);
         const a = await peer.pc.createAnswer();
@@ -2963,9 +2977,6 @@ function makeVoice(net, onChange) {
     }
     const t = s.getAudioTracks()[0];
     try { t.contentHint = 'speech'; } catch {}
-    let muteT = 0;
-    t.addEventListener('mute', () => { clearTimeout(muteT); muteT = setTimeout(() => { if (V.videoTrack === t && t.muted) onChange('error', '📷 กล้องไม่ส่งภาพ (ระบบพักกล้องไว้) — ถ้าเปิดผ่าน LINE/IG/Facebook ให้เปิดเว็บใน Safari หรือ Chrome แทน แล้วเปิดกล้องใหม่'); }, 3000); });
-    t.addEventListener('unmute', () => clearTimeout(muteT));
     t.addEventListener('ended', () => {
       if (V.audioTrack !== t) return;
       V.micLost = true;
@@ -3059,6 +3070,9 @@ function makeVoice(net, onChange) {
     const t = s.getVideoTracks()[0];
     try { t.contentHint = 'motion'; } catch {}
     // กล้องถูกระบบปิด (เช่น มือถือสลับแอป/ล็อกจอ/แอปอื่นแย่งกล้อง) → ปิดกล้องให้ตรงกับความจริง ไม่ให้เพื่อนเห็นภาพค้าง/ภาพดำ
+    let muteT = 0;
+    t.addEventListener('mute', () => { clearTimeout(muteT); muteT = setTimeout(() => { if (V.videoTrack === t && t.muted) onChange('error', '📷 กล้องไม่ส่งภาพ (ระบบพักกล้องไว้) — ถ้าเปิดผ่าน LINE/IG/Facebook ให้เปิดเว็บใน Safari หรือ Chrome แทน แล้วเปิดกล้องใหม่'); }, 3000); });
+    t.addEventListener('unmute', () => clearTimeout(muteT));
     t.addEventListener('ended', () => { if (V.videoTrack === t) { V.cam = false; setVideoTrack(null); onChange('media'); onChange('error', 'กล้องหยุดทำงาน (ระบบหรือแอปอื่นปิดกล้อง) — กดเปิดกล้องใหม่อีกครั้ง'); } });
     return t;
   }
@@ -3188,20 +3202,26 @@ function makeVoice(net, onChange) {
   };
   // ================= สำรอง: ส่งเสียงผ่านเซิร์ฟเวอร์ของเราเอง =================
   // ใช้เมื่อต่อตรงไม่ได้ (เน็ตมือถือ/บริษัทบล็อก) และไม่มี TURN — เสียง 16kHz μ-law ~16KB/วินาที ต่อคน
-  const relay = { cap: null, capBuf: [], rx: new Map(), mod: null, rate: 16000, frame: 320 };
+  const relay = { cap: null, capBuf: [], rx: new Map(), mod: null, rate: 24000, frame: 480 }; // 24kHz ชัดกว่าเดิม (16kHz) · 20ms ต่อแพ็กเก็ต
   V.relayActive = (p) => !!p && ((p.forceRelay && Date.now() - p.forceRelay < 600000) || (p.state !== 'connected' && (p.state === 'failed' || Date.now() - (p.created || 0) > 10000)));
   const WORKLET = `
 class PxCap extends AudioWorkletProcessor { process(i) { const c = i[0] && i[0][0]; if (c) this.port.postMessage(c.slice(0)); return true; } }
 registerProcessor('px-cap', PxCap);
 class PxPlay extends AudioWorkletProcessor {
-  constructor() { super(); this.q = []; this.off = 0; this.n = 0; this.go = false;
+  // บัฟเฟอร์ปรับตัวเอง: เน็ตแกว่ง = รอมากขึ้น (ไม่กระตุก) · เน็ตนิ่ง = ค่อยๆ ลดดีเลย์ · ขาดช่วง = ค่อยๆ เฟดเสียง ไม่ดังแป๊ก
+  constructor() { super(); this.q = []; this.off = 0; this.n = 0; this.go = false; this.target = sampleRate * 0.07; this.last = 0; this.ok = 0;
     this.port.onmessage = (e) => { this.q.push(e.data); this.n += e.data.length;
-      while (this.n > sampleRate * 0.35 && this.q.length > 1) { this.n -= this.q[0].length - this.off; this.q.shift(); this.off = 0; } }; }
+      const max = Math.max(sampleRate * 0.3, this.target * 3);
+      while (this.n > max && this.q.length > 1) { this.n -= this.q[0].length - this.off; this.q.shift(); this.off = 0; } }; }
+  fade(out, i) { for (; i < out.length; i++) { this.last *= 0.96; out[i] = this.last; } }
   process(_, o) { const out = o[0][0]; if (!out) return true;
-    if (!this.go && this.n < sampleRate * 0.08) { out.fill(0); return true; } this.go = true;
+    if (!this.go) { if (this.n < this.target) { this.fade(out, 0); return true; } this.go = true; }
     let i = 0; while (i < out.length && this.q.length) { const b = this.q[0], k = Math.min(out.length - i, b.length - this.off);
       out.set(b.subarray(this.off, this.off + k), i); i += k; this.off += k; this.n -= k; if (this.off >= b.length) { this.q.shift(); this.off = 0; } }
-    if (i < out.length) { out.fill(0, i); this.go = false; } return true; }
+    if (i > 0) this.last = out[i - 1];
+    if (i < out.length) { this.fade(out, i); this.go = false; this.target = Math.min(sampleRate * 0.25, this.target * 1.4); this.ok = 0; }
+    else if (++this.ok > sampleRate / 128 * 5) { this.ok = 0; this.target = Math.max(sampleRate * 0.05, this.target * 0.9); }
+    return true; }
 }
 registerProcessor('px-play', PxPlay);`;
   function relayModule() {
@@ -3280,8 +3300,9 @@ registerProcessor('px-play', PxPlay);`;
     p.relayRxAt = Date.now();
     let rx; try { rx = await relayRx(from); } catch { return; }
     // ขยายกลับเป็นอัตราของเครื่อง (linear)
-    const n = bytes.length, outN = Math.round(n * rx.ratio), out = new Float32Array(outN);
-    for (let i = 0; i < outN; i++) { const x = i / rx.ratio, a = Math.floor(x), b = Math.min(n - 1, a + 1), f = x - a; out[i] = MULAW[bytes[a]] * (1 - f) + MULAW[bytes[b]] * f; }
+    const ratio = V.actx.sampleRate / (bytes.length === 320 ? 16000 : relay.rate); // 320 = เครื่องเวอร์ชันเก่า (16kHz)
+    const n = bytes.length, outN = Math.round(n * ratio), out = new Float32Array(outN);
+    for (let i = 0; i < outN; i++) { const x = i / ratio, a = Math.floor(x), b = Math.min(n - 1, a + 1), f = x - a; out[i] = MULAW[bytes[a]] * (1 - f) + MULAW[bytes[b]] * f; }
     rx.node.port.postMessage(out, [out.buffer]);
   };
   // ตรวจทุกครึ่งวินาที: ต้องส่งผ่านเซิร์ฟเวอร์ไหม
@@ -3310,7 +3331,17 @@ registerProcessor('px-play', PxPlay);`;
           const stats = await p.pc.getStats();
           let rx = 0, tx = 0;
           let vf = -1;
-          stats.forEach((r) => { if (r.kind === 'audio' && r.type === 'inbound-rtp') rx += r.bytesReceived || 0; if (r.kind === 'audio' && r.type === 'outbound-rtp') tx += r.bytesSent || 0; });
+          let conc = 0, tot = 0;
+          stats.forEach((r) => { if (r.kind === 'audio' && r.type === 'inbound-rtp') { rx += r.bytesReceived || 0; conc = r.concealedSamples || 0; tot = r.totalSamplesReceived || 0; } if (r.kind === 'audio' && r.type === 'outbound-rtp') tx += r.bytesSent || 0; });
+          // เสียงขาดๆ หายๆ (ต้องเดาเติมเยอะ) → เพิ่มบัฟเฟอร์กันกระตุก · เน็ตนิ่ง → ลดบัฟเฟอร์ให้ดีเลย์น้อย
+          if (p.cs && tot > p.cs.tot) {
+            const ratio = (conc - p.cs.conc) / (tot - p.cs.tot);
+            const cur = p.jbt || 40;
+            const want = ratio > 0.04 ? Math.min(200, cur + 40) : ratio < 0.005 ? Math.max(40, cur - 10) : cur;
+            if (want !== cur) { p.jbt = want; const r = p.audioTx && p.audioTx.receiver; try { if (r && 'jitterBufferTarget' in r) r.jitterBufferTarget = want; else if (r && 'playoutDelayHint' in r) r.playoutDelayHint = want / 1000; } catch {} }
+            p.loss = ratio;
+          }
+          p.cs = { conc, tot };
           try {
             const vs = await p.videoTx.receiver.getStats();
             let codecId = '';
@@ -6564,8 +6595,9 @@ function voiceDiag() {
     const relay = p && V.relayActive(p);
     const mode = !p ? 'ยังไม่เชื่อม' : relay ? '🛰️ ผ่านเซิร์ฟเวอร์' : p.state === 'connected' ? '🔗 ต่อตรง' : `🟡 ${p.state}`;
     const rx = p && p.stat ? Math.round(p.stat.rxRate / 1000) : '-', tx = p && p.stat ? Math.round(p.stat.txRate / 1000) : '-';
+    const lossTxt = p && p.loss != null && !relay ? ` · เสียงขาด ${Math.round(p.loss * 100)}%${p.jbt > 40 ? ' (บัฟเฟอร์ ' + p.jbt + 'ms)' : ''}` : '';
     const th = p && p.theyHear && Date.now() - p.theyHear.at < 15000 ? (p.theyHear.ok ? '✅' : '❌') : '?';
-    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · เขาได้ยินฉัน ${V.mic ? th : '(ฉันปิดไมค์)'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (Date.now() - (V.relaySentAt || 0) < 1500 && relayTargetsInfo(p) ? 'กำลังส่ง' : relayTargetsInfo(p) ? '⚠️ ส่งไม่ออก' + (V.relayErr ? ' (' + V.relayErr.slice(0, 40) + ')' : '') : 'ไม่ได้ส่ง') : tx + 'KB/s'} · ${voiceStatus(rt)}`);
+    lines.push(`• ${rt.p.n || 'เพื่อน'}: ${mode} · เขาไมค์${rt.p.mic === 1 ? 'เปิด' : 'ปิด'} · เขาได้ยินฉัน ${V.mic ? th : '(ฉันปิดไมค์)'} · รับ ${relay ? (Date.now() - (p.relayRxAt || 0) < 1500 ? 'มีเสียง' : 'เงียบ') : rx + 'KB/s'} · ส่ง ${relay ? (Date.now() - (V.relaySentAt || 0) < 1500 && relayTargetsInfo(p) ? 'กำลังส่ง' : relayTargetsInfo(p) ? '⚠️ ส่งไม่ออก' + (V.relayErr ? ' (' + V.relayErr.slice(0, 40) + ')' : '') : 'ไม่ได้ส่ง') : tx + 'KB/s'}${lossTxt} · ${voiceStatus(rt)}`);
     if (rt.p.cam === 1 && p) {
       const vi = p.vinfo;
       const bl = G.blackSt && G.blackSt.get(rt.key);
