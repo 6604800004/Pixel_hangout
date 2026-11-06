@@ -500,6 +500,7 @@ function showHelp() {
     '🚪 ออก — ออกจากห้องหรือออกจากเว็บ (หรือ leave / exit / ปุ่ม 🚪 มุมขวาบน)',
     '🐾 ขี่ — ขี่สัตว์เลี้ยง เดินเร็วขึ้น (พิมพ์ ลง เพื่อลงจากหลัง)',
     '👣 เสียงเดิน — เปิด/ปิดเสียงฝีเท้า (หรือ เสียงเดิน on / off)',
+    '✍️ โชว์พิมพ์ — เปิด/ปิด ให้เพื่อนเห็นข้อความตอนกำลังพิมพ์ (ขึ้นบนหัว)',
     '❓ help — ดูคำสั่งทั้งหมด (หรือ คำสั่ง / ?)',
     '🔑 admin รหัส — เข้าโหมดแอดมิน (เฉพาะคนที่มีรหัส)',
     'ปุ่มลัด: แตะตัวละครตัวเอง = หันทิศ (นั่งอยู่ก็หันได้ หรือกด 🔄 หัน) · คอม: R หัน, E นั่ง, Enter แชต',
@@ -521,6 +522,8 @@ function chatCommand(text) {
   if (/^\/?(leave|exit|quit|ออก|ออกจากห้อง|ออกจากเว็บ)$/i.test(text.trim())) { askLeave(); return true; }
   { const m = text.trim().match(/^\/?(?:steps|footsteps|เสียงเดิน)(?:\s+(on|off|เปิด|ปิด))?$/i);
     if (m) { setSteps(m[1] ? /on|เปิด/i.test(m[1]) : !G.steps); return true; } }
+  { const m = text.trim().match(/^\/?(?:typing|โชว์พิมพ์)(?:\s+(on|off|เปิด|ปิด))?$/i);
+    if (m) { G.showTyping = m[1] ? /on|เปิด/i.test(m[1]) : !G.showTyping; lsSet('pixel.showTyping', G.showTyping); toast(G.showTyping ? '✍️ เพื่อนจะเห็นข้อความตอนคุณกำลังพิมพ์' : '✍️ ซ่อนข้อความตอนพิมพ์แล้ว (เพื่อนเห็นเฉพาะตอนกดส่ง)', 2500); return true; } }
   { const m = text.trim().match(/^\/?(?:ride|ขี่|ขี่สัตว์|ลง|dismount)$/i);
     if (m) { toggleRide(/ลง|dismount/i.test(m[0]) ? false : undefined); return true; } }
   if (!G.net) return false;
@@ -580,10 +583,27 @@ function setChatOpen(open) {
   $('[data-tool="chat"]').classList.toggle('active', open);
   if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (!isMobile()) $('#chatInput').focus(); }
 }
+// ---- กำลังพิมพ์: เพื่อนเห็นข้อความที่กำลังพิมพ์ขึ้นบนหัว (ไม่ส่งคำสั่งแอดมิน/รหัส) ----
+G.showTyping = lsGet('pixel.showTyping', true) !== false;
+let typingSent = '', typingT = 0;
+function shareTyping(force) {
+  const raw = $('#chatInput').value;
+  let t = raw.trim().slice(0, 80);
+  if (!G.showTyping || !G.joined || /^\/?(admin|kick|เตะ|clear|ล้าง)/i.test(t) || /^\/?(help|\?|คำสั่ง)$/i.test(t)) t = '';
+  if (t === typingSent) return;
+  const now = Date.now();
+  if (!force && t && now - typingT < 300) { clearTimeout(shareTyping.tm); shareTyping.tm = setTimeout(() => shareTyping(true), 320); return; }
+  typingT = now; typingSent = t;
+  G.me.typing = t;
+  pres({ ty: t || null });
+}
+$('#chatInput').addEventListener('input', () => shareTyping());
+$('#chatInput').addEventListener('blur', () => { if (!$('#chatInput').value.trim()) shareTyping(true); });
 $('#chatForm').addEventListener('submit', (e) => {
   e.preventDefault();
   sendChat($('#chatInput').value);
   $('#chatInput').value = '';
+  clearTimeout(shareTyping.tm); typingSent = '__'; shareTyping(true);
   if (!isMobile()) $('#chatInput').blur();
 });
 $('#chatClose').onclick = () => setChatOpen(false);
@@ -1166,6 +1186,24 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       c.globalAlpha = 1;
       top = by;
     } else if (bub) { if (ch === G.me) G.me.bubble = null; else ch.bubble = null; }
+    // กำลังพิมพ์ (ข้อความสด สีจาง + จุดกระพริบ)
+    const ty = ch === G.me ? G.me.typing : p && p.ty;
+    if (ty && !(bub && bub.until > now)) {
+      c.font = 'italic 400 12px Mitr, sans-serif';
+      const dots = '.'.repeat(1 + (Math.floor(now / 350) % 3));
+      const lines = wrapText(c, ty + ' ' + dots, 160, 2);
+      const bw = Math.max(...lines.map((l) => c.measureText(l).width)) + 16;
+      const bh = lines.length * 15 + 9;
+      const by = top - bh - 8;
+      const bx = clamp(sx, bw / 2 + 6, G.view.cw - bw / 2 - 6);
+      c.globalAlpha = 0.92;
+      c.fillStyle = '#f4efe6'; c.strokeStyle = '#8a7a90'; c.lineWidth = 2;
+      c.setLineDash([4, 3]); rrect(c, bx - bw / 2, by, bw, bh, 8); c.fill(); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#6b5a72';
+      lines.forEach((l, i) => fillCenter(c, l, bx, by + 4 + 8 + i * 15));
+      c.globalAlpha = 1;
+      top = by;
+    }
     ch._top = top;
     c.globalAlpha = 1;
   }
