@@ -11,7 +11,7 @@ const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
 const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
-const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น']];
+const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น']];
 const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
 const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
@@ -426,6 +426,59 @@ function petSprite(kind, frame, faceRight, pc = 0) {
       P(3, 5, 2, 2, patch); P(6, 5, 2, 2, patch); P(4, 5, 1, 1, '#ffffff'); P(7, 5, 1, 1, '#ffffff');
       P(5, 7, 1, 1, '#2e2235'); P(5, 8, 7, 2, patch);
       P(5, 11, 2, 1 + step, patch); P(9, 11, 2, 2 - step, patch);
+    // ---------------- สัตว์ฟาร์ม (วาดเองแบบพิกเซล หันซ้ายเป็นค่าเริ่มต้น) ----------------
+    } else if (kind === 'goose') {
+      const col = pick('#f4f1e8'), dk = shade(col, -0.18), leg = '#e8803a';
+      P(4, 7, 8, 4, col); P(11, 6, 2, 2, col); P(12, 5, 1, 1, col); P(3, 2, 2, 6, col); P(2, 0, 3, 3, col);
+      P(0, 1, 2, 1, '#f0a040'); P(1, 2, 1, 1, '#d07a2a'); P(3, 1, 1, 1, EYE);
+      P(6, 8, 5, 1, dk); P(9, 9, 2, 1, dk);
+      P(5, 11, 1, 2 - step, leg); P(4, 13 - step, 2, 1, leg); P(8, 11, 1, 1 + step, leg); P(8, 12 + step, 2, 1, leg);
+    } else if (kind === 'cow') {
+      const col = pick('#f4efe6'), dk = shade(col, -0.2), spot = col === '#f4efe6' ? '#2e2a3a' : shade(col, -0.35);
+      P(4, 4, 9, 5, col); P(13, 4, 1, 4, col); P(13, 8, 1, 1, spot);
+      P(0, 2, 4, 4, col); P(0, 4, 2, 2, '#f5a3b5'); P(3, 1, 2, 1, col); P(4, 1, 1, 1, '#f5a3b5'); P(1, 1, 1, 1, '#e8dcc0');
+      P(6, 4, 3, 2, spot); P(10, 6, 2, 2, spot); P(5, 7, 1, 1, spot); P(2, 2, 1, 1, spot); P(2, 3, 1, 1, EYE);
+      P(9, 9, 2, 1, '#f5a3b5');
+      P(4, 9, 1, 3 - step, dk); P(6, 9, 1, 2 + step, col); P(11, 9, 1, 3 - step, dk); P(12, 9, 1, 2 + step, col);
+    } else if (kind === 'sheep') {
+      const wool = pick('#f4f1e8'), wd = shade(wool, -0.12), face = '#f0dcc0', leg = '#3a3150';
+      P(3, 4, 10, 6, wool); P(4, 3, 8, 1, wool); P(12, 5, 1, 4, wool); P(5, 5, 1, 1, wd); P(9, 6, 1, 1, wd); P(7, 8, 1, 1, wd); P(11, 4, 1, 1, wd);
+      P(0, 3, 4, 4, face); P(3, 3, 2, 1, face); P(1, 2, 3, 1, wool); P(4, 3, 1, 1, '#f5a3b5'); P(1, 4, 1, 1, EYE); P(0, 6, 1, 1, '#f5a3b5');
+      P(4, 10, 1, 2 - step, leg); P(6, 10, 1, 1 + step, leg); P(10, 10, 1, 2 - step, leg); P(11, 10, 1, 1 + step, leg);
+    } else if (kind === 'mallard') {
+      const body = pick('#8a7a72'), head = '#3fa060', leg = '#e8803a';
+      P(4, 6, 8, 4, body); P(6, 7, 4, 2, '#c8bcb0'); P(11, 5, 2, 2, '#2e2a3a'); P(12, 5, 1, 1, '#ffffff');
+      P(2, 1, 4, 4, head); P(3, 5, 3, 1, '#ffffff'); P(4, 6, 2, 1, '#6b4a3a'); P(0, 3, 2, 1, '#f0c040'); P(3, 2, 1, 1, EYE); P(4, 1, 1, 1, shade(head, 0.25));
+      P(6, 10, 1, 2 - step, leg); P(9, 10, 1, 1 + step, leg);
+    } else if (kind === 'hen' || kind === 'rooster') {
+      const col = pick('#a0522d'), dk = shade(col, -0.25), lt = shade(col, 0.2), red = '#e04040';
+      P(4, 5, 7, 5, col); P(2, 2, 3, 4, col); P(5, 7, 4, 1, dk); P(6, 6, 2, 1, lt);
+      P(1, 3, 1, 1, '#f0b040'); P(2, 4, 1, 1, red); P(3, 3, 1, 1, EYE);
+      if (kind === 'rooster') { P(2, 0, 3, 2, red); P(10, 1, 3, 6, '#2f6e5a'); P(12, 0, 1, 2, '#2f6e5a'); P(11, 2, 1, 3, '#4a9e7e'); P(1, 5, 1, 1, red); }
+      else { P(2, 1, 2, 1, red); P(10, 3, 2, 3, dk); P(11, 2, 1, 1, dk); }
+      P(6, 10, 1, 2 - step, '#f0b040'); P(8, 10, 1, 1 + step, '#f0b040');
+    } else if (kind === 'pig') {
+      const col = pick('#f2a7b8'), dk = shade(col, -0.18);
+      P(3, 4, 10, 6, col); P(4, 3, 7, 1, col); P(0, 4, 4, 4, col); P(0, 6, 1, 2, '#e57a95'); P(2, 3, 2, 1, dk); P(2, 5, 1, 1, EYE);
+      P(13, 4, 1, 1, col); P(14, 3, 1, 1, col); P(6, 5, 2, 1, shade(col, 0.15));
+      P(4, 10, 1, 2 - step, dk); P(6, 10, 1, 1 + step, col); P(10, 10, 1, 2 - step, dk); P(11, 10, 1, 1 + step, col);
+    } else if (kind === 'goat') {
+      const col = pick('#efe4d0'), dk = shade(col, -0.2), hoof = '#6b4a3a';
+      P(4, 5, 8, 4, col); P(12, 4, 1, 2, col); P(2, 3, 2, 3, col); P(0, 1, 4, 3, col);
+      P(2, -1, 1, 2, '#5a4a40'); P(3, -1, 1, 1, '#5a4a40'); P(4, 1, 1, 1, '#f5a3b5'); P(1, 4, 1, 2, col); P(2, 2, 1, 1, EYE); P(0, 2, 1, 1, '#f5a3b5');
+      P(5, 9, 1, 3 - step, col); P(7, 9, 1, 2 + step, dk); P(10, 9, 1, 3 - step, col); P(11, 9, 1, 2 + step, dk);
+      P(5, 12 - step, 1, 1, hoof); P(10, 12 - step, 1, 1, hoof);
+    } else if (kind === 'lamb' || kind === 'piglet' || kind === 'calf' || kind === 'kid') {
+      // ลูกสัตว์: ตัวเล็ก หัวโต
+      const nat = { lamb: '#f4f1e8', piglet: '#f5b5c4', calf: '#c8915a', kid: '#e8c9a0' }[kind];
+      const col = pick(nat), dk = shade(col, -0.2), y = 3;
+      P(5, y + 4, 6, 4, col); P(2, y + 2, 4, 4, kind === 'lamb' ? '#f0dcc0' : col); P(3, y + 3, 1, 1, EYE);
+      if (kind === 'lamb') { P(5, y + 3, 6, 1, col); P(2, y + 1, 3, 1, col); P(6, y + 5, 1, 1, shade(col, -0.1)); }
+      if (kind === 'piglet') { P(1, y + 4, 1, 2, '#e57a95'); P(4, y + 1, 2, 1, dk); P(11, y + 4, 1, 1, col); }
+      if (kind === 'calf') { P(1, y + 4, 2, 2, '#f5a3b5'); P(5, y + 1, 2, 1, col); P(7, y + 5, 2, 2, '#f4efe6'); P(11, y + 4, 1, 3, col); }
+      if (kind === 'kid') { P(3, y + 1, 1, 1, '#5a4a40'); P(5, y + 2, 1, 1, '#f5a3b5'); P(8, y + 5, 2, 1, '#f4efe6'); P(11, y + 3, 1, 2, col); }
+      const leg = kind === 'lamb' ? '#3a3150' : dk;
+      P(5, y + 8, 1, 2 - step, leg); P(7, y + 8, 1, 1 + step, leg); P(9, y + 8, 1, 2 - step, leg); P(10, y + 8, 1, 1 + step, leg);
     }
     addOutline(c);
     return faceRight ? mirror(c) : c;
