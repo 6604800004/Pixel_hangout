@@ -2439,6 +2439,16 @@ function makeVoice(net, onChange) {
     el.requestVideoFrameCallback(tick);
   }
 
+  // วิดีโอเริ่มที่บิตเรตสูงขึ้น (แชร์จอคมชัดเร็วขึ้น ไม่ต้องรอ 10-15 วิ) — ใส่ใน VP8/VP9/H264 ทุกตัว
+  function tuneVideo(sdp) {
+    const pts = [...sdp.matchAll(/a=rtpmap:(\d+) (VP8|VP9|H264)\/90000/gi)].map((m) => m[1]);
+    for (const pt of pts) {
+      const re = new RegExp(`a=fmtp:${pt} ([^\\r\\n]*)`);
+      if (re.test(sdp)) sdp = sdp.replace(re, (all, prm) => (/x-google-start-bitrate/.test(prm) ? all : `a=fmtp:${pt} ${prm};x-google-start-bitrate=1500`));
+      else sdp = sdp.replace(new RegExp(`(a=rtpmap:${pt} [^\\r\\n]*\\r?\\n)`), `$1a=fmtp:${pt} x-google-start-bitrate=1500\r\n`);
+    }
+    return sdp;
+  }
   function tuneOpus(sdp) {
     const m = sdp.match(/a=rtpmap:(\d+) opus\/48000/i);
     if (!m) return sdp;
@@ -2452,7 +2462,7 @@ function makeVoice(net, onChange) {
     });
   }
   async function tune(peer) {
-    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 48000], [peer.videoTx, 700000], [peer.screenTx, 1800000]]) {
+    for (const [tx, max] of [[peer.audioTx, V.hq ? 128000 : 48000], [peer.videoTx, 700000], [peer.screenTx, 4500000]]) {
       if (!tx) continue;
       try {
         const p = tx.sender.getParameters();
@@ -2460,7 +2470,14 @@ function makeVoice(net, onChange) {
         p.encodings[0].maxBitrate = max;
         p.encodings[0].active = true;
         if (tx === peer.videoTx) p.encodings[0].maxFramerate = 24;
-        if (tx === peer.screenTx) { p.encodings[0].maxFramerate = 15; p.degradationPreference = 'maintain-resolution'; }
+        if (tx === peer.screenTx) {
+          // แชร์จอแบบลื่น: 720p 60fps (จอใหญ่กว่า 720p = ย่อลงก่อนส่ง) · เน็ตไม่พอ = ลดความคมก่อน ไม่ลดเฟรม
+          p.encodings[0].maxFramerate = 60;
+          const st = V.screenTrack && V.screenTrack.getSettings ? V.screenTrack.getSettings() : {};
+          const scale = st.height ? Math.max(1, st.height / 720, (st.width || 0) / 1280) : 1;
+          p.encodings[0].scaleResolutionDownBy = scale;
+          p.degradationPreference = 'maintain-framerate';
+        }
         await tx.sender.setParameters(p);
       } catch {}
     }
@@ -2594,7 +2611,7 @@ function makeVoice(net, onChange) {
   async function offer(peer, iceRestart = false) {
     try {
       const o = await peer.pc.createOffer({ iceRestart });
-      await peer.pc.setLocalDescription({ type: 'offer', sdp: tuneOpus(o.sdp) });
+      await peer.pc.setLocalDescription({ type: 'offer', sdp: tuneVideo(tuneOpus(o.sdp)) });
       net.signal(peer.key, { sdp: { type: 'offer', sdp: peer.pc.localDescription.sdp } });
     } catch (e) { console.warn('offer', e); }
   }
@@ -2638,7 +2655,7 @@ function makeVoice(net, onChange) {
         }
         apply(peer);
         const a = await peer.pc.createAnswer();
-        await peer.pc.setLocalDescription({ type: 'answer', sdp: tuneOpus(a.sdp) });
+        await peer.pc.setLocalDescription({ type: 'answer', sdp: tuneVideo(tuneOpus(a.sdp)) });
         net.signal(from, { sdp: { type: 'answer', sdp: peer.pc.localDescription.sdp } });
       } else if (peer && peer.pc.signalingState === 'have-local-offer') {
         await peer.pc.setRemoteDescription(desc);
@@ -2850,9 +2867,10 @@ function makeVoice(net, onChange) {
   V.startScreen = async () => {
     if (!V.canShare) { onChange('error', 'อุปกรณ์นี้แชร์จอไม่ได้ (ใช้คอมด้วย Chrome / Edge / Firefox / Safari)'); return; }
     try {
-      const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 }, width: { max: 1920 }, height: { max: 1080 } }, audio: false });
+      const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 }, width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 } }, audio: false });
       const t = s.getVideoTracks()[0];
-      try { t.contentHint = 'detail'; } catch {}
+      try { t.contentHint = 'motion'; } catch {} // เน้นความลื่น (เกม/คลิป) มากกว่าความคมของตัวหนังสือ
+      try { await t.applyConstraints({ frameRate: { ideal: 60, max: 60 }, width: { max: 1280 }, height: { max: 720 } }); } catch {}
       t.onended = () => V.stopScreen();
       V.screenTrack = t;
       V.selfScreen.srcObject = new MediaStream([t]); V.selfScreen.play().catch(() => {});
