@@ -336,7 +336,7 @@ function charSprite(look, dir, frame, pose, blink) {
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
 // ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
-const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [17, 13], dino: [23, 20], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
+const FARM = { cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], panda: [20, 17], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
 const FARM_OUT = [74, 36, 48];
 function farmSprite(kind, frame, faceRight, pc) {
   return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
@@ -393,11 +393,24 @@ function farmSprite(kind, frame, faceRight, pc) {
       P(0, 9, 1, 1, '#e57a95'); P(2, 8, 1, 1, EYE); P(3, 10, 1, 1, BLUSH);
       P(6 - st, 14, 3, 1, lo); P(11 + st, 14, 3, 1, lo); P(7, 12, 1, 2, b); P(12, 12, 1, 2, b);
     } else if (kind === 'fish') {
+      // ปลาในโหลแก้วกลม (มีน้ำ หินสี สาหร่าย ฟองอากาศ)
       const [hi, b, lo, lo2] = tone(pick('#ff9a3c'));
-      E(7, 6, 6, 4, lo); E(7, 5, 6, 4, b); P(3, 2, 7, 1, hi); P(8, 2, 1, 7, '#fff7ec'); P(9, 2, 1, 7, lo);
-      P(5, 0, 5, 2, lo); P(6, 0, 2, 1, hi);
-      P(13, 4, 1, 3, b); P(14, 3 - st, 1, 5 + st, b); P(15, 2 - st, 1, 3, lo); P(15, 6 + st, 1, 3, lo);
-      P(2, 4, 2, 2, '#ffffff'); P(2, 4, 1, 1, EYE); P(0, 6, 1, 1, lo2); P(4, 9, 3, 1, lo);
+      const glass = 'rgba(214,240,255,.85)', water = 'rgba(120,196,255,.45)', shine = 'rgba(255,255,255,.9)';
+      for (let y = -8; y <= 7; y++) { // ขอบโหล (วงรีโปร่ง)
+        const w = Math.round(8 * Math.sqrt(Math.max(0, 1 - (y / 8.5) ** 2)));
+        if (y < -5) continue;
+        P(9 - w, 11 + y, 1, 1, glass); P(9 + w, 11 + y, 1, 1, glass);
+        if (y === 7) P(9 - w, 11 + y, w * 2 + 1, 1, glass);
+        else P(10 - w, 11 + y, w * 2 - 1, 1, y >= -3 ? water : 'rgba(230,245,255,.28)');
+      }
+      P(4, 5, 11, 1, glass); P(3, 4, 13, 1, 'rgba(235,248,255,.95)');
+      P(3, 17, 4, 1, '#d2a86e'); P(7, 17, 3, 1, '#9cc77e'); P(10, 17, 4, 1, '#e8c890'); P(14, 17, 2, 1, '#c98a8a');
+      P(14, 11 + st, 1, 6 - st, '#3fa37a'); P(15, 13, 1, 3, '#57bd8d'); P(13, 14, 1, 2, '#57bd8d');
+      E(8, 12, 3, 2, lo); E(8, 11, 3, 2, b); P(6, 10, 3, 1, hi); P(9, 10, 1, 4, '#fff7ec');
+      P(12, 10 - st, 1, 3, b); P(13, 9 - st, 1, 2, lo); P(13, 12 + st, 1, 2, lo); P(7, 9, 2, 1, lo);
+      P(6, 11, 1, 1, EYE); P(5, 12, 1, 1, lo2);
+      P(4, 8, 1, 4, shine); P(5, 7, 1, 1, shine); P(15, 9, 1, 2, 'rgba(255,255,255,.55)');
+      P(7, 7 - st, 1, 1, shine); P(8, 5 + st, 1, 1, 'rgba(255,255,255,.7)');
     } else if (kind === 'dino') {
       const [hi, b, lo, lo2] = tone(pick('#7ed37a')), belly = '#f4e6b0';
       E(12, 12, 6, 4, lo); E(12, 11, 6, 4, b); P(8, 8, 8, 1, hi); E(11, 14, 4, 1, belly);

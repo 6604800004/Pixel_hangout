@@ -926,7 +926,7 @@ function drawPet(c, ch, t) {
   const pet = ch.pet;
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
   drawShadow(c, pet.x, pet.y, 8);
-  const fly = ch.look.pet === 'fish' || ch.look.pet === 'cloud' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
+  const fly = ch.look.pet === 'cloud' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : ch.look.pet === 'fish' ? 4 + Math.round(Math.sin(t * 2 + ch.seed)) : 0;
   const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0);
   if (s.width > 16) drawShadow(c, pet.x, pet.y, Math.round(s.width * 0.45));
   c.drawImage(s, snap(pet.x - s.width / 2), snap(pet.y - s.height + 1 - fly));
