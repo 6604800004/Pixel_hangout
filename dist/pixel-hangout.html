@@ -315,6 +315,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .upd-bar { position: absolute; left: 0; bottom: 0; height: 6px; background: #ff8fab; width: 100%; transition: width 1s linear; }
 @keyframes updIn { from { transform: translate(-50%, -30px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
 @keyframes updSpin { to { transform: rotate(360deg); } }
+/* ---------- หน้าเข้าห้อง ---------- */
+.card.enter { max-width: 380px; text-align: center; }
+.enter-stage { width: 210px; height: 210px; margin: 6px auto 12px; position: relative; }
+.enter-name { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #ff8fab; color: #fff; font-weight: 600; font-size: 14px; padding: 2px 12px; border-radius: 8px; white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis; }
+.card.enter .field { text-align: left; }
+.card.enter .foot { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+.card.enter .foot .pbtn.big { width: auto; flex: 1; }
+
 @media (max-width: 760px) { .upd-alert { gap: 10px; padding: 10px 12px 14px; } .upd-txt b { font-size: 17px; } .upd-txt span { font-size: 12px; } .upd-ico { font-size: 26px; } }
 
 @media (max-width: 760px) { .rooms { width: min(240px, calc(100vw - 24px)); z-index: 7; } }
@@ -575,10 +583,10 @@ const HAIR_COLORS = ['#3a2c3f', '#6b4430', '#b0703c', '#f0c96b', '#f08a6c', '#f5
 const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7d9cf0', '#b48cf0', '#f4f1e8', '#5a5f7a', '#e8505b', '#3fa37a', '#c8a27a', '#2e2a3a', '#ffffff', '#ff6bd5', '#00b3a4', '#a33b54', '#3b4f8f', '#d6c3a5', '#8c6a4f'];
 // ⭐ = เฉพาะแอดมิน (เซิร์ฟเวอร์ตัดออกถ้าคนทั่วไปใส่)
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
-const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา']];
+const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
 const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
-const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
 const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
 // สี: เลือกจากชุดสี (เลข) หรือกำหนดเอง (#rrggbb)
@@ -696,7 +704,8 @@ function charSprite(look, dir, frame, pose, blink) {
     const dress = look.top === 'dress';
     const fem = look.sex === 'f';
     // ผู้หญิง: ใส่กระโปรงอัตโนมัติ (ยกเว้นชุดเดรส/เอี๊ยม) ให้ต่างจากผู้ชายชัดๆ
-    const skirt = fem && !dress && look.top !== 'overall';
+    const princess = top === 'princess';
+    const skirt = fem && !dress && look.top !== 'overall' && !princess;
     const legC = dress || skirt ? skin : bc, legD = dress || skirt ? skinD : bcD;
     const side = d === 'left';
     const EYE = '#2e2235';
@@ -735,6 +744,17 @@ function charSprite(look, dir, frame, pose, blink) {
     U(7, 19, 8, 7, tc);
     U(14, 19, 1, 7, tcD); U(7, 25, 8, 1, tcD);
     if (dress) { U(6, 23, 10, 3, tc); U(5, 25, 12, 2, tc); U(5, 27, 12, 1, tcD); U(15, 23, 1, 3, tcD); }
+    if (princess) {
+      // ⭐ ชุดเจ้าหญิง: กระโปรงบานยาวถึงพื้น 3 ชั้น เข็มขัดทอง แขนพอง ประกายวิบวับ
+      const G1 = '#ffd34d', glint = (frame + (d === 'up' ? 1 : 0)) % 2;
+      U(6, 24, 10, 2, tc); U(5, 26, 12, 2, tc); U(4, 28, 14, 2, tc); U(3, 30, 16, 1, tc);
+      U(3, 31, 16, 1, tcD); U(13, 24, 3, 7, tcD); U(4, 29, 14, 1, tcL); U(5, 27, 12, 1, tcL);
+      U(8, 25, 1, 5, tcL); U(11, 26, 1, 5, tcL); U(4, 30, 1, 1, G1); U(8, 31, 1, 1, G1); U(13, 31, 1, 1, G1); U(17, 30, 1, 1, G1);
+      U(7, 23, 8, 1, G1);
+      if (d !== 'up') { U(10, 23, 2, 1, '#ff6b8a'); U(9, 19, 4, 1, '#fff0f5'); U(10, 20, 2, 2, G1); U(10, 21, 1, 1, '#ff6b8a'); }
+      U(5, 19, 2, 2, tcL); U(15, 19, 2, 2, tcL); U(5, 20, 1, 1, tc); U(16, 20, 1, 1, tcD);
+      U(glint ? 6 : 14, glint ? 27 : 25, 1, 1, '#ffffff'); U(glint ? 15 : 7, glint ? 29 : 28, 1, 1, '#ffffff');
+    }
     if (skirt) { U(7, 24, 8, 2, bc); U(6, 25, 10, 2, bc); U(5, 27, 12, 1, bc); U(5, 28, 12, 1, bcD); U(9, 26, 1, 2, bcD); U(13, 26, 1, 2, bcD); }
     if (fem) { U(7, 22, 1, 2, tcD); U(14, 22, 1, 2, tcD); } // เอวคอด
     else { U(6, 19, 10, 1, tc); U(15, 19, 1, 1, tcD); }     // ไหล่กว้าง
@@ -3912,7 +3932,7 @@ function showHelp() {
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
-    '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา ปีก หรือ ทั้งหมด)',
+    '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา เจ้าหญิง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
     '📋 ของพิเศษ — ดูว่าให้ใครใช้อะไรไว้บ้าง',
     '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
@@ -3951,7 +3971,7 @@ function chatCommand(text) {
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
   m = text.match(new RegExp('^\\/?(?:kick|เตะ)\\s+(.+?)\\s+delay\\s+' + UNIT + '$', 'i'));    // kick หมี delay 1m
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
-  const ITEM_WORDS = /^(มังกร|dragon|ยูนิคอร์น|unicorn|เมฆ|ก้อนเมฆ|cloud|ผมรุ้ง|รุ้ง|rainbow|ชุดราชา|ราชา|royal|ปีก|ปีกนางฟ้า|wings|ทั้งหมด|ทุกอย่าง|all)$/i; // คำสั่งต้องลงท้ายด้วยชื่อของ ไม่งั้นถือเป็นแชตปกติ
+  const ITEM_WORDS = /^(มังกร|dragon|ยูนิคอร์น|unicorn|เมฆ|ก้อนเมฆ|cloud|ผมรุ้ง|รุ้ง|rainbow|ชุดราชา|ราชา|royal|ชุดเจ้าหญิง|เจ้าหญิง|princess|ปีก|ปีกนางฟ้า|wings|ทั้งหมด|ทุกอย่าง|all)$/i; // คำสั่งต้องลงท้ายด้วยชื่อของ ไม่งั้นถือเป็นแชตปกติ
   m = text.match(/^\/?(?:give|ให้)\s+(.+)\s+(\S+)$/i);                                       // ให้ หมี มังกร
   if (m && G.isAdmin && ITEM_WORDS.test(m[2])) { G.net.admin('grant', key, { name: m[1].trim(), item: m[2] }); return true; }
   m = text.match(/^\/?(?:take|revoke|ยึด|ยึดคืน)\s+(.+)\s+(\S+)$/i);                        // ยึด หมี มังกร / ยึด หมี ทั้งหมด
@@ -3986,11 +4006,11 @@ function updateBadge() {
   b.textContent = G.unread > 9 ? '9+' : G.unread;
   b.classList.toggle('hidden', !G.unread);
 }
-function setChatOpen(open) {
+function setChatOpen(open, focus = true) {
   G.chatOpen = open;
   $('#chat').classList.toggle('closed', !open);
   $('[data-tool="chat"]').classList.toggle('active', open);
-  if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (!isMobile()) $('#chatInput').focus(); }
+  if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (focus && !isMobile()) $('#chatInput').focus(); }
 }
 // ---- กำลังพิมพ์: เพื่อนเห็นข้อความที่กำลังพิมพ์ขึ้นบนหัว (ไม่ส่งคำสั่งแอดมิน/รหัส) ----
 G.showTyping = lsGet('pixel.showTyping', true) !== false;
@@ -5008,7 +5028,52 @@ function openCreator(first) {
       g.drawImage(charSprite(L, dir, frame, 'stand', (t % 3.3) < 0.12), 17, 13);
       if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); } }
     });
-    if (!nick) setTimeout(() => nameInput.focus(), 50);
+  });
+}
+
+// ---- หน้า "เข้าห้อง": โชว์ตัวละคร + ชื่อ กดเข้าห้องได้ทันที (แต่งตัวเป็นปุ่มเสริม ไม่บังคับ) ----
+function openEnter() {
+  let nick = G.me.nick || G.net.profileName || lsGet('pixel.nick', '') || '';
+  openModal((card) => {
+    card.classList.add('enter');
+    const room = ($('#roomName') && $('#roomName').textContent) || 'Pixel Hangout';
+    card.append(el('h2', null, `🏠 ${room}`));
+    card.append(el('p', 'sub', nick ? `ยินดีต้อนรับกลับ ${nick}!` : 'ตั้งชื่อเล่นแล้วเข้าห้องไปหาเพื่อนกัน'));
+    const stage = el('div', 'stage enter-stage');
+    const cv = mkCanvas(56, 56); stage.append(cv);
+    const nameTag = el('div', 'enter-name'); nameTag.textContent = nick || 'ชื่อเล่นของคุณ';
+    stage.append(nameTag);
+    card.append(stage);
+    const nameField = el('label', 'field');
+    nameField.append(el('span', null, 'ชื่อเล่น'));
+    const nameInput = el('input'); nameInput.maxLength = 16; nameInput.placeholder = 'เช่น ภพ'; nameInput.value = nick;
+    nameInput.oninput = () => { nick = nameInput.value; nameTag.textContent = nick.trim() || 'ชื่อเล่นของคุณ'; };
+    nameField.append(nameInput);
+    card.append(nameField);
+    if (G.net.mode === 'ws' && G.net.needPassword) {
+      const pw = el('label', 'field'); pw.append(el('span', null, 'รหัสผ่านห้อง'));
+      const pi = el('input'); pi.type = 'password'; pi.oninput = () => (G.net.password = pi.value); pw.append(pi); card.append(pw);
+    }
+    const go = () => {
+      nick = nick.trim().slice(0, 16);
+      if (!nick) { nameInput.focus(); toast('ใส่ชื่อเล่นก่อนนะ'); return; }
+      G.me.nick = nick; lsSet('pixel.nick', nick);
+      G.net.savePrivate({ look: G.me.look, nick, desk: G.myDeskStyle });
+      closeModal(); join();
+    };
+    nameInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+    const foot = el('div', 'foot');
+    const dress = el('button', 'pbtn', '👕 แต่งตัว'); dress.onclick = () => { G.me.nick = nick.trim().slice(0, 16); closeModal(); openCreator(true); };
+    const enter = el('button', 'pbtn pink big', '🚪 เข้าห้อง'); enter.onclick = go;
+    foot.append(dress, enter);
+    card.append(foot);
+    startPreview(cv, (g, t) => {
+      const L = cleanLook(G.me.look);
+      const frame = Math.floor(t * 5) % 4;
+      g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
+      g.drawImage(charSprite(L, 'down', (t % 4) < 2 ? frame : 0, 'stand', (t % 3.3) < 0.12), 17, 13);
+      if (L.pet !== 'none') { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc); g.fillRect(38, 48, 10, 2); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); }
+    });
   });
 }
 
@@ -5352,7 +5417,7 @@ async function join() {
   G.me.look = stripAdmin(G.me.look);
   G.joined = true;
   $('#hud').classList.remove('hidden');
-  setChatOpen(G.chatOpen);
+  setChatOpen(G.chatOpen, false); // เข้าห้องแล้วไม่เด้งให้พิมพ์แชต
   const pos = lsGet('pixel.pos', null);
   if (pos && pos.y < H && pos.y > TOP && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
   else { G.me.x = 230 + Math.random() * 40; G.me.y = 318; }
@@ -5440,7 +5505,7 @@ function frame(ms) {
       ov.querySelector('#useHere').onclick = () => location.reload();
       return;
     }
-    toast(m.message || 'เข้าห้องไม่ได้', 4000); G.joined = false; $('#hud').classList.add('hidden'); openCreator(true); });
+    toast(m.message || 'เข้าห้องไม่ได้', 4000); G.joined = false; $('#hud').classList.add('hidden'); openEnter(); });
   if (net.onWriteDenied) net.onWriteDenied(() => showBanner('คุณมีสิทธิ์ดูอย่างเดียว: ห้อง/โต๊ะจะไม่ถูกบันทึก'));
   if (net.mode === 'ws') {
     try { const cfg = await (await fetch('/config')).json(); net.needPassword = cfg.needPassword; if (cfg.roomName) $('#roomName').textContent = cfg.roomName; document.title = cfg.roomName + ' · Pixel Hangout'; } catch {}
@@ -5499,7 +5564,7 @@ function frame(ms) {
   } else G.me.nick = net.profileName || lsGet('pixel.nick', '');
   $('#loading').classList.add('hidden');
   spHandleRedirect();
-  openCreator(true);
+  openEnter();
   // กลับเข้าห้องอัตโนมัติหลังอัปเดต
   try {
     const aj = JSON.parse(sessionStorage.getItem('pixel.autojoin') || 'null');

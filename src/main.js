@@ -516,7 +516,7 @@ function showHelp() {
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
-    '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา ปีก หรือ ทั้งหมด)',
+    '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ ผมรุ้ง ชุดราชา เจ้าหญิง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
     '📋 ของพิเศษ — ดูว่าให้ใครใช้อะไรไว้บ้าง',
     '✕ แตะ ✕ ที่ข้อความ แล้วแตะ "ลบ" — ลบทีละข้อความ',
@@ -555,7 +555,7 @@ function chatCommand(text) {
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
   m = text.match(new RegExp('^\\/?(?:kick|เตะ)\\s+(.+?)\\s+delay\\s+' + UNIT + '$', 'i'));    // kick หมี delay 1m
   if (m) { G.net.admin('kick', key, m[1].trim(), toMs(m[2], m[3])); return true; }
-  const ITEM_WORDS = /^(มังกร|dragon|ยูนิคอร์น|unicorn|เมฆ|ก้อนเมฆ|cloud|ผมรุ้ง|รุ้ง|rainbow|ชุดราชา|ราชา|royal|ปีก|ปีกนางฟ้า|wings|ทั้งหมด|ทุกอย่าง|all)$/i; // คำสั่งต้องลงท้ายด้วยชื่อของ ไม่งั้นถือเป็นแชตปกติ
+  const ITEM_WORDS = /^(มังกร|dragon|ยูนิคอร์น|unicorn|เมฆ|ก้อนเมฆ|cloud|ผมรุ้ง|รุ้ง|rainbow|ชุดราชา|ราชา|royal|ชุดเจ้าหญิง|เจ้าหญิง|princess|ปีก|ปีกนางฟ้า|wings|ทั้งหมด|ทุกอย่าง|all)$/i; // คำสั่งต้องลงท้ายด้วยชื่อของ ไม่งั้นถือเป็นแชตปกติ
   m = text.match(/^\/?(?:give|ให้)\s+(.+)\s+(\S+)$/i);                                       // ให้ หมี มังกร
   if (m && G.isAdmin && ITEM_WORDS.test(m[2])) { G.net.admin('grant', key, { name: m[1].trim(), item: m[2] }); return true; }
   m = text.match(/^\/?(?:take|revoke|ยึด|ยึดคืน)\s+(.+)\s+(\S+)$/i);                        // ยึด หมี มังกร / ยึด หมี ทั้งหมด
@@ -590,11 +590,11 @@ function updateBadge() {
   b.textContent = G.unread > 9 ? '9+' : G.unread;
   b.classList.toggle('hidden', !G.unread);
 }
-function setChatOpen(open) {
+function setChatOpen(open, focus = true) {
   G.chatOpen = open;
   $('#chat').classList.toggle('closed', !open);
   $('[data-tool="chat"]').classList.toggle('active', open);
-  if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (!isMobile()) $('#chatInput').focus(); }
+  if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (focus && !isMobile()) $('#chatInput').focus(); }
 }
 // ---- กำลังพิมพ์: เพื่อนเห็นข้อความที่กำลังพิมพ์ขึ้นบนหัว (ไม่ส่งคำสั่งแอดมิน/รหัส) ----
 G.showTyping = lsGet('pixel.showTyping', true) !== false;
@@ -1612,7 +1612,52 @@ function openCreator(first) {
       g.drawImage(charSprite(L, dir, frame, 'stand', (t % 3.3) < 0.12), 17, 13);
       if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); } }
     });
-    if (!nick) setTimeout(() => nameInput.focus(), 50);
+  });
+}
+
+// ---- หน้า "เข้าห้อง": โชว์ตัวละคร + ชื่อ กดเข้าห้องได้ทันที (แต่งตัวเป็นปุ่มเสริม ไม่บังคับ) ----
+function openEnter() {
+  let nick = G.me.nick || G.net.profileName || lsGet('pixel.nick', '') || '';
+  openModal((card) => {
+    card.classList.add('enter');
+    const room = ($('#roomName') && $('#roomName').textContent) || 'Pixel Hangout';
+    card.append(el('h2', null, `🏠 ${room}`));
+    card.append(el('p', 'sub', nick ? `ยินดีต้อนรับกลับ ${nick}!` : 'ตั้งชื่อเล่นแล้วเข้าห้องไปหาเพื่อนกัน'));
+    const stage = el('div', 'stage enter-stage');
+    const cv = mkCanvas(56, 56); stage.append(cv);
+    const nameTag = el('div', 'enter-name'); nameTag.textContent = nick || 'ชื่อเล่นของคุณ';
+    stage.append(nameTag);
+    card.append(stage);
+    const nameField = el('label', 'field');
+    nameField.append(el('span', null, 'ชื่อเล่น'));
+    const nameInput = el('input'); nameInput.maxLength = 16; nameInput.placeholder = 'เช่น ภพ'; nameInput.value = nick;
+    nameInput.oninput = () => { nick = nameInput.value; nameTag.textContent = nick.trim() || 'ชื่อเล่นของคุณ'; };
+    nameField.append(nameInput);
+    card.append(nameField);
+    if (G.net.mode === 'ws' && G.net.needPassword) {
+      const pw = el('label', 'field'); pw.append(el('span', null, 'รหัสผ่านห้อง'));
+      const pi = el('input'); pi.type = 'password'; pi.oninput = () => (G.net.password = pi.value); pw.append(pi); card.append(pw);
+    }
+    const go = () => {
+      nick = nick.trim().slice(0, 16);
+      if (!nick) { nameInput.focus(); toast('ใส่ชื่อเล่นก่อนนะ'); return; }
+      G.me.nick = nick; lsSet('pixel.nick', nick);
+      G.net.savePrivate({ look: G.me.look, nick, desk: G.myDeskStyle });
+      closeModal(); join();
+    };
+    nameInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+    const foot = el('div', 'foot');
+    const dress = el('button', 'pbtn', '👕 แต่งตัว'); dress.onclick = () => { G.me.nick = nick.trim().slice(0, 16); closeModal(); openCreator(true); };
+    const enter = el('button', 'pbtn pink big', '🚪 เข้าห้อง'); enter.onclick = go;
+    foot.append(dress, enter);
+    card.append(foot);
+    startPreview(cv, (g, t) => {
+      const L = cleanLook(G.me.look);
+      const frame = Math.floor(t * 5) % 4;
+      g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
+      g.drawImage(charSprite(L, 'down', (t % 4) < 2 ? frame : 0, 'stand', (t % 3.3) < 0.12), 17, 13);
+      if (L.pet !== 'none') { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc); g.fillRect(38, 48, 10, 2); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); }
+    });
   });
 }
 
@@ -1956,7 +2001,7 @@ async function join() {
   G.me.look = stripAdmin(G.me.look);
   G.joined = true;
   $('#hud').classList.remove('hidden');
-  setChatOpen(G.chatOpen);
+  setChatOpen(G.chatOpen, false); // เข้าห้องแล้วไม่เด้งให้พิมพ์แชต
   const pos = lsGet('pixel.pos', null);
   if (pos && pos.y < H && pos.y > TOP && !hitsRects(G.rects, pos.x, pos.y)) { G.me.x = pos.x; G.me.y = pos.y; }
   else { G.me.x = 230 + Math.random() * 40; G.me.y = 318; }
@@ -2044,7 +2089,7 @@ function frame(ms) {
       ov.querySelector('#useHere').onclick = () => location.reload();
       return;
     }
-    toast(m.message || 'เข้าห้องไม่ได้', 4000); G.joined = false; $('#hud').classList.add('hidden'); openCreator(true); });
+    toast(m.message || 'เข้าห้องไม่ได้', 4000); G.joined = false; $('#hud').classList.add('hidden'); openEnter(); });
   if (net.onWriteDenied) net.onWriteDenied(() => showBanner('คุณมีสิทธิ์ดูอย่างเดียว: ห้อง/โต๊ะจะไม่ถูกบันทึก'));
   if (net.mode === 'ws') {
     try { const cfg = await (await fetch('/config')).json(); net.needPassword = cfg.needPassword; if (cfg.roomName) $('#roomName').textContent = cfg.roomName; document.title = cfg.roomName + ' · Pixel Hangout'; } catch {}
@@ -2103,7 +2148,7 @@ function frame(ms) {
   } else G.me.nick = net.profileName || lsGet('pixel.nick', '');
   $('#loading').classList.add('hidden');
   spHandleRedirect();
-  openCreator(true);
+  openEnter();
   // กลับเข้าห้องอัตโนมัติหลังอัปเดต
   try {
     const aj = JSON.parse(sessionStorage.getItem('pixel.autojoin') || 'null');

@@ -303,6 +303,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .upd-bar { position: absolute; left: 0; bottom: 0; height: 6px; background: #ff8fab; width: 100%; transition: width 1s linear; }
 @keyframes updIn { from { transform: translate(-50%, -30px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
 @keyframes updSpin { to { transform: rotate(360deg); } }
+/* ---------- หน้าเข้าห้อง ---------- */
+.card.enter { max-width: 380px; text-align: center; }
+.enter-stage { width: 210px; height: 210px; margin: 6px auto 12px; position: relative; }
+.enter-name { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #ff8fab; color: #fff; font-weight: 600; font-size: 14px; padding: 2px 12px; border-radius: 8px; white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis; }
+.card.enter .field { text-align: left; }
+.card.enter .foot { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+.card.enter .foot .pbtn.big { width: auto; flex: 1; }
+
 @media (max-width: 760px) { .upd-alert { gap: 10px; padding: 10px 12px 14px; } .upd-txt b { font-size: 17px; } .upd-txt span { font-size: 12px; } .upd-ico { font-size: 26px; } }
 
 @media (max-width: 760px) { .rooms { width: min(240px, calc(100vw - 24px)); z-index: 7; } }

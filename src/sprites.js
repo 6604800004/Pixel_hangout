@@ -10,10 +10,10 @@ const HAIR_COLORS = ['#3a2c3f', '#6b4430', '#b0703c', '#f0c96b', '#f08a6c', '#f5
 const CLOTH_COLORS = ['#ff8fab', '#ffb86b', '#ffe07a', '#8fd694', '#6cc6d9', '#7d9cf0', '#b48cf0', '#f4f1e8', '#5a5f7a', '#e8505b', '#3fa37a', '#c8a27a', '#2e2a3a', '#ffffff', '#ff6bd5', '#00b3a4', '#a33b54', '#3b4f8f', '#d6c3a5', '#8c6a4f'];
 // ⭐ = เฉพาะแอดมิน (เซิร์ฟเวอร์ตัดออกถ้าคนทั่วไปใส่)
 const HAIR_STYLES = [['short', 'สั้น'], ['long', 'ยาว'], ['bob', 'บ็อบ'], ['spiky', 'ชี้ฟู'], ['bun', 'จุก'], ['twin', 'แกละ'], ['curly', 'หยิก'], ['ponytail', 'หางม้า'], ['mohawk', 'โมฮอว์ก'], ['afro', 'แอฟโฟร'], ['side', 'ปัดข้าง'], ['buzz', 'เกรียน'], ['wavy', 'ลอนยาว'], ['rainbow', '⭐ ผมรุ้ง']];
-const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา']];
+const TOPS = [['tee', 'เสื้อยืด'], ['hoodie', 'ฮู้ด'], ['dress', 'เดรส'], ['shirt', 'เชิ้ต+ไทด์'], ['overall', 'เอี๊ยม'], ['jacket', 'แจ็กเก็ต'], ['stripe', 'เสื้อลาย'], ['tank', 'เสื้อกล้าม'], ['suit', 'สูท'], ['sweater', 'คอเต่า'], ['royal', '⭐ ชุดราชา'], ['princess', '⭐ ชุดเจ้าหญิง']];
 const ACCS = [['none', 'ไม่มี'], ['glasses', 'แว่น'], ['shades', 'แว่นดำ'], ['cap', 'แก๊ป'], ['beanie', 'บีนนี่'], ['cat', 'หูแมว'], ['bunny', 'หูกระต่าย'], ['flower', 'ดอกไม้'], ['bow', 'โบว์'], ['headphones', 'หูฟัง'], ['crown', 'มงกุฎ'], ['halo', 'วงแหวน'], ['wings', '⭐ ปีกนางฟ้า']];
 const PETS = [['none', 'ไม่มี'], ['cat', 'แมว'], ['dog', 'หมา'], ['chick', 'ลูกเจี๊ยบ'], ['slime', 'สไลม์'], ['bunny', 'กระต่าย'], ['fish', 'ปลา'], ['dino', 'ไดโนเสาร์'], ['panda', 'หมีแพนด้า'], ['fox', 'จิ้งจอก'], ['penguin', 'เพนกวิน'], ['duck', 'เป็ด'], ['hamster', 'แฮมสเตอร์'], ['goose', 'ห่าน'], ['cow', 'วัว'], ['sheep', 'แกะ'], ['mallard', 'เป็ดหัวเขียว'], ['hen', 'แม่ไก่'], ['rooster', 'ไก่ตัวผู้'], ['pig', 'หมู'], ['goat', 'แพะ'], ['lamb', 'ลูกแกะ'], ['piglet', 'ลูกหมู'], ['calf', 'ลูกวัว'], ['kid', 'ลูกแพะ'], ['dragon', '⭐ มังกร'], ['unicorn', '⭐ ยูนิคอร์น'], ['cloud', '⭐ ก้อนเมฆ']];
-const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
+const ADMIN_ONLY = { hair: ['rainbow'], top: ['royal', 'princess'], acc: ['wings'], pet: ['dragon', 'unicorn', 'cloud'] };
 // สีสัตว์เลี้ยง: ช่องแรก = สีธรรมชาติของแต่ละชนิด
 const PET_COLORS = [null, '#f2a65a', '#c08552', '#8a8a9a', '#f4efe6', '#3a3150', '#ff8fab', '#7d9cf0', '#7ed37a', '#b48cf0', '#ffe07a', '#6cc6d9', '#e8505b', '#1c1c24', '#ff6bd5', '#00b3a4'];
 // สี: เลือกจากชุดสี (เลข) หรือกำหนดเอง (#rrggbb)
@@ -131,7 +131,8 @@ function charSprite(look, dir, frame, pose, blink) {
     const dress = look.top === 'dress';
     const fem = look.sex === 'f';
     // ผู้หญิง: ใส่กระโปรงอัตโนมัติ (ยกเว้นชุดเดรส/เอี๊ยม) ให้ต่างจากผู้ชายชัดๆ
-    const skirt = fem && !dress && look.top !== 'overall';
+    const princess = top === 'princess';
+    const skirt = fem && !dress && look.top !== 'overall' && !princess;
     const legC = dress || skirt ? skin : bc, legD = dress || skirt ? skinD : bcD;
     const side = d === 'left';
     const EYE = '#2e2235';
@@ -170,6 +171,17 @@ function charSprite(look, dir, frame, pose, blink) {
     U(7, 19, 8, 7, tc);
     U(14, 19, 1, 7, tcD); U(7, 25, 8, 1, tcD);
     if (dress) { U(6, 23, 10, 3, tc); U(5, 25, 12, 2, tc); U(5, 27, 12, 1, tcD); U(15, 23, 1, 3, tcD); }
+    if (princess) {
+      // ⭐ ชุดเจ้าหญิง: กระโปรงบานยาวถึงพื้น 3 ชั้น เข็มขัดทอง แขนพอง ประกายวิบวับ
+      const G1 = '#ffd34d', glint = (frame + (d === 'up' ? 1 : 0)) % 2;
+      U(6, 24, 10, 2, tc); U(5, 26, 12, 2, tc); U(4, 28, 14, 2, tc); U(3, 30, 16, 1, tc);
+      U(3, 31, 16, 1, tcD); U(13, 24, 3, 7, tcD); U(4, 29, 14, 1, tcL); U(5, 27, 12, 1, tcL);
+      U(8, 25, 1, 5, tcL); U(11, 26, 1, 5, tcL); U(4, 30, 1, 1, G1); U(8, 31, 1, 1, G1); U(13, 31, 1, 1, G1); U(17, 30, 1, 1, G1);
+      U(7, 23, 8, 1, G1);
+      if (d !== 'up') { U(10, 23, 2, 1, '#ff6b8a'); U(9, 19, 4, 1, '#fff0f5'); U(10, 20, 2, 2, G1); U(10, 21, 1, 1, '#ff6b8a'); }
+      U(5, 19, 2, 2, tcL); U(15, 19, 2, 2, tcL); U(5, 20, 1, 1, tc); U(16, 20, 1, 1, tcD);
+      U(glint ? 6 : 14, glint ? 27 : 25, 1, 1, '#ffffff'); U(glint ? 15 : 7, glint ? 29 : 28, 1, 1, '#ffffff');
+    }
     if (skirt) { U(7, 24, 8, 2, bc); U(6, 25, 10, 2, bc); U(5, 27, 12, 1, bc); U(5, 28, 12, 1, bcD); U(9, 26, 1, 2, bcD); U(13, 26, 1, 2, bcD); }
     if (fem) { U(7, 22, 1, 2, tcD); U(14, 22, 1, 2, tcD); } // เอวคอด
     else { U(6, 19, 10, 1, tc); U(15, 19, 1, 1, tcD); }     // ไหล่กว้าง
