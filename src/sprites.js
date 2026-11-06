@@ -334,7 +334,110 @@ function charSprite(look, dir, frame, pose, blink) {
 // ============================================================================
 // สัตว์เลี้ยง 14x14, จุดยึด (7, 13)
 // ============================================================================
+// ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
+const FARM = { goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22], lamb: [16, 15], piglet: [16, 13], calf: [18, 16], kid: [16, 16] };
+const FARM_OUT = [74, 36, 48];
+function farmSprite(kind, frame, faceRight, pc) {
+  return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
+    const [W, H] = FARM[kind];
+    const c = mkCanvas(W + 3, H + 2), g = c.getContext('2d');
+    const P = painter(g, 1, 1);
+    const E = (cx, cy, rx, ry, col) => { for (let y = -ry; y <= ry; y++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.5)) ** 2))); P(cx - w, cy + y, w * 2 + 1, 1, col); } };
+    const pick = (natural) => (isHex(pc) ? pc : PET_COLORS[pc]) || natural;
+    const tone = (col) => [shade(col, 0.2), col, shade(col, -0.16), shade(col, -0.32)];
+    const EYE = '#2b1a24', BLUSH = '#f4a3b4', PINK = '#f0a0b0';
+    const st = frame % 2;
+    // ขา: หน้า/หลังสลับกันตอนเดิน
+    const legs = (xs, y0, len, col, hoof) => xs.forEach((x, i) => { const up = (i % 2 === 0) === !!st ? 1 : 0; P(x, y0, 1, len - up, col); if (hoof) P(x, y0 + len - up - 1, 1, 1, hoof); });
+    if (kind === 'goose') {
+      const [hi, b, lo, lo2] = tone(pick('#f7f4ee'));
+      P(4, 3, 2, 4, b); P(5, 6, 2, 4, b); P(6, 9, 2, 2, b); P(4, 3, 1, 3, hi);
+      E(4, 2, 2, 2, b); P(3, 1, 2, 1, hi);
+      P(0, 2, 2, 1, '#f0a040'); P(0, 3, 2, 1, '#cf7a2c'); P(3, 2, 1, 1, EYE);
+      E(11, 13, 7, 3, lo); E(11, 12, 7, 3, b); P(17, 10, 1, 2, b); P(16, 9, 2, 1, b); P(6, 10, 6, 1, hi);
+      P(9, 12, 6, 1, lo); P(14, 11, 2, 1, lo); P(10, 13, 4, 1, lo2); P(8, 15, 7, 1, lo);
+      const leg = '#e8803a';
+      legs([8, 12], 16, 3, leg); P(7 - (st ? 0 : 1), 18, 2, 1, leg); P(11 + (st ? 1 : 0), 18, 2, 1, leg);
+    } else if (kind === 'cow') {
+      const base = pick('#f4ece0'), [hi, b, lo, lo2] = tone(base), spot = base === '#f4ece0' ? '#2a2b38' : shade(base, -0.42), spH = shade(spot, 0.18);
+      E(16, 10, 9, 5, lo); E(16, 9, 9, 5, b); P(9, 5, 14, 1, hi);
+      P(13, 5, 5, 4, spot); P(14, 6, 2, 1, spH); P(19, 8, 4, 4, spot); P(11, 11, 3, 2, spot); P(22, 5, 2, 2, spot);
+      P(25, 6, 1, 7, b); P(25, 12, 1, 2, spot);
+      P(1, 3, 7, 7, b); P(2, 2, 5, 1, b); P(1, 3, 2, 3, spot); P(2, 2, 1, 1, spot); P(6, 4, 2, 4, lo);
+      P(0, 7, 5, 3, PINK); P(1, 8, 1, 1, shade(PINK, -0.3)); P(3, 8, 1, 1, shade(PINK, -0.3));
+      P(3, 4, 1, 2, EYE); P(4, 4, 1, 1, '#ffffff');
+      P(7, 1, 3, 2, b); P(8, 2, 1, 1, PINK); P(1, 0, 1, 2, '#efe2c4'); P(5, 0, 1, 2, '#efe2c4');
+      P(15, 14, 3, 2, PINK);
+      legs([10, 12, 20, 22], 14, 6, lo, '#3a2a2a'); P(11, 14, 1, 2, b); P(21, 14, 1, 2, b);
+    } else if (kind === 'sheep') {
+      const [hi, b, lo, lo2] = tone(pick('#f6f3ee')), face = '#f2dcc0', faceD = '#dcbf9e', leg = '#3a2a35';
+      E(14, 10, 8, 5, lo); E(14, 9, 8, 5, b); E(14, 8, 6, 3, hi);
+      for (const [x, y] of [[8, 6], [11, 4], [15, 4], [19, 6], [21, 9], [9, 12], [13, 13], [18, 12]]) P(x, y, 2, 1, lo);
+      for (const [x, y] of [[10, 7], [14, 6], [17, 8], [12, 10], [16, 10]]) P(x, y, 1, 1, hi);
+      E(4, 8, 3, 3, face); P(1, 8, 1, 2, faceD); P(2, 4, 4, 2, b); P(3, 3, 2, 1, hi);
+      P(7, 6, 2, 2, face); P(8, 7, 1, 1, BLUSH); P(2, 7, 1, 2, EYE); P(1, 10, 2, 1, BLUSH);
+      legs([9, 11, 17, 19], 14, 4, leg);
+    } else if (kind === 'mallard') {
+      const [hi, b, lo, lo2] = tone(pick('#9b8a82')), head = '#2f8a52', headH = '#4fb070', leg = '#ee8a3a';
+      E(11, 11, 7, 3, lo); E(11, 10, 7, 3, b); P(8, 9, 7, 2, '#d8cec6'); P(9, 9, 5, 1, '#ece6e0');
+      P(16, 7, 3, 3, '#2a2530'); P(18, 7, 1, 1, '#ffffff'); P(17, 9, 1, 1, '#ffffff');
+      E(5, 8, 2, 3, '#7a4636'); E(5, 3, 3, 3, head); P(3, 1, 3, 1, headH); P(4, 6, 3, 1, '#ffffff');
+      P(0, 3, 3, 1, '#f2c84a'); P(0, 4, 2, 1, '#c99a2a'); P(4, 2, 1, 1, EYE);
+      legs([9, 12], 14, 3, leg); P(8, 16, 2, 1, leg); P(12, 16, 2, 1, leg);
+    } else if (kind === 'hen' || kind === 'rooster') {
+      const roo = kind === 'rooster';
+      const [hi, b, lo, lo2] = tone(pick('#a5502e')), red = '#e23c3c', redD = '#b82a2a', beak = '#f2b440';
+      if (roo) { P(13, 1, 3, 9, '#2c5f52'); P(16, 2, 2, 7, '#2c5f52'); P(14, 2, 2, 5, '#3f8a72'); P(16, 3, 1, 3, '#5fb090'); P(12, 6, 2, 4, '#2c5f52'); }
+      else { P(13, 4, 3, 5, lo); P(14, 3, 2, 2, b); P(14, 4, 1, 3, hi); }
+      E(10, 11, 6, 4, lo); E(9, 10, 6, 4, b); P(6, 8, 5, 1, hi); P(8, 10, 5, 1, lo); P(9, 11, 4, 1, lo2); P(10, 12, 2, 1, lo);
+      E(4, 5, 2, 3, b); P(3, 3, 2, 1, hi);
+      if (roo) { P(3, 0, 4, 2, red); P(4, -1, 1, 1, red); P(6, 0, 1, 1, redD); } else { P(3, 1, 3, 1, red); P(4, 0, 1, 1, red); }
+      P(1, 5, 2, 1, beak); P(1, 6, 1, 1, shade(beak, -0.3)); P(3, 7, 1, 2, red); P(4, 4, 1, 1, EYE);
+      legs([8, 11], roo ? 15 : 14, 3, beak); P(7, roo ? 17 : 16, 2, 1, beak); P(11, roo ? 17 : 16, 2, 1, beak);
+    } else if (kind === 'pig') {
+      const [hi, b, lo, lo2] = tone(pick('#f4b2c2')), snout = shade(pick('#f4b2c2'), -0.12);
+      E(13, 8, 9, 5, lo); E(13, 7, 9, 5, b); P(7, 3, 12, 1, hi); P(9, 4, 6, 1, hi); E(15, 10, 5, 1, lo);
+      E(5, 8, 4, 4, b); P(3, 5, 4, 1, hi);
+      P(0, 7, 2, 4, snout); P(0, 8, 1, 1, lo2); P(0, 10, 1, 1, lo2);
+      P(5, 3, 4, 2, lo2); P(6, 2, 3, 1, lo2); P(6, 3, 2, 1, BLUSH); P(3, 7, 1, 2, EYE); P(4, 10, 2, 1, BLUSH); P(9, 5, 1, 6, lo);
+      P(22, 5, 1, 2, b); P(23, 4, 1, 1, b); P(22, 3, 1, 1, b);
+      legs([8, 10, 17, 19], 12, 4, lo, lo2);
+    } else if (kind === 'goat') {
+      const [hi, b, lo, lo2] = tone(pick('#f0e6d6')), horn = '#5a4438', hoof = '#4a3530';
+      E(13, 12, 7, 4, lo); E(13, 11, 7, 4, b); P(8, 8, 11, 1, hi); P(20, 7, 1, 3, b); P(20, 6, 1, 1, b);
+      P(6, 5, 3, 7, b); P(6, 5, 1, 5, hi); P(8, 7, 1, 4, lo);
+      P(1, 3, 6, 4, b); P(2, 2, 4, 1, b); P(0, 4, 1, 2, b); P(2, 3, 2, 1, hi);
+      P(4, 0, 2, 2, horn); P(5, -1, 2, 1, horn); P(7, 0, 1, 2, horn); P(7, 3, 2, 1, b); P(8, 3, 1, 1, PINK);
+      P(2, 7, 2, 2, b); P(2, 9, 1, 1, lo); P(3, 4, 1, 1, EYE); P(1, 5, 1, 1, BLUSH);
+      legs([9, 11, 16, 18], 15, 5, b, hoof); P(9, 15, 1, 1, lo); P(16, 15, 1, 1, lo);
+    } else {
+      // ลูกสัตว์: ตัวเล็ก หัวโต แก้มชมพู
+      const nat = { lamb: '#f6f3ee', piglet: '#f6bccb', calf: '#c88a52', kid: '#e9c79c' }[kind];
+      const [hi, b, lo, lo2] = tone(pick(nat));
+      if (kind === 'lamb') {
+        E(10, 7, 5, 3, lo); E(10, 6, 5, 3, b); P(7, 4, 6, 1, hi); P(9, 6, 1, 1, lo); P(12, 7, 1, 1, lo);
+        E(4, 5, 3, 3, '#f2dcc0'); P(2, 2, 4, 2, b); P(3, 5, 1, 1, EYE); P(2, 7, 1, 1, BLUSH); P(6, 4, 2, 1, '#f2dcc0');
+        legs([7, 9, 12, 13], 10, 3, '#3a2a35');
+      } else if (kind === 'piglet') {
+        E(9, 6, 6, 3, lo); E(9, 5, 6, 3, b); P(5, 3, 7, 1, hi);
+        E(4, 6, 3, 3, b); P(0, 6, 2, 2, shade(b, -0.12)); P(4, 2, 2, 2, lo); P(3, 5, 1, 1, EYE); P(3, 8, 2, 1, BLUSH); P(15, 4, 1, 1, b);
+        legs([6, 8, 11, 13], 9, 2, lo, lo2);
+      } else if (kind === 'calf') {
+        E(11, 7, 6, 3, lo); E(11, 6, 6, 3, b); P(8, 4, 7, 1, hi); P(12, 6, 3, 2, '#f4ece0'); P(17, 5, 1, 4, b);
+        P(1, 2, 6, 6, b); P(0, 5, 4, 3, PINK); P(2, 3, 1, 2, EYE); P(5, 1, 3, 2, b); P(6, 2, 1, 1, PINK); P(2, 1, 2, 1, '#f4ece0');
+        legs([7, 9, 13, 15], 10, 4, lo, '#3a2a2a');
+      } else {
+        E(10, 9, 5, 3, lo); E(10, 8, 5, 3, b); P(7, 6, 6, 1, hi); P(11, 8, 3, 2, '#f6efe4'); P(15, 5, 1, 2, b);
+        P(1, 3, 5, 4, b); P(2, 2, 3, 1, b); P(3, 0, 1, 2, '#5a4438'); P(5, 2, 2, 1, PINK); P(2, 4, 1, 1, EYE); P(1, 6, 1, 1, BLUSH); P(4, 7, 2, 2, b);
+        legs([7, 9, 12, 14], 11, 4, b, '#4a3530');
+      }
+    }
+    addOutline(c, FARM_OUT);
+    return faceRight ? mirror(c) : c;
+  });
+}
 function petSprite(kind, frame, faceRight, pc = 0) {
+  if (FARM[kind]) return farmSprite(kind, frame, faceRight, pc);
   return cached(`p|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}`, () => {
     const c = mkCanvas(16, 16);
     const g = c.getContext('2d');
@@ -426,59 +529,6 @@ function petSprite(kind, frame, faceRight, pc = 0) {
       P(3, 5, 2, 2, patch); P(6, 5, 2, 2, patch); P(4, 5, 1, 1, '#ffffff'); P(7, 5, 1, 1, '#ffffff');
       P(5, 7, 1, 1, '#2e2235'); P(5, 8, 7, 2, patch);
       P(5, 11, 2, 1 + step, patch); P(9, 11, 2, 2 - step, patch);
-    // ---------------- สัตว์ฟาร์ม (วาดเองแบบพิกเซล หันซ้ายเป็นค่าเริ่มต้น) ----------------
-    } else if (kind === 'goose') {
-      const col = pick('#f4f1e8'), dk = shade(col, -0.18), leg = '#e8803a';
-      P(4, 7, 8, 4, col); P(11, 6, 2, 2, col); P(12, 5, 1, 1, col); P(3, 2, 2, 6, col); P(2, 0, 3, 3, col);
-      P(0, 1, 2, 1, '#f0a040'); P(1, 2, 1, 1, '#d07a2a'); P(3, 1, 1, 1, EYE);
-      P(6, 8, 5, 1, dk); P(9, 9, 2, 1, dk);
-      P(5, 11, 1, 2 - step, leg); P(4, 13 - step, 2, 1, leg); P(8, 11, 1, 1 + step, leg); P(8, 12 + step, 2, 1, leg);
-    } else if (kind === 'cow') {
-      const col = pick('#f4efe6'), dk = shade(col, -0.2), spot = col === '#f4efe6' ? '#2e2a3a' : shade(col, -0.35);
-      P(4, 4, 9, 5, col); P(13, 4, 1, 4, col); P(13, 8, 1, 1, spot);
-      P(0, 2, 4, 4, col); P(0, 4, 2, 2, '#f5a3b5'); P(3, 1, 2, 1, col); P(4, 1, 1, 1, '#f5a3b5'); P(1, 1, 1, 1, '#e8dcc0');
-      P(6, 4, 3, 2, spot); P(10, 6, 2, 2, spot); P(5, 7, 1, 1, spot); P(2, 2, 1, 1, spot); P(2, 3, 1, 1, EYE);
-      P(9, 9, 2, 1, '#f5a3b5');
-      P(4, 9, 1, 3 - step, dk); P(6, 9, 1, 2 + step, col); P(11, 9, 1, 3 - step, dk); P(12, 9, 1, 2 + step, col);
-    } else if (kind === 'sheep') {
-      const wool = pick('#f4f1e8'), wd = shade(wool, -0.12), face = '#f0dcc0', leg = '#3a3150';
-      P(3, 4, 10, 6, wool); P(4, 3, 8, 1, wool); P(12, 5, 1, 4, wool); P(5, 5, 1, 1, wd); P(9, 6, 1, 1, wd); P(7, 8, 1, 1, wd); P(11, 4, 1, 1, wd);
-      P(0, 3, 4, 4, face); P(3, 3, 2, 1, face); P(1, 2, 3, 1, wool); P(4, 3, 1, 1, '#f5a3b5'); P(1, 4, 1, 1, EYE); P(0, 6, 1, 1, '#f5a3b5');
-      P(4, 10, 1, 2 - step, leg); P(6, 10, 1, 1 + step, leg); P(10, 10, 1, 2 - step, leg); P(11, 10, 1, 1 + step, leg);
-    } else if (kind === 'mallard') {
-      const body = pick('#8a7a72'), head = '#3fa060', leg = '#e8803a';
-      P(4, 6, 8, 4, body); P(6, 7, 4, 2, '#c8bcb0'); P(11, 5, 2, 2, '#2e2a3a'); P(12, 5, 1, 1, '#ffffff');
-      P(2, 1, 4, 4, head); P(3, 5, 3, 1, '#ffffff'); P(4, 6, 2, 1, '#6b4a3a'); P(0, 3, 2, 1, '#f0c040'); P(3, 2, 1, 1, EYE); P(4, 1, 1, 1, shade(head, 0.25));
-      P(6, 10, 1, 2 - step, leg); P(9, 10, 1, 1 + step, leg);
-    } else if (kind === 'hen' || kind === 'rooster') {
-      const col = pick('#a0522d'), dk = shade(col, -0.25), lt = shade(col, 0.2), red = '#e04040';
-      P(4, 5, 7, 5, col); P(2, 2, 3, 4, col); P(5, 7, 4, 1, dk); P(6, 6, 2, 1, lt);
-      P(1, 3, 1, 1, '#f0b040'); P(2, 4, 1, 1, red); P(3, 3, 1, 1, EYE);
-      if (kind === 'rooster') { P(2, 0, 3, 2, red); P(10, 1, 3, 6, '#2f6e5a'); P(12, 0, 1, 2, '#2f6e5a'); P(11, 2, 1, 3, '#4a9e7e'); P(1, 5, 1, 1, red); }
-      else { P(2, 1, 2, 1, red); P(10, 3, 2, 3, dk); P(11, 2, 1, 1, dk); }
-      P(6, 10, 1, 2 - step, '#f0b040'); P(8, 10, 1, 1 + step, '#f0b040');
-    } else if (kind === 'pig') {
-      const col = pick('#f2a7b8'), dk = shade(col, -0.18);
-      P(3, 4, 10, 6, col); P(4, 3, 7, 1, col); P(0, 4, 4, 4, col); P(0, 6, 1, 2, '#e57a95'); P(2, 3, 2, 1, dk); P(2, 5, 1, 1, EYE);
-      P(13, 4, 1, 1, col); P(14, 3, 1, 1, col); P(6, 5, 2, 1, shade(col, 0.15));
-      P(4, 10, 1, 2 - step, dk); P(6, 10, 1, 1 + step, col); P(10, 10, 1, 2 - step, dk); P(11, 10, 1, 1 + step, col);
-    } else if (kind === 'goat') {
-      const col = pick('#efe4d0'), dk = shade(col, -0.2), hoof = '#6b4a3a';
-      P(4, 5, 8, 4, col); P(12, 4, 1, 2, col); P(2, 3, 2, 3, col); P(0, 1, 4, 3, col);
-      P(2, -1, 1, 2, '#5a4a40'); P(3, -1, 1, 1, '#5a4a40'); P(4, 1, 1, 1, '#f5a3b5'); P(1, 4, 1, 2, col); P(2, 2, 1, 1, EYE); P(0, 2, 1, 1, '#f5a3b5');
-      P(5, 9, 1, 3 - step, col); P(7, 9, 1, 2 + step, dk); P(10, 9, 1, 3 - step, col); P(11, 9, 1, 2 + step, dk);
-      P(5, 12 - step, 1, 1, hoof); P(10, 12 - step, 1, 1, hoof);
-    } else if (kind === 'lamb' || kind === 'piglet' || kind === 'calf' || kind === 'kid') {
-      // ลูกสัตว์: ตัวเล็ก หัวโต
-      const nat = { lamb: '#f4f1e8', piglet: '#f5b5c4', calf: '#c8915a', kid: '#e8c9a0' }[kind];
-      const col = pick(nat), dk = shade(col, -0.2), y = 3;
-      P(5, y + 4, 6, 4, col); P(2, y + 2, 4, 4, kind === 'lamb' ? '#f0dcc0' : col); P(3, y + 3, 1, 1, EYE);
-      if (kind === 'lamb') { P(5, y + 3, 6, 1, col); P(2, y + 1, 3, 1, col); P(6, y + 5, 1, 1, shade(col, -0.1)); }
-      if (kind === 'piglet') { P(1, y + 4, 1, 2, '#e57a95'); P(4, y + 1, 2, 1, dk); P(11, y + 4, 1, 1, col); }
-      if (kind === 'calf') { P(1, y + 4, 2, 2, '#f5a3b5'); P(5, y + 1, 2, 1, col); P(7, y + 5, 2, 2, '#f4efe6'); P(11, y + 4, 1, 3, col); }
-      if (kind === 'kid') { P(3, y + 1, 1, 1, '#5a4a40'); P(5, y + 2, 1, 1, '#f5a3b5'); P(8, y + 5, 2, 1, '#f4efe6'); P(11, y + 3, 1, 2, col); }
-      const leg = kind === 'lamb' ? '#3a3150' : dk;
-      P(5, y + 8, 1, 2 - step, leg); P(7, y + 8, 1, 1 + step, leg); P(9, y + 8, 1, 2 - step, leg); P(10, y + 8, 1, 1 + step, leg);
     }
     addOutline(c);
     return faceRight ? mirror(c) : c;

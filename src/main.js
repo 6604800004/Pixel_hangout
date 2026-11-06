@@ -906,7 +906,7 @@ function drawCharacter(c, ch, t) {
     if (ch.dir === 'left' || ch.dir === 'right') ch.rideFace = ch.dir === 'right';
     const pf = ch.walking ? Math.floor(t * 8) % 2 : 0;
     const ps = petSprite(look.pet, pf, !!ch.rideFace, look.pc || 0);
-    const k = 1.9, pw = ps.width * k, ph = ps.height * k;
+    const k = ps.width > 16 ? Math.max(1.15, 30 / ps.width) : 1.9, pw = ps.width * k, ph = ps.height * k;
     const fly = look.pet === 'fish' || look.pet === 'dragon' ? 3 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
     drawShadow(c, ch.x, ch.y, 20);
     const bob = ch.walking && pf ? -1 : 0;
@@ -925,7 +925,8 @@ function drawPet(c, ch, t) {
   drawShadow(c, pet.x, pet.y, 8);
   const fly = ch.look.pet === 'fish' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : 0;
   const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0);
-  c.drawImage(s, snap(pet.x - 8), snap(pet.y - 15 - fly));
+  if (s.width > 16) drawShadow(c, pet.x, pet.y, Math.round(s.width * 0.45));
+  c.drawImage(s, snap(pet.x - s.width / 2), snap(pet.y - s.height + 1 - fly));
 }
 
 function render(t) {
@@ -1594,7 +1595,7 @@ function openCreator(first) {
       const L = cleanLook(draft);
       g.fillStyle = 'rgba(46,34,53,.2)'; g.fillRect(19, 47, 18, 3);
       g.drawImage(charSprite(L, dir, frame, 'stand', (t % 3.3) < 0.12), 17, 13);
-      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); g.drawImage(petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc), 35, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 35); }
+      if (L.pet !== 'none') { g.fillRect(38, 48, 10, 2); { const ps = petSprite(L.pet, Math.floor(t * 4) % 2, false, L.pc); g.drawImage(ps, 43 - ps.width / 2, L.pet === 'fish' ? 28 + Math.round(Math.sin(t * 3)) : 51 - ps.height); } }
     });
     if (!nick) setTimeout(() => nameInput.focus(), 50);
   });
