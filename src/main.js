@@ -1068,7 +1068,7 @@ function drawCharacter(c, ch, t) {
       const k = 1.5, pw = ps.width * k, ph = ps.height * k, face = !!ch.rideFace;
       const carX = ch.x - pw / 2 + shake, carY = ch.y - ph + 2 + (ch.walking && pf ? -0.5 : 0);
       drawShadow(c, ch.x, ch.y, 34);
-      const cockpit = carX + (face ? ps.width - 21 : 21) * k, rim = carY + 7 * k;
+      const cockpit = carX + (face ? ps.width - 23 : 23) * k, rim = carY + 6 * k;
       c.save(); c.beginPath(); c.rect(cockpit - 20, rim - 40, 40, 40 + 2 * k); c.clip();
       c.drawImage(charSprite(look, face ? 'right' : 'left', 0, 'sit', blink), snap(cockpit - 11), snap(rim - 22));
       c.restore();
