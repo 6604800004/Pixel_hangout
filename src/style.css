@@ -140,7 +140,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .msg .text { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
 .msg.cont { margin-top: -4px; }
 .msg.cont canvas, .msg.cont .meta { display: none; }
-.msg.cont .text { grid-column: 2; }
+.msg.cont .text, .msg .att { grid-column: 2; }
 .msg.adm { position: relative; padding-right: 30px; border-radius: 8px; }
 .msg.adm:hover { background: rgba(255,143,171,.08); }
 .mdel { position: absolute; right: 0; top: 50%; transform: translateY(-50%); min-width: 24px; height: 22px; padding: 0 5px; border: 0; border-radius: 6px;
@@ -310,6 +310,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card.enter .field { text-align: left; }
 .card.enter .foot { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
 .card.enter .foot .pbtn.big { width: auto; flex: 1; }
+
+/* ---------- ลิงก์ + ไฟล์แนบในแชต ---------- */
+#msgs .text a { color: #2f6fd0; text-decoration: underline; word-break: break-all; }
+.att { margin: 4px 0 2px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; max-width: 100%; }
+.att img { max-width: min(240px, 100%); max-height: 260px; border-radius: 10px; border: 2px solid var(--ink); cursor: zoom-in; object-fit: cover; background: #eee; }
+.att video { max-width: min(260px, 100%); max-height: 240px; border-radius: 10px; border: 2px solid var(--ink); background: #000; }
+.att audio { max-width: 100%; height: 36px; }
+.fchip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 10px; background: #fff; color: var(--ink); text-decoration: none; font-size: 13px; }
+.fchip b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.fchip span { flex: none; font-size: 11px; color: var(--ink2); }
+.att img + .fchip { padding: 2px 8px; font-size: 11px; border-width: 1.5px; }
+.att .gone { font-size: 12px; color: var(--ink2); }
+#chatForm .attach { flex: none; width: 40px; padding: 0; font-size: 18px; }
+.attach-prog { position: relative; height: 18px; margin: 0 10px; border-radius: 6px; background: var(--paper2); overflow: hidden; }
+.attach-prog i { position: absolute; left: 0; top: 0; bottom: 0; background: #ff8fab; transition: width .2s; }
+.attach-prog::after { content: attr(data-name); position: absolute; inset: 0; font-size: 11px; line-height: 18px; padding: 0 8px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#chat.drop { outline: 4px dashed #ff8fab; outline-offset: -8px; }
 
 @media (max-width: 760px) { .upd-alert { gap: 10px; padding: 10px 12px 14px; } .upd-txt b { font-size: 17px; } .upd-txt span { font-size: 12px; } .upd-ico { font-size: 26px; } }
 

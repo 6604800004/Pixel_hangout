@@ -34,6 +34,28 @@ const BOARD_DIR = path.join(DATA_DIR, 'board');
 const BOARD_MAX = Number(process.env.BOARD_MAX) || 20;      // รูปสูงสุดต่อกระดาน
 const BOARD_TTL = 24 * 60 * 60 * 1000;
 const BOARD_MAX_BYTES = 3 * 1024 * 1024;
+// ไฟล์แนบในแชต: เก็บ 7 วัน ไฟล์ละไม่เกิน 25MB รวมไม่เกิน 800MB (เกินแล้วลบเก่าสุดก่อน)
+const FILE_DIR = path.join(DATA_DIR, 'files');
+const FILE_INDEX = path.join(FILE_DIR, 'index.json');
+const FILE_MAX = Number(process.env.FILE_MAX_MB || 25) * 1024 * 1024;
+const FILE_TOTAL = Number(process.env.FILE_TOTAL_MB || 800) * 1024 * 1024;
+const FILE_TTL = 7 * 24 * 60 * 60 * 1000;
+// ชนิดที่เปิดดูในเบราว์เซอร์ได้ (ที่เหลือ = ดาวน์โหลดเท่านั้น, ทุกไฟล์ถูก sandbox ห้ามรันสคริปต์)
+const INLINE_TYPES = /^(image\/(png|jpeg|gif|webp|avif)|video\/(mp4|webm|ogg|quicktime)|audio\/(mpeg|mp4|ogg|wav|webm|aac|x-m4a)|application\/pdf|text\/plain)$/;
+let files = {};
+try { files = JSON.parse(fs.readFileSync(FILE_INDEX, 'utf8')) || {}; } catch {}
+const saveFiles = () => fs.mkdir(FILE_DIR, { recursive: true }, () => fs.writeFile(FILE_INDEX, JSON.stringify(files), () => {}));
+function pruneFiles() {
+  const now = Date.now();
+  let list = Object.entries(files).sort((a, b) => a[1].ts - b[1].ts);
+  let total = list.reduce((s, [, f]) => s + f.size, 0);
+  for (const [id, f] of list) {
+    if (now - f.ts > FILE_TTL || total > FILE_TOTAL || !fs.existsSync(path.join(FILE_DIR, id))) {
+      total -= f.size; delete files[id]; fs.unlink(path.join(FILE_DIR, id), () => {});
+    }
+  }
+  saveFiles();
+}
 
 const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
 if (process.env.TURN_URL) {
@@ -107,6 +129,43 @@ const server = http.createServer((req, res) => {
       })
       .catch(() => out(502, { error: 'lastfm' }));
     return;
+  }
+  // ---- แนบไฟล์ในแชต ----
+  if (url.pathname === '/api/file' && req.method === 'POST') {
+    if (ROOM_PASSWORD && req.headers['x-room-password'] !== ROOM_PASSWORD) { res.writeHead(403); return res.end('{"error":"password"}'); }
+    const len = Number(req.headers['content-length'] || 0);
+    if (len > FILE_MAX) { res.writeHead(413); return res.end(JSON.stringify({ error: 'big', max: FILE_MAX })); }
+    let name = 'file';
+    try { name = decodeURIComponent(String(req.headers['x-name'] || 'file')); } catch {}
+    name = name.replace(/[\u0000-\u001f\/\\:*?"<>|]/g, '_').slice(-80) || 'file';
+    const type = String(req.headers['content-type'] || 'application/octet-stream').split(';')[0].trim().toLowerCase().slice(0, 80);
+    const chunks = []; let size = 0, tooBig = false;
+    req.on('data', (c) => { size += c.length; if (size > FILE_MAX) { tooBig = true; res.writeHead(413); res.end(JSON.stringify({ error: 'big', max: FILE_MAX })); req.destroy(); } else chunks.push(c); });
+    req.on('end', () => {
+      if (tooBig || !size) { if (!tooBig) { res.writeHead(400); res.end('{"error":"empty"}'); } return; }
+      const id = 'f' + crypto.randomBytes(10).toString('hex');
+      fs.mkdir(FILE_DIR, { recursive: true }, () => fs.writeFile(path.join(FILE_DIR, id), Buffer.concat(chunks), (err) => {
+        if (err) { res.writeHead(500); return res.end('{"error":"save"}'); }
+        files[id] = { name, type, size, ts: Date.now() };
+        pruneFiles();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ id, name, type, size, url: `/f/${id}/${encodeURIComponent(name)}` }));
+      }));
+    });
+    return;
+  }
+  const fm = url.pathname.match(/^\/f\/(f[0-9a-f]{20})(?:\/.*)?$/);
+  if (fm) {
+    const f = files[fm[1]];
+    if (!f) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('ไฟล์นี้หมดอายุหรือถูกลบแล้ว'); }
+    const inline = INLINE_TYPES.test(f.type) && url.searchParams.get('dl') !== '1';
+    res.writeHead(200, {
+      'Content-Type': inline ? (f.type === 'text/plain' ? 'text/plain; charset=utf-8' : f.type) : 'application/octet-stream',
+      'Content-Length': f.size,
+      'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(f.name)}`,
+      'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': 'sandbox', 'Cache-Control': 'private, max-age=86400',
+    });
+    return fs.createReadStream(path.join(FILE_DIR, fm[1])).on('error', () => res.end()).pipe(res);
   }
   // ---- อัปโหลดรูปขึ้นกระดาน ----
   const up = url.pathname.match(/^\/api\/board\/([\w.:-]{1,48})$/);
@@ -455,6 +514,7 @@ function sweepBoard() {
 sweepBoard();
 setInterval(sweepBoard, 5 * 60 * 1000);
 
+setInterval(pruneFiles, 60 * 60 * 1000);
 setInterval(() => {
   for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; ws.ping(); }
 }, 12000); // ตรวจการเชื่อมต่อที่ตายแล้วถี่ขึ้น ไม่ให้มีตัวละครค้างในห้องนาน

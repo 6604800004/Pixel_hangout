@@ -229,6 +229,20 @@ function makeWsNet(cfg) {
       cols.board.set(j.id, { ...j.doc, id: j.id }); emitCol('board');
       return j;
     },
+    // แนบไฟล์ในแชต (มีแถบความคืบหน้า)
+    uploadFile(file, onProgress) {
+      return new Promise((resolve, reject) => {
+        const x = new XMLHttpRequest();
+        x.open('POST', '/api/file');
+        x.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        x.setRequestHeader('X-Name', encodeURIComponent(file.name || 'file'));
+        x.setRequestHeader('X-Room-Password', net.password || '');
+        x.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+        x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch {} if (x.status === 200 && j.id) resolve(j); else { const err = new Error(j.error || 'upload'); err.code = j.error; err.max = j.max; reject(err); } };
+        x.onerror = () => reject(new Error('network'));
+        x.send(file);
+      });
+    },
     clearBoard(b) { for (const [id, d] of cols.board) if (d.b === b) cols.board.delete(id); emitCol('board'); send({ t: 'board-clear', b }); },
     boardUrl(id, doc) { return `/board/${id}.${(doc && doc.ext) || 'jpg'}`; },
     onSignal(cb) { L.signal.push(cb); },

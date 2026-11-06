@@ -413,11 +413,12 @@ function onPeers(list) {
     if (Array.isArray(p.say)) {
       for (const m of p.say.slice(-3)) {
         if (!m || typeof m.i !== 'string' || typeof m.t !== 'string' || rt.saySeen.has(m.i)) continue;
+        const mf = cleanFile(m.f);
         rt.saySeen.add(m.i);
         // ข้อความใหม่ขึ้นบนหัวเสมอ (แม้แชตจากฐานข้อมูลจะมาถึงก่อน presence) — saySeen กันขึ้นซ้ำ, isNew = เพิ่งเห็นคนนี้ ไม่โชว์ข้อความเก่า
         const fresh = !isNew;
-        addMessage({ id: m.i, by: peer.by || p.uid || peer.key, n: p.n, l: p.l, text: m.t.slice(0, 200), ts: Number(m.ts) || Date.now() });
-        if (fresh) { rt.bubble = { id: m.i, text: m.t.slice(0, 200), until: now + 6000, lines: null }; SFX.msg(); }
+        addMessage({ id: m.i, by: peer.by || p.uid || peer.key, n: p.n, l: p.l, text: m.t.slice(0, 200), ts: Number(m.ts) || Date.now(), f: mf });
+        if (fresh) { rt.bubble = { id: m.i, text: (m.t || (mf ? fileLabel(mf) : '')).slice(0, 200), until: now + 6000, lines: null }; SFX.msg(); }
       }
     }
   }
@@ -439,6 +440,27 @@ function onPeers(list) {
 // ================================================================== แชต ====
 G.chatDeleted = new Set();
 G.isAdmin = !!lsGet('pixel.admin', '');
+// ไฟล์แนบ: รับเฉพาะลิงก์ไฟล์ของเซิร์ฟเวอร์เราเอง (/f/...)
+function cleanFile(f) {
+  if (!f || typeof f !== 'object' || typeof f.url !== 'string' || !/^\/f\/f[0-9a-f]{20}\//.test(f.url)) return null;
+  return { url: f.url.slice(0, 300), name: String(f.name || 'file').slice(0, 80), type: String(f.type || '').slice(0, 80), size: Number(f.size) || 0, w: Number(f.w) || 0, h: Number(f.h) || 0 };
+}
+const fmtSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? Math.round(n / 1024) + ' KB' : n + ' B');
+const fileLabel = (f) => (/^image\//.test(f.type) ? '🖼️ รูปภาพ' : /^video\//.test(f.type) ? '🎬 วิดีโอ' : /^audio\//.test(f.type) ? '🎵 ' + f.name : '📎 ' + f.name);
+// ทำลิงก์ในข้อความให้กดได้ (เปิดแท็บใหม่)
+function linkify(elm, text) {
+  const re = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+  let last = 0, m;
+  while ((m = re.exec(text))) {
+    let url = m[0]; const trail = url.match(/[).,!?;:'"\]]+$/); if (trail) url = url.slice(0, -trail[0].length);
+    if (m.index > last) elm.append(document.createTextNode(text.slice(last, m.index)));
+    const a = document.createElement('a'); a.href = /^www\./i.test(url) ? 'https://' + url : url; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; a.textContent = url;
+    a.onclick = (e) => e.stopPropagation();
+    elm.append(a);
+    last = m.index + url.length; re.lastIndex = last;
+  }
+  if (last < text.length) elm.append(document.createTextNode(text.slice(last)));
+}
 function addMessage(m) {
   if (G.messages.has(m.id) || G.chatDeleted.has(m.id)) return;
   G.messages.set(m.id, m);
@@ -475,8 +497,26 @@ function renderChat() {
       const t = document.createElement('time'); t.textContent = new Date(m.ts).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
       meta.append(b, t); row.append(meta);
     }
-    const tx = document.createElement('div'); tx.className = 'text'; tx.textContent = m.text;
-    row.append(tx);
+    if (m.text) { const tx = document.createElement('div'); tx.className = 'text'; linkify(tx, m.text); row.append(tx); }
+    if (m.f) {
+      const f = m.f, att = document.createElement('div'); att.className = 'att';
+      if (/^image\//.test(f.type)) {
+        const img = document.createElement('img'); img.src = f.url; img.alt = f.name; img.loading = 'lazy';
+        if (f.w && f.h) img.style.aspectRatio = `${f.w} / ${f.h}`;
+        img.onclick = () => openImage(f.url);
+        img.onerror = () => { att.innerHTML = ''; att.append(Object.assign(document.createElement('span'), { className: 'gone', textContent: '🖼️ รูปนี้หมดอายุแล้ว' })); };
+        att.append(img);
+      } else if (/^video\/(mp4|webm|ogg|quicktime)/.test(f.type)) {
+        const v = document.createElement('video'); v.src = f.url; v.controls = true; v.preload = 'metadata'; v.playsInline = true; att.append(v);
+      } else if (/^audio\//.test(f.type)) {
+        const a = document.createElement('audio'); a.src = f.url; a.controls = true; a.preload = 'none'; att.append(a);
+      }
+      const chip = document.createElement('a'); chip.className = 'fchip'; chip.href = f.url + '?dl=1'; chip.target = '_blank'; chip.rel = 'noopener'; chip.download = f.name;
+      chip.append(Object.assign(document.createElement('b'), { textContent: (/^image\//.test(f.type) ? '⬇️ ' : '📎 ') + f.name }), Object.assign(document.createElement('span'), { textContent: fmtSize(f.size) }));
+      att.append(chip);
+      row.append(att);
+    }
+
     if (G.isAdmin) {
       // แอดมิน: แตะ ✕ แล้วแตะ "ลบ" อีกครั้งเพื่อยืนยัน
       row.classList.add('adm');
@@ -565,18 +605,19 @@ function chatCommand(text) {
   if (m) { G.net.admin('kick', key, m[1].trim(), 0); return true; }
   return false;
 }
-function sendChat(text) {
+function sendChat(text, file) {
   text = text.trim().slice(0, 200);
-  if (!text) return;
-  if (chatCommand(text)) return;
+  if (!text && !file) return;
+  if (!file && chatCommand(text)) return;
   const ts = Date.now();
   const m = { i: randomId(9), t: text, ts };
+  if (file) m.f = file;
   G.mySay = [...G.mySay.slice(-2), m];
   pres({ say: G.mySay });
-  addMessage({ id: m.i, by: myBy(), n: G.me.nick, l: G.me.look, text, ts });
-  G.me.bubble = { id: m.i, text, until: performance.now() + 6000, lines: null };
+  addMessage({ id: m.i, by: myBy(), n: G.me.nick, l: G.me.look, text, ts, f: file || null });
+  G.me.bubble = { id: m.i, text: text || fileLabel(file), until: performance.now() + 6000, lines: null };
   if (G.net.hasDb && G.net.canWrite !== false) {
-    G.net.set('chat', m.i, { uid: G.net.uid || '', n: G.me.nick, l: G.me.look, text, ts }).then(pruneChat).catch(() => {});
+    G.net.set('chat', m.i, { uid: G.net.uid || '', n: G.me.nick, l: G.me.look, text, ts, ...(file ? { f: file } : {}) }).then(pruneChat).catch(() => {});
   }
   const box = $('#msgs'); requestAnimationFrame(() => (box.scrollTop = box.scrollHeight));
 }
@@ -620,6 +661,37 @@ $('#chatForm').addEventListener('submit', (e) => {
   if (!isMobile()) $('#chatInput').blur();
 });
 $('#chatClose').onclick = () => setChatOpen(false);
+// ---- แนบรูป/ไฟล์: ปุ่ม 📎 · วางรูปจากคลิปบอร์ด · ลากไฟล์มาวางในช่องแชต ----
+async function imgSize(file) {
+  if (!/^image\//.test(file.type) || !window.createImageBitmap) return {};
+  try { const b = await createImageBitmap(file); const r = { w: b.width, h: b.height }; if (b.close) b.close(); return r; } catch { return {}; }
+}
+async function attachFiles(list) {
+  if (!G.joined) return;
+  if (!G.net.uploadFile) { toast('แนบไฟล์ได้เฉพาะเวอร์ชันบนเว็บ (onrender.com)'); return; }
+  const files = [...list].slice(0, 5);
+  for (const file of files) {
+    if (file.size > 25 * 1024 * 1024) { toast(`${file.name} ใหญ่เกิน 25MB`, 4000); continue; }
+    const cap = files.length === 1 ? $('#chatInput').value.trim() : '';
+    const bar = $('#attachProg'); bar.classList.remove('hidden'); bar.firstElementChild.style.width = '0%'; bar.dataset.name = `กำลังส่ง ${file.name}…`;
+    try {
+      const [res, sz] = await Promise.all([G.net.uploadFile(file, (p) => (bar.firstElementChild.style.width = Math.round(p * 100) + '%')), imgSize(file)]);
+      const f = cleanFile({ ...res, ...sz });
+      if (f) { sendChat(cap, f); if (cap) $('#chatInput').value = ''; }
+    } catch (e) { toast(e.code === 'big' ? `${file.name} ใหญ่เกินไป` : e.code === 'password' ? 'ต้องใส่รหัสผ่านห้องก่อน' : `ส่ง ${file.name} ไม่สำเร็จ`, 4000); }
+    bar.classList.add('hidden');
+  }
+}
+$('#attachBtn').onclick = () => $('#attachInput').click();
+$('#attachInput').onchange = () => { const fl = $('#attachInput').files; if (fl && fl.length) attachFiles(fl); $('#attachInput').value = ''; };
+$('#chatInput').addEventListener('paste', (e) => { const fl = [...((e.clipboardData && e.clipboardData.files) || [])]; if (fl.length) { e.preventDefault(); attachFiles(fl); } });
+{
+  const chatEl = $('#chat');
+  ['dragenter', 'dragover'].forEach((ev) => chatEl.addEventListener(ev, (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); chatEl.classList.add('drop'); } }));
+  ['dragleave', 'drop'].forEach((ev) => chatEl.addEventListener(ev, (e) => { if (ev === 'dragleave' && chatEl.contains(e.relatedTarget)) return; chatEl.classList.remove('drop'); }));
+  chatEl.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); attachFiles(e.dataTransfer.files); } });
+}
+
 $('#helpBtn').onclick = () => showHelp();
 
 // ================================================================ โต๊ะ ====
@@ -2069,7 +2141,8 @@ function frame(ms) {
   if (net.onUpdate) net.onUpdate(() => updateCountdown(15));
   if (net.onPoke) net.onPoke(pokeReceived);
   if (net.onChatDel) net.onChatDel((ids) => {
-    const list = ids === 'all' ? [...G.messages.values()].filter((x) => !x.sys).map((x) => x.id) : ids;
+    // ล้างทั้งหมด = ล้างข้อความระบบ (เข้า/ออก, help ฯลฯ) ในเครื่องด้วย ไม่ให้เหลือค้าง
+    const list = ids === 'all' ? [...G.messages.values()].map((x) => x.id) : ids;
     for (const id of list) { G.chatDeleted.add(id); G.messages.delete(id); }
     // ลบบับเบิลเหนือหัวของข้อความที่ถูกลบด้วย
     for (const ch of [G.me, ...G.others.values()]) if (ch.bubble && (ids === 'all' || list.includes(ch.bubble.id))) ch.bubble = null;
@@ -2110,7 +2183,7 @@ function frame(ms) {
   });
   net.watch('chat', (docs) => {
     G.chatDocs = docs;
-    for (const d of docs) if (typeof d.text === 'string') addMessage({ id: d.id, by: d.uid || d.id, n: d.n, l: d.l, text: d.text.slice(0, 200), ts: Number(d.ts) || 0 });
+    for (const d of docs) if (typeof d.text === 'string') addMessage({ id: d.id, by: d.uid || d.id, n: d.n, l: d.l, text: d.text.slice(0, 200), ts: Number(d.ts) || 0, f: cleanFile(d.f) });
   });
   net.watch('settings', (docs) => {
     const s = docs.find((d) => d.id === 'room');
