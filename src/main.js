@@ -135,7 +135,7 @@ function fillCenter(c, text, cx, y) {
 }
 function rrect(c, x, y, w, h, r) { c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); }
 function myBy() { return G.net.uid || G.net.myKey || 'me'; }
-function lookColor(look) { return CLOTH_COLORS[cleanLook(look).tc]; }
+function lookColor(look) { return colOf(cleanLook(look).tc, CLOTH_COLORS) || '#ff8fab'; } // รองรับสีเลือกเอง (hex)
 function headCanvas(look, size = 26) {
   const c = mkCanvas(18, 18);
   c.getContext('2d').drawImage(charSprite(cleanLook(look), 'down', 0, 'stand', false), 2, 6, 18, 18, 0, 0, 18, 18);
@@ -486,7 +486,7 @@ function renderChat() {
   const list = [...G.messages.values()].sort((a, b) => a.ts - b.ts);
   if (!list.length) { const e = document.createElement('div'); e.className = 'sys'; e.textContent = 'ยังไม่มีข้อความ ทักเพื่อนได้เลย 👋'; box.append(e); }
   let prev = null;
-  for (const m of list) {
+  for (const m of list) try {
     if (m.sys) { const e = document.createElement('div'); e.className = 'sys' + (m.help ? ' help' : ''); e.textContent = m.text; box.append(e); prev = null; continue; }
     const row = document.createElement('div');
     const cont = prev && prev.by === m.by && m.ts - prev.ts < 180000;
@@ -531,7 +531,7 @@ function renderChat() {
     }
     box.append(row);
     prev = m;
-  }
+  } catch (e) { console.warn('chat render', e); } // ข้อความเดียวพัง ไม่ให้ทั้งแชทหาย
   if (atBottom) box.scrollTop = box.scrollHeight;
 }
 // คำสั่งแอดมินในแชต (ไม่ถูกส่งเป็นข้อความ): admin <รหัส> · kick all · kick ชื่อ

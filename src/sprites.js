@@ -44,7 +44,7 @@ function cleanLook(l) {
 
 // ---------- ยูทิลสี / แคนวาส ----------
 function hexToRgb(h) {
-  const n = parseInt(h.slice(1), 16);
+  const n = parseInt(String(h || '#888888').slice(1), 16) || 0;
   return [n >> 16, (n >> 8) & 255, n & 255];
 }
 function shade(hex, amt) {
