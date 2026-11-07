@@ -307,6 +307,7 @@ function updatePet(owner, pet, dt) {
     const sp = Math.min(d, (owner.walking ? 80 : 40) * dt);
     pet.x += (dx / d) * sp; pet.y += (dy / d) * sp; pet.ft += dt;
     if (Math.abs(dx) > 1) pet.face = dx > 0;
+    if (Math.abs(dy) > Math.abs(dx) * 1.2 && Math.abs(dy) > 1) pet.vert = dy > 0 ? 'down' : 'up'; else if (Math.abs(dx) > Math.abs(dy) * 1.2) pet.vert = null;
   } else pet.ft = 0;
   if (!owner.walking && d <= 2) pet.face = owner.x > pet.x;
 }
@@ -1063,6 +1064,19 @@ function drawCharacter(c, ch, t) {
     if (ch.dir === 'left' || ch.dir === 'right') ch.rideFace = ch.dir === 'right';
     const pf = ch.walking ? Math.floor(t * 8) % 2 : 0;
     const ps = petSprite(look.pet, pf, !!ch.rideFace, look.pc || 0, carCols(look));
+    if (look.pet === 'f1' && (ch.dir === 'up' || ch.dir === 'down')) {
+      // รถ F1 ขับขึ้น/ลง: ภาพมุมบน แล้ววาดหัวคนขับโผล่จากห้องนักขับ
+      const up = ch.dir === 'up', ts = f1TopSprite(up, pf, look.pc || 0, carCols(look)), k = 1.5, pw = ts.width * k, ph = ts.height * k;
+      const carX = ch.x - pw / 2 + shake, carY = ch.y - 10 - ph / 2 + (ch.walking && pf ? 0.5 : 0);
+      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(snap(carX + 5), snap(carY + 6), Math.round(pw - 7), Math.round(ph - 7));
+      c.drawImage(ts, snap(carX), snap(carY), pw, ph);
+      const hx = carX + 13 * k, hy = carY + (up ? 20 : ts.height - 20) * k;
+      c.save(); c.beginPath(); c.rect(hx - 14, hy - 24, 28, 31); c.clip();
+      c.drawImage(charSprite(look, up ? 'up' : 'down', 0, 'stand', blink), snap(hx - 11), snap(hy - 15));
+      c.restore();
+      if (ch.walking) { c.fillStyle = 'rgba(255,255,255,.55)'; for (let i = 0; i < 3; i++) { const L = 6 + ((t * 40 + i * 7) % 10); const ly = up ? carY + ph + 2 : carY - L - 2; c.fillRect(Math.round(carX + 6 + i * (pw - 12) / 2), Math.round(ly), 1, Math.round(L)); } }
+      return;
+    }
     if (look.pet === 'f1') {
       // รถ F1: คนนั่งอยู่ในห้องนักขับ (เห็นแค่หัว) แล้ววาดตัวรถทับ
       const k = 1.5, pw = ps.width * k, ph = ps.height * k, face = !!ch.rideFace;
@@ -1123,6 +1137,12 @@ function drawNpc(c, n, t) {
 function drawPet(c, ch, t) {
   const pet = ch.pet;
   const frame = pet.ft > 0 ? Math.floor(pet.ft * 8) % 2 : Math.floor(t * 1.5) % 2 && ch.look.pet === 'slime' ? 1 : 0;
+  if (ch.look.pet === 'f1' && pet.vert) {
+    const ts = f1TopSprite(pet.vert === 'up', frame, ch.look.pc || 0, carCols(ch.look));
+    c.fillStyle = 'rgba(0,0,0,.16)'; c.fillRect(snap(pet.x - ts.width / 2 + 3), snap(pet.y - ts.height + 8), ts.width - 4, ts.height - 4);
+    c.drawImage(ts, snap(pet.x - ts.width / 2), snap(pet.y - ts.height + 4));
+    return;
+  }
   drawShadow(c, pet.x, pet.y, 8);
   const fly = ch.look.pet === 'cloud' ? 8 + Math.round(Math.sin(t * 3 + ch.seed) * 1.5) : ch.look.pet === 'fish' ? 4 + Math.round(Math.sin(t * 2 + ch.seed)) : 0;
   const s = petSprite(ch.look.pet, ch.look.pet === 'fish' ? Math.floor(t * 3) % 2 : frame, pet.face, ch.look.pc || 0, carCols(ch.look));
@@ -1316,7 +1336,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     const p = ch === G.me ? null : ch.p;
     const [sx, sy0] = S(ch.x, ch.y);
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
-    const rLift = isRiding(ch) ? (ch.look.pet === 'f1' ? 0 : RIDE_LIFT + 2 + (ch.look.pet === 'cloud' ? 9 : ch.look.pet === 'fish' || ch.look.pet === 'dragon' ? 4 : 0)) : 0;
+    const rLift = isRiding(ch) ? (ch.look.pet === 'f1' ? (ch.dir === 'up' || ch.dir === 'down' ? 12 : 0) : RIDE_LIFT + 2 + (ch.look.pet === 'cloud' ? 9 : ch.look.pet === 'fish' || ch.look.pet === 'dragon' ? 4 : 0)) : 0;
     let top = sy0 - ((ch.sit ? 33 : 35) + rLift) * scale;
     const away = ch !== G.me && (G.voice ? !G.audible.has(ch.key) : zoneAt(ch.x, ch.y) !== G.zone);
     c.globalAlpha = away && G.voice ? 0.5 : 1;
@@ -1669,6 +1689,18 @@ function optRow(label, items, isSel, onPick, kind = 'chip') {
   return o;
 }
 // แถวเลือกสี + ปุ่ม 🎨 เลือกสีเองได้ทุกสี
+// ช่องกรอกเบอร์นักแข่ง (แสดงบนหมวกนักแข่ง + รถ F1) — ตัวเลข 0–99
+function numRow() {
+  const o = el('div', 'opt');
+  o.append(el('span', null, '🔢 เบอร์นักแข่ง (บนหมวก + รถ F1) — กรอกเลข 0–99'));
+  const row = el('div', 'row');
+  const inp = el('input', 'num-in'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.maxLength = 2; inp.placeholder = '3';
+  inp.value = G.draftLook && G.draftLook.num ? G.draftLook.num : '';
+  inp.addEventListener('input', () => { const v = inp.value.replace(/\D/g, '').slice(0, 2); if (v !== inp.value) inp.value = v; if (G.draftLook) { if (v) G.draftLook.num = v; else delete G.draftLook.num; } });
+  row.append(inp);
+  o.append(row);
+  return o;
+}
 function colorRow(label, pal, get, set, natural) {
   // สร้างปุ่มครั้งเดียว แล้วแค่เปลี่ยนไฮไลต์ — ห้ามสร้าง <input type=color> ใหม่ระหว่างเลือก
   // (iPhone จะปิดหน้าต่างเลือกสีทันทีถ้า input ถูกลบ/สร้างใหม่ ต้องกดเปิดใหม่เรื่อยๆ)
@@ -1728,6 +1760,7 @@ function startPreview(cv, drawFn) {
 
 function openCreator(first) {
   const draft = { ...G.me.look };
+  G.draftLook = draft;
   let nick = G.me.nick || G.net.profileName || lsGet('pixel.nick', '') || '';
   openModal((card) => {
     card.classList.add('split');
@@ -1780,6 +1813,7 @@ function openCreator(first) {
       optRow('เครื่องประดับ', visItems(ACCS, 'acc'), (it) => draft.acc === it[0], (it) => (draft.acc = it[0])),
       optRow('สัตว์เลี้ยงคู่ใจ', visItems(PETS, 'pet'), (it) => draft.pet === it[0], (it) => (draft.pet = it[0])),
       colorRow('สีสัตว์เลี้ยง / สีตัวรถ (ช่องแรก = สีธรรมชาติ)', PET_COLORS, () => draft.pc || 0, (v) => (draft.pc = v), 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'),
+      ...(visItems(ACCS, 'acc').some((a) => a[0] === 'racehelmet') || visItems(PETS, 'pet').some((p) => p[0] === 'f1') ? [numRow()] : []),
       ...(visItems(PETS, 'pet').some((p) => p[0] === 'f1') ? [
         colorRow('🏎️ สีลายรถ F1 — ลายหลัก', CLOTH_COLORS, () => draft.k1 ?? '#36e0ff', (v) => (draft.k1 = v)),
         colorRow('🏎️ สีลายรถ F1 — ขอบลาย/ปลายปีก', CLOTH_COLORS, () => draft.k2 ?? '#ff3fa4', (v) => (draft.k2 = v)),

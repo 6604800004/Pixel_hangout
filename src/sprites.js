@@ -38,6 +38,7 @@ function cleanLook(l) {
   if (l.sex === 'f' || l.sex === 'm') o.sex = l.sex;
   if (inRange(l.pc, PET_COLORS.length) || isHex(l.pc)) o.pc = isHex(l.pc) ? l.pc.toLowerCase() : l.pc;
   for (const k of ['k1', 'k2']) if (okCol(l[k], CLOTH_COLORS.length)) o[k] = isHex(l[k]) ? l[k].toLowerCase() : l[k]; // สีลายรถ F1
+  if (typeof l.num === 'string' && /^\d{1,2}$/.test(l.num)) o.num = l.num; // เบอร์นักแข่ง (หมวก + รถ)
   return o;
 }
 
@@ -108,7 +109,7 @@ function painter(g, ox = 0, oy = 0) {
 // ============================================================================
 const CHAR_W = 22, CHAR_H = 36;
 function charSprite(look, dir, frame, pose, blink) {
-  const key = `c|${look.sex}|${look.skin}|${look.hair}|${look.hc}|${look.top}|${look.tc}|${look.bc}|${look.acc}|${dir}|${frame}|${pose}|${blink ? 1 : 0}`;
+  const key = `c|${look.sex}|${look.skin}|${look.hair}|${look.hc}|${look.top}|${look.tc}|${look.bc}|${look.acc}|${look.acc === 'racehelmet' ? look.num || '3' : ''}|${dir}|${frame}|${pose}|${blink ? 1 : 0}`;
   return cached(key, () => {
     const flip = dir === 'right';
     const d = flip ? 'left' : dir;
@@ -346,7 +347,7 @@ function charSprite(look, dir, frame, pose, blink) {
     if (acc === 'halo') { U(7, -2, 8, 1, '#ffe680'); U(6, -1, 1, 1, '#ffe680'); U(15, -1, 1, 1, '#ffe680'); U(7, 0, 8, 1, '#ffe680'); }
     if (acc === 'racehelmet') {
       // ⭐ หมวกนักแข่ง: หมวกเต็มใบ เปิดหน้า (ยกบังลมขึ้น)
-      const num3 = (x0, y0, col) => ['###', '..#', '.##', '..#', '###'].forEach((r, y) => { for (let x = 0; x < 3; x++) if (r[flip ? 2 - x : x] === '#') U(x0 + x, y0 + y, 1, 1, col); }); // เลข 3 (หันขวาภาพจะถูกกลับ → วาดกลับไว้ก่อน)
+      const NUM = look.num || '3', nw = numWidth(NUM), num3 = (x0, y0, col) => drawNum(U, x0 - (nw > 3 ? 2 : 0), y0, NUM, col, flip); // เบอร์ (หันขวาภาพจะถูกกลับ → วาดกลับไว้ก่อน)
       const Hc = hc0, HD = shade(hc0, -0.18), HL = shade(hc0, 0.25), AC = colOf(look.bc, CLOTH_COLORS) || '#ff9a3c', VI = '#1d1f2e'; // สีหมวก = สีผม (ผมซ่อนใต้หมวก) · ลาย = สีกางเกง
       if (d === 'up') { U(5, 1, 12, 1, Hc); U(4, 2, 14, 1, Hc); U(3, 3, 16, 16, Hc); U(17, 4, 2, 14, HD); U(3, 15, 16, 1, AC); num3(9, 6, AC); U(5, 18, 12, 1, HD); }
       else if (side) {
@@ -406,8 +407,15 @@ function charSprite(look, dir, frame, pose, blink) {
 // ---------------- สัตว์ฟาร์มแบบละเอียด (ตัวใหญ่ขึ้น แรเงา 3 ระดับ เส้นขอบน้ำตาลเข้ม) ----------------
 const FARM = { f1: [52, 15], cloud: [26, 13], cat: [19, 16], dog: [21, 17], chick: [12, 13], slime: [16, 13], bunny: [17, 17], fish: [20, 20], dino: [23, 20], trex: [27, 25], panda: [22, 22], fox: [23, 15], penguin: [13, 18], duck: [18, 16], hamster: [16, 13], dragon: [24, 21], unicorn: [24, 21], goose: [20, 22], cow: [28, 22], sheep: [24, 20], mallard: [20, 18], hen: [18, 18], rooster: [20, 20], pig: [24, 18], goat: [22, 22] };
 const FARM_OUT = [74, 36, 48];
+// ตัวเลขพิกเซล 3x5 สำหรับเบอร์นักแข่ง (กรอกเองได้ 0–99) · mirror = วาดกลับด้านไว้ก่อนเพราะภาพจะถูกพลิกตอนหันขวา
+const DIGITS = { 0: ['###', '#.#', '#.#', '#.#', '###'], 1: ['.#.', '##.', '.#.', '.#.', '###'], 2: ['###', '..#', '###', '#..', '###'], 3: ['###', '..#', '.##', '..#', '###'], 4: ['#.#', '#.#', '###', '..#', '..#'], 5: ['###', '#..', '###', '..#', '###'], 6: ['###', '#..', '###', '#.#', '###'], 7: ['###', '..#', '.#.', '.#.', '.#.'], 8: ['###', '#.#', '###', '#.#', '###'], 9: ['###', '#.#', '###', '..#', '###'] };
+const numWidth = (num) => String(num).length * 4 - 1;
+function drawNum(P, x0, y0, num, col, mirror = false) {
+  const str = String(num || '3').slice(0, 2), W = numWidth(str);
+  [...str].forEach((ch, i) => (DIGITS[ch] || DIGITS[3]).forEach((r, y) => { for (let x = 0; x < 3; x++) if (r[x] === '#') { const px = i * 4 + x; P(x0 + (mirror ? W - 1 - px : px), y0 + y, 1, 1, col); } }));
+}
 // สีลายรถ F1 จากชุดแต่งตัว (k1 = ลายหลัก, k2 = ขอบ/ปลายปีก)
-const carCols = (l) => (l && l.pet === 'f1' ? [colOf(l.k1, CLOTH_COLORS) || '', colOf(l.k2, CLOTH_COLORS) || ''].join('|') : '');
+const carCols = (l) => (l && l.pet === 'f1' ? [colOf(l.k1, CLOTH_COLORS) || '', colOf(l.k2, CLOTH_COLORS) || '', l.num || '3'].join('|') : '');
 function farmSprite(kind, frame, faceRight, pc, ac = '') {
   return cached(`f|${kind}|${frame}|${faceRight ? 1 : 0}|${pc}|${ac}`, () => {
     const [W, H] = FARM[kind];
@@ -431,7 +439,7 @@ function farmSprite(kind, frame, faceRight, pc, ac = '') {
       if (st) { P(1, 7, 1, 1, '#ffffff'); P(24, 6, 1, 1, '#ffffff'); }
     } else if (kind === 'f1') {
       // ⭐ รถ F1 ลาย "Pixel Hangout Racing" (ออกแบบเอง): ตัวรถทรงต่ำยาว สีเข้มด้าน (เปลี่ยนสีได้) สายฟ้าฟ้า-ชมพู เบอร์ 3 ยางซอฟต์แถบแดง
-      const [ac1, ac2] = String(ac).split('|'), [hi, b, lo, lo2] = tone(pick('#2b2a3a')), CY = ac1 || '#36e0ff', PK = ac2 || '#ff3fa4', CF = '#15141c', CF2 = '#3a3950', TY = '#17151d', RIM = '#e8323c', WH = '#ffffff';
+      const [ac1, ac2, acN] = String(ac).split('|'), [hi, b, lo, lo2] = tone(pick('#2b2a3a')), CY = ac1 || '#36e0ff', PK = ac2 || '#ff3fa4', CF = '#15141c', CF2 = '#3a3950', TY = '#17151d', RIM = '#e8323c', WH = '#ffffff';
       // ปีกหลัง: แผ่นข้าง + ปีกหลัก + แฟลป DRS + บีมวิง
       P(46, 0, 6, 11, CF); P(44, 0, 8, 2, CF); P(45, 0, 6, 1, CY); P(45, 3, 6, 1, CF2); P(46, 2, 5, 1, PK); P(44, 8, 4, 1, CF2);
       // ฝาครอบเครื่อง + ครีบฉลาม (ลาดลงไปท้าย)
@@ -451,11 +459,11 @@ function farmSprite(kind, frame, faceRight, pc, ac = '') {
       // ลายสายฟ้า (ฟ้า ขอบชมพู) ตามไซด์พอดถึงจมูก
       // สายฟ้าใหญ่บนไซด์พอด (ฟ้า ขอบล่างชมพู) + เส้นนำบนจมูก
       const BOLT = ['..........####', '........####..', '....#########.', '......####....', '....####......', '..####........'];
-      BOLT.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') P(20 + x, 5 + y, 1, 1, (BOLT[y + 1] || '')[x] === '#' ? CY : PK); });
+      BOLT.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') P(18 + x, 5 + y, 1, 1, (BOLT[y + 1] || '')[x] === '#' ? CY : PK); });
       P(4, 9, 14, 1, CY); P(4, 10, 14, 1, PK);
       // เบอร์ 3 บนฝาครอบเครื่อง (สีตัดกับตัวรถ · หันขวาจะถูกกลับด้าน → วาดกลับไว้ก่อน)
       const [r0, g0, b0] = hexToRgb(b), NUM = (r0 * 0.3 + g0 * 0.59 + b0 * 0.11) > 150 ? '#15141c' : WH;
-      ['###', '..#', '.##', '..#', '###'].forEach((r, y) => { for (let x = 0; x < 3; x++) if (r[faceRight ? 2 - x : x] === '#') P(34 + x, 6 + y, 1, 1, NUM); });
+      { const n = acN || '3'; drawNum(P, n.length > 1 ? 32 : 34, 6, n, NUM, faceRight); }
       const wheel = (cx, cy) => {
         for (let y = -4; y <= 4; y++) { const w = Math.round(4 * Math.sqrt(Math.max(0, 1 - (y / 4.5) ** 2))); P(cx - w, cy + y, w * 2 + 1, 1, TY); }
         for (const [x, y] of [[-2, -3], [-1, -3], [0, -3], [1, -3], [2, -3], [-3, -2], [3, -2], [-3, -1], [3, -1], [-3, 0], [3, 0], [-3, 1], [3, 1], [-3, 2], [3, 2], [-2, 3], [-1, 3], [0, 3], [1, 3], [2, 3]]) P(cx + x, cy + y, 1, 1, RIM);
@@ -691,6 +699,45 @@ function musicSprite(kind, col = '#ffd34d') {
     rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') { g.fillStyle = x === 0 || y === 0 ? shade(col, 0.3) : col; g.fillRect(x + 1, y + 1, 1, 1); } });
     addOutline(c, [74, 36, 48]);
     return c;
+  });
+}
+// รถ F1 มุมบน (ตอนขับขึ้น/ลง): ออกแบบเอง ลายเดียวกับด้านข้าง (สีตัวรถ + สีลาย 2 สี + เบอร์) ยางซอฟต์แถบแดง ล้อหมุนตามจังหวะ
+function f1TopSprite(up, frame, pc = 0, ac = '') {
+  return cached(`f1t|${up ? 1 : 0}|${frame}|${pc}|${ac}`, () => {
+    const W = 24, H = 46, c = mkCanvas(W + 2, H + 2), g = c.getContext('2d'), P = painter(g, 1, 1);
+    const pick = (def) => (isHex(pc) ? pc : (pc && PET_COLORS[pc]) || def);
+    const tone = (col) => [shade(col, 0.2), col, shade(col, -0.16), shade(col, -0.32)];
+    const [ac1, ac2, acN] = String(ac).split('|'), [hi, b, lo] = tone(pick('#2b2a3a')), CY = ac1 || '#36e0ff', PK = ac2 || '#ff3fa4';
+    const CF = '#15141c', CF2 = '#3a3950', TY = '#17151d', TR = '#2c2a38', RIM = '#e8323c', st = frame % 2;
+    const tire = (x, y, w, h, outerLeft) => { P(x, y, w, h, TY); for (let yy = y + st; yy < y + h; yy += 2) P(x + 1, yy, w - 2, 1, TR); P(outerLeft ? x : x + w - 1, y + (h >> 1) - 2, 1, 4, RIM); };
+    // ปีกหน้า + จมูก
+    P(0, 0, 2, 5, CF); P(22, 0, 2, 5, CF); P(1, 2, 22, 2, b); P(1, 1, 22, 1, CY); P(2, 4, 20, 1, PK);
+    P(11, 0, 2, 2, b); P(10, 2, 4, 14, b); P(10, 2, 1, 14, hi); P(13, 2, 1, 14, lo);
+    // ล้อหน้า + ปีกนก
+    tire(2, 7, 5, 9, true); tire(17, 7, 5, 9, false);
+    P(7, 9, 3, 1, CF2); P(7, 13, 3, 1, CF2); P(14, 9, 3, 1, CF2); P(14, 13, 3, 1, CF2);
+    // แชสซี + ไซด์พอด + ขอบพื้นรถ
+    P(8, 15, 8, 6, b); P(4, 21, 1, 12, CF); P(19, 21, 1, 12, CF);
+    P(6, 20, 12, 1, b); P(5, 21, 14, 11, b); P(6, 32, 12, 1, b); P(5, 21, 1, 11, hi); P(18, 21, 1, 11, lo);
+    P(6, 20, 2, 2, CF); P(16, 20, 2, 2, CF);
+    // ลายสายฟ้าบนไซด์พอดทั้งสองข้าง
+    for (let y = 22; y < 32; y++) { const x = 6 + [0, 1, 2, 1][y % 4]; P(x, y, 1, 1, CY); P(x + 1, y, 1, 1, PK); P(23 - x, y, 1, 1, CY); P(22 - x, y, 1, 1, PK); }
+    // ห้องนักขับ + halo + กล่องอากาศ + สันฝาครอบเครื่อง
+    P(9, 16, 6, 7, CF); P(10, 17, 4, 5, '#0b0a10'); P(9, 15, 6, 1, CF2); P(11, 14, 2, 1, CF2);
+    P(10, 23, 4, 3, CF); P(11, 23, 2, 1, CF2); P(11, 26, 2, 7, lo);
+    // ล้อหลัง + ท้ายรถ + ปีกหลัง
+    tire(0, 33, 6, 10, true); tire(18, 33, 6, 10, false);
+    P(7, 36, 3, 1, CF2); P(14, 36, 3, 1, CF2); P(7, 40, 3, 1, CF2); P(14, 40, 3, 1, CF2);
+    P(9, 33, 6, 8, b); P(9, 33, 1, 8, hi); P(10, 41, 4, 2, CF);
+    P(3, 41, 1, 5, CF); P(20, 41, 1, 5, CF); P(4, 42, 16, 3, CF); P(5, 42, 14, 1, CY); P(5, 44, 14, 1, PK); P(11, 45, 2, 1, '#ff3a3a');
+    let out = c;
+    if (!up) { out = mkCanvas(W + 2, H + 2); const og = out.getContext('2d'); og.translate(0, H + 2); og.scale(1, -1); og.drawImage(c, 0, 0); og.setTransform(1, 0, 0, 1, 0, 0); }
+    // เบอร์บนฝาครอบเครื่อง (วาดหลังพลิก ให้อ่านตรงเสมอ)
+    const n = acN || '3', [r0, g0, b0] = hexToRgb(b), NUMC = (r0 * 0.3 + g0 * 0.59 + b0 * 0.11) > 150 ? '#15141c' : '#ffffff';
+    const OP = painter(out.getContext('2d'), 1, 1), nx = Math.round((W - numWidth(n)) / 2), ny = up ? 26 : H - 31;
+    OP(nx - 1, ny - 1, numWidth(n) + 2, 7, b); drawNum(OP, nx, ny, n, NUMC);
+    addOutline(out, FARM_OUT);
+    return out;
   });
 }
 // ป้ายสถานะเสียงแบบ Discord: 'mic' = ปิดไมค์, 'hp' = ปิดหูฟัง (วงกลมแดง ไอคอนขาว มีขีดฆ่า)
