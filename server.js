@@ -233,6 +233,23 @@ async function handoff() {
   } catch (e) { console.warn('handoff failed', e.message); }
 }
 const BOOT_ID = crypto.randomBytes(6).toString('hex');
+// ---------- กันเซิร์ฟเวอร์หลับ (Render ฟรีจะหลับเมื่อไม่มีคนเรียกเว็บ 15 นาที → ตื่นช้า ~1 นาที) ----------
+// เรียกเว็บตัวเองผ่านที่อยู่สาธารณะทุก 10 นาที · ปิดได้ด้วย KEEP_AWAKE=0
+// KEEP_AWAKE_HOURS=8-2 = ปลุกไว้เฉพาะ 08:00–02:00 เวลาไทย (นอกช่วงนั้นปล่อยให้หลับ ประหยัดชั่วโมงฟรี)
+const KEEP_AWAKE = PUBLIC_URL && process.env.KEEP_AWAKE !== '0';
+function awakeNow() {
+  const m = /^(\d{1,2})-(\d{1,2})$/.exec(process.env.KEEP_AWAKE_HOURS || '');
+  if (!m) return true;
+  const h = new Date(Date.now() + 7 * 3600000).getUTCHours(), a = +m[1], b = +m[2];
+  return a <= b ? h >= a && h < b : h >= a || h < b;
+}
+if (KEEP_AWAKE) {
+  setInterval(() => {
+    if (!awakeNow()) return;
+    fetch(`${PUBLIC_URL.replace(/\/$/, '')}/config?keepawake=1`, { signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'pixel-hangout-keepawake' } }).catch(() => {});
+  }, 10 * 60 * 1000);
+  console.log('กันหลับ: เปิด' + (process.env.KEEP_AWAKE_HOURS ? ` (${process.env.KEEP_AWAKE_HOURS} น. เวลาไทย)` : ' (ตลอดวัน)'));
+}
 if (storeEmpty()) ghLoad();
 
 // ---------- หน้าเว็บ ----------
