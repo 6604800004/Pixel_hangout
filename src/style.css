@@ -611,3 +611,52 @@ body.chat-open { --chat-w: 334px; }
   #toolbar > button { width: 36px; height: 34px; }
   .mm-map { display: none !important; }
 }
+
+/* ---- ไอคอนรูป (assets/icons) ---- */
+.ic { display: inline-block; width: 24px; height: 24px; background: center / contain no-repeat; font-style: normal; vertical-align: middle; }
+#toolbar .ic { width: 25px; height: 25px; }
+.side-open { display: grid; place-items: center; }
+.side-open .ic { width: 24px; height: 24px; }
+.more-menu button i.ic { width: 20px; height: 20px; }
+
+/* ---- ปุ่มอุปกรณ์ + ลูกศรเปิดเมนูเลือก ---- */
+.tb-grp { position: relative; flex: none; display: flex; align-items: center; border-radius: 11px; }
+.tb-grp.hidden { display: none; }
+#toolbar .tb-grp > .tb { position: relative; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 11px 0 0 11px; background: none; color: var(--ui-text); }
+#toolbar .tb-grp > .tb:hover, #toolbar .tb-caret:hover { background: var(--ui-hover); }
+#toolbar .tb-caret { flex: none; min-width: 0; width: 18px; height: 40px; padding: 0; border: 0; box-shadow: none; border-radius: 0 11px 11px 0; background: none; color: var(--ui-sub); font: 600 12px Mitr, sans-serif; display: grid; place-items: center; }
+#toolbar .tb-grp:has(.tb.off) > *, #toolbar .tb-grp:has(#camBtn:not(.on)) > * { background: var(--ui-red2); }
+#toolbar .tb-grp:has(.tb.on) > * { background: var(--ui-green2); }
+#toolbar .tb-caret.open { color: var(--ui-text); box-shadow: inset 0 0 0 2px var(--ui-line); }
+#toolbar .tb-grp .tb.off, #toolbar .tb-grp #camBtn:not(.on) { background: var(--ui-red2); }
+
+.dev-pop { position: fixed; z-index: 12; width: 300px; max-width: calc(100vw - 16px); max-height: min(70vh, 520px); overflow-y: auto; background: #fff; border: 1px solid var(--ui-line);
+  border-radius: 14px; box-shadow: var(--ui-shadow); padding: 8px; color: var(--ui-text); font: 400 13.5px Mitr, sans-serif; animation: pop .14s ease-out; }
+.dev-pop h4 { margin: 4px 8px 6px; font: 600 12px Mitr, sans-serif; color: var(--ui-sub); letter-spacing: .02em; }
+.dev-pop .dv { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; border-radius: 9px; padding: 8px 10px; font: inherit; color: inherit; text-align: left; }
+.dev-pop .dv:hover { background: var(--ui-hover); }
+.dev-pop .dv .ck { flex: none; width: 16px; color: var(--ui-green); font-weight: 700; }
+.dev-pop .dv span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-pop .dv.sel { color: #1f6b42; font-weight: 600; }
+.dev-pop hr { border: 0; border-top: 1px solid var(--ui-line); margin: 6px 4px; }
+.dev-pop .row2 { display: flex; align-items: center; gap: 8px; padding: 6px 10px; }
+.dev-pop .row2 input[type=range] { flex: 1; accent-color: var(--ui-green); }
+.dev-pop .row2 small { color: var(--ui-sub); min-width: 38px; text-align: right; }
+.dev-pop label.row2 { cursor: pointer; }
+.dev-pop .meter { flex: 1; height: 8px; border-radius: 99px; background: var(--ui-hover); overflow: hidden; }
+.dev-pop .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3cc36f, #f2c94c 70%, #e24c5a); transition: width .06s linear; }
+.dev-pop .note { padding: 4px 10px 6px; font-size: 12px; color: var(--ui-sub); }
+.dev-pop .prev { margin: 4px 6px 6px; aspect-ratio: 4 / 3; border-radius: 10px; background: #2b2433; color: #cfc8d8; display: grid; place-items: center; overflow: hidden; font-size: 13px; }
+.dev-pop .prev video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.dev-pop .prev video.back { transform: none; }
+.dev-pop .acts { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 6px 2px; }
+.dev-pop .acts button { flex: 1 1 auto; border: 1px solid var(--ui-line); background: #fff; border-radius: 9px; padding: 7px 10px; font: 400 12.5px Mitr, sans-serif; color: var(--ui-text); }
+.dev-pop .acts button:hover { background: var(--ui-hover); }
+.dev-pop .acts button.pri { background: var(--ui-green); border-color: var(--ui-green); color: #fff; }
+
+@media (max-width: 760px), (max-height: 500px) and (orientation: landscape) {
+  #toolbar .tb-grp > .tb { width: 34px; height: 38px; }
+  #toolbar .tb-caret { width: 14px; height: 38px; font-size: 10px; }
+  #toolbar .ic { width: 23px; height: 23px; }
+}
+@media (max-height: 500px) and (orientation: landscape) { #toolbar .tb-grp > .tb, #toolbar .tb-caret { height: 34px; } }

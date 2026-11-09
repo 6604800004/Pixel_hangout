@@ -1317,7 +1317,7 @@ function paintMeChip() {
   $('#meSt').textContent = sub;
 }
 // ---------- เมนูเพิ่มเติม (⋯) ----------
-function setMore(v) { $('#moreMenu').classList.toggle('hidden', !v); $('#moreBtn').classList.toggle('active', v); }
+function setMore(v) { if (v) closeDevPop(); $('#moreMenu').classList.toggle('hidden', !v); $('#moreBtn').classList.toggle('active', v); }
 $('#moreBtn').onclick = (e) => { e.stopPropagation(); setMore($('#moreMenu').classList.contains('hidden')); };
 document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#moreMenu, #moreBtn')) setMore(false); });
 $('#moreMenu').addEventListener('click', (e) => {

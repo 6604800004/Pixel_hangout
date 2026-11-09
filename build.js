@@ -6,8 +6,12 @@ const path = require('path');
 const src = (f) => fs.readFileSync(path.join(__dirname, 'src', f), 'utf8');
 
 const js = ['sprites.js', 'world.js', 'net.js', 'voice.js', 'main.js', 'extras.js'].map(src).join('\n\n');
+// ไอคอนใน assets/icons/*.png → คลาส .ic-<ชื่อ> (ฝังเป็น data URI ให้ยังเป็นไฟล์เดียว)
+const iconDir = path.join(__dirname, 'assets', 'icons');
+const iconCss = fs.existsSync(iconDir) ? fs.readdirSync(iconDir).filter((f) => f.endsWith('.png')).sort()
+  .map((f) => `.ic-${f.slice(0, -4)}{background-image:url(data:image/png;base64,${fs.readFileSync(path.join(iconDir, f)).toString('base64')})}`).join('\n') : '';
 const page = src('index.html')
-  .replace('/*CSS*/', () => src('style.css'))
+  .replace('/*CSS*/', () => src('style.css') + '\n' + iconCss)
   .replace('/*JS*/', () => `(() => {\n'use strict';\n${js}\n})();`);
 
 const pwa = [

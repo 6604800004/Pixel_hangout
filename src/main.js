@@ -661,6 +661,7 @@ function setChatOpen(open, focus = true) {
   G.chatOpen = open;
   $('#chat').classList.toggle('closed', !open);
   $('[data-tool="chat"]').classList.toggle('active', open);
+  setIcon($('[data-tool="chat"] .ic'), open ? 'chat_on' : 'chat');
   document.body.classList.toggle('chat-open', !!open);
   if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (focus && !isMobile()) $('#chatInput').focus(); }
 }
@@ -2008,7 +2009,7 @@ function setupVoice() {
   G.voice = V;
   V.remoteMicOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.mic === 1); };
   V.remoteCamOn = (key) => { const rt = G.others.get(key); return !!(rt && rt.p.cam === 1); };
-  ['micBtn', 'camBtn', 'deafBtn', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
+  ['micGrp', 'camGrp', 'deafGrp', 'voiceSetBtn'].forEach((id) => $('#' + id).classList.remove('hidden'));
   $('#voiceSetBtn').onclick = openVoiceSettings;
   if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : openGoLive()); }
   $('#callBtn').classList.add('hidden');
@@ -2018,13 +2019,126 @@ function setupVoice() {
   document.addEventListener('pointerdown', () => V.unlock(), { once: true });
   paintVoiceButtons();
 }
+function setIcon(i, name) { if (i) i.className = 'ic ic-' + name; }
 function paintVoiceButtons() {
   const V = G.voice;
-  $('#micBtn').textContent = V.mic ? '🎙️' : '🔇'; $('#micBtn').classList.toggle('off', !V.mic); $('#micBtn').title = V.mic ? 'ปิดไมค์' : 'เปิดไมค์';
-  $('#camBtn').classList.toggle('on', V.cam); $('#camBtn').title = V.cam ? 'ปิดกล้อง' : 'เปิดกล้อง';
-  $('#deafBtn').textContent = V.deaf ? '🔈' : '🔊'; $('#deafBtn').classList.toggle('off', V.deaf);
-  $('#shareBtn').classList.toggle('on', !!V.screenTrack); $('#shareBtn').title = V.screenTrack ? 'หยุดแชร์จอ' : 'แชร์จอ';
+  setIcon($('#micBtn .ic'), V.mic ? 'mic_on' : 'mic_off'); $('#micBtn').classList.toggle('off', !V.mic); $('#micBtn').title = V.mic ? 'ปิดไมค์' : 'เปิดไมค์';
+  setIcon($('#camBtn .ic'), V.cam ? 'cam_on' : 'cam_off'); $('#camBtn').classList.toggle('on', V.cam); $('#camBtn').title = V.cam ? 'ปิดกล้อง' : 'เปิดกล้อง';
+  setIcon($('#deafBtn .ic'), V.deaf ? 'hp_off' : 'hp_on'); $('#deafBtn').classList.toggle('off', V.deaf); $('#deafBtn').title = V.deaf ? 'เปิดเสียงเพื่อน' : 'ปิดเสียงเพื่อน (หูฟัง)';
+  setIcon($('#shareBtn .ic'), V.screenTrack ? 'scr_on' : 'scr_off'); $('#shareBtn').classList.toggle('on', !!V.screenTrack); $('#shareBtn').title = V.screenTrack ? 'หยุดแชร์จอ' : 'แชร์จอ';
+  if (G.devPop) paintDevPop();
 }
+
+// ---------- เมนูเลือกอุปกรณ์ ▾ ข้างปุ่มไมค์ / กล้อง / หูฟัง ----------
+// ไมค์: เลือกไมค์ + แถบระดับเสียงสด + ฟังเสียงตัวเอง · กล้อง: เลือกกล้อง + ภาพตัวเอง · หูฟัง: เลือกลำโพง + ความดัง + เสียงทดสอบ
+async function openDevPop(kind) {
+  if (G.devPop === kind) { closeDevPop(); return; }
+  closeDevPop(); setMore?.(false);
+  G.devPop = kind;
+  document.querySelectorAll('.tb-caret').forEach((c) => c.classList.toggle('open', c.dataset.dev === kind));
+  voiceDevs = await G.voice.devices();
+  if (G.devPop !== kind) return;
+  paintDevPop();
+  const loop = () => {
+    if (!G.devPop) return;
+    const m = $('#devMeter'); if (m) m.style.width = Math.min(100, G.voice.level() * 700) + '%';
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+function closeDevPop() {
+  if (!G.devPop) return;
+  G.devPop = null;
+  const pop = $('#devPop'); pop.classList.add('hidden'); pop.innerHTML = '';
+  document.querySelectorAll('.tb-caret.open').forEach((c) => c.classList.remove('open'));
+}
+function placeDevPop() {
+  const pop = $('#devPop'), grp = document.querySelector(`.tb-caret[data-dev="${G.devPop}"]`)?.parentElement;
+  if (!grp) return;
+  const r = grp.getBoundingClientRect(), w = pop.offsetWidth;
+  pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+  pop.style.bottom = (innerHeight - r.top + 10) + 'px';
+}
+function devList(pop, kind, current, onPick, fallback) {
+  const list = voiceDevs.filter((d) => d.kind === kind && d.deviceId);
+  if (!list.length || list.every((d) => !d.label)) { if (fallback) pop.append(fallback()); return; }
+  // Chrome มี 'default' / 'communications' ซ้ำกับตัวจริง — ถ้ายังไม่เคยเลือก ให้ติ๊กที่ default
+  const cur = current || 'default';
+  list.forEach((d, i) => {
+    const sel = d.deviceId === cur || (!list.some((x) => x.deviceId === cur) && i === 0);
+    const b = el('button', 'dv' + (sel ? ' sel' : ''));
+    b.append(el('span', 'ck', sel ? '✓' : ''), el('span', null, d.label || `อุปกรณ์ ${i + 1}`));
+    b.title = d.label || '';
+    b.onclick = async () => { await onPick(d.deviceId); paintDevPop(); };
+    pop.append(b);
+  });
+}
+function testTone() {
+  const V = G.voice; V.unlock();
+  const ac = V.actx; if (!ac) return;
+  const t = ac.currentTime + 0.03;
+  [[660, 0], [880, 0.16], [1320, 0.32]].forEach(([f, d]) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(0.22 * Math.min(1, V.master), t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.28);
+    o.connect(g).connect(ac.destination); o.start(t + d); o.stop(t + d + 0.3);
+  });
+}
+function paintDevPop() {
+  const kind = G.devPop, pop = $('#devPop'), V = G.voice, st = V.settings;
+  if (!kind || !V) return;
+  pop.innerHTML = '';
+  const acts = (...bs) => { const a = el('div', 'acts'); bs.forEach((b) => b && a.append(b)); pop.append(a); };
+  const btn = (txt, fn, cls) => { const b = el('button', cls || '', txt); b.onclick = fn; return b; };
+  const more = () => btn('⚙️ ตั้งค่าทั้งหมด', () => { closeDevPop(); openVoiceSettings(); });
+  const askMic = () => { const d = el('div'); d.append(el('div', 'note', 'ยังไม่เห็นชื่อไมค์ — ต้องอนุญาตไมค์ก่อน')); const a = el('div', 'acts'); a.append(btn('🎙️ อนุญาตไมค์', async () => { if (await V.ensureMic()) { voiceDevs = await V.devices(); paintDevPop(); } }, 'pri')); d.append(a); return d; };
+  if (kind === 'mic') {
+    pop.append(el('h4', null, 'ไมโครโฟน'));
+    devList(pop, 'audioinput', st.micId || V.audioTrack?.getSettings().deviceId, (id) => V.setOption('micId', id), askMic);
+    pop.append(el('hr'));
+    pop.append(el('h4', null, 'ทดสอบไมค์ — ลองพูดดู'));
+    const r = el('div', 'row2'); const m = el('div', 'meter'); const f = el('i'); f.id = 'devMeter'; m.append(f); r.append(el('span', null, '🎚️'), m); pop.append(r);
+    if (!V.audioTrack) pop.append(el('div', 'note', 'แถบจะขยับเมื่ออนุญาตไมค์แล้ว'));
+    const mon = el('label', 'row2'); const mc = el('input'); mc.type = 'checkbox'; mc.checked = !!st.monitor;
+    mc.onchange = async () => { await V.setMonitor(mc.checked); paintDevPop(); };
+    mon.append(mc, el('span', null, '🎧 ฟังเสียงตัวเอง (ใส่หูฟังก่อน)')); pop.append(mon);
+    const ns = el('label', 'row2'); const nc = el('input'); nc.type = 'checkbox'; nc.checked = !!st.ns;
+    nc.onchange = () => V.setOption('ns', nc.checked); ns.append(nc, el('span', null, 'ตัดเสียงรบกวน')); pop.append(ns);
+    pop.append(el('hr'));
+    acts(btn(V.mic ? '🔇 ปิดไมค์' : '🎙️ เปิดไมค์', () => V.toggleMic(), V.mic ? '' : 'pri'), btn('🩺 ตรวจเสียง', () => { closeDevPop(); openVoiceDiag(); }), more());
+  } else if (kind === 'cam') {
+    pop.append(el('h4', null, 'กล้อง'));
+    devList(pop, 'videoinput', st.camId || V.videoTrack?.getSettings().deviceId, (id) => V.switchCamera(id, 'user'),
+      () => el('div', 'note', V.cam ? 'ใช้กล้องเริ่มต้นของเครื่องอยู่' : 'เปิดกล้องครั้งแรกเพื่อให้เห็นรายชื่อกล้อง'));
+    const prev = el('div', 'prev');
+    if (V.cam && V.videoTrack) {
+      const v = el('video'); v.muted = true; v.autoplay = true; v.playsInline = true; v.setAttribute('playsinline', '');
+      v.srcObject = new MediaStream([V.videoTrack]); if (st.facing !== 'user') v.classList.add('back'); v.play().catch(() => {}); prev.append(v);
+    } else prev.textContent = '📷 กล้องปิดอยู่';
+    pop.append(prev);
+    const flip = (isMobile() || voiceDevs.filter((d) => d.kind === 'videoinput').length > 1) && V.cam ? btn('🔄 หน้า/หลัง', () => V.switchCamera('', st.facing === 'user' ? 'environment' : 'user')) : null;
+    acts(btn(V.cam ? '📷 ปิดกล้อง' : '📷 เปิดกล้อง', () => V.toggleCam(), V.cam ? '' : 'pri'), flip, more());
+  } else {
+    pop.append(el('h4', null, 'ลำโพง / หูฟัง'));
+    if (V.canPickSpeaker) devList(pop, 'audiooutput', st.spkId, (id) => V.setSpeaker(id), () => el('div', 'note', 'ใช้ลำโพงเริ่มต้นของเครื่อง (อนุญาตไมค์ก่อนถึงจะเห็นรายชื่อ)'));
+    else pop.append(el('div', 'note', 'เบราว์เซอร์นี้เลือกลำโพงเองไม่ได้ — เปลี่ยนที่ตั้งค่าเสียงของเครื่อง'));
+    pop.append(el('hr'));
+    pop.append(el('h4', null, 'ความดังเสียงเพื่อน'));
+    const r = el('div', 'row2'); const vv = el('small', null, Math.round(V.master * 100) + '%');
+    const rg = el('input'); rg.type = 'range'; rg.min = '0.5'; rg.max = V.canBoost ? '2.5' : '1'; rg.step = '0.05'; rg.value = String(Math.min(V.master, V.canBoost ? 2.5 : 1));
+    rg.oninput = () => { V.setMaster(Number(rg.value)); vv.textContent = Math.round(V.master * 100) + '%'; };
+    r.append(el('span', null, '🔊'), rg, vv); pop.append(r);
+    pop.append(el('hr'));
+    acts(btn('🔔 เล่นเสียงทดสอบ', testTone, 'pri'), btn(V.deaf ? '🔊 เปิดเสียงเพื่อน' : '🔈 ปิดเสียงเพื่อน', () => V.toggleDeaf()), btn('🩺 ตรวจเสียง', () => { closeDevPop(); openVoiceDiag(); }), more());
+  }
+  pop.classList.remove('hidden');
+  placeDevPop();
+}
+document.querySelectorAll('.tb-caret').forEach((c) => (c.onclick = (e) => { e.stopPropagation(); if (G.voice) openDevPop(c.dataset.dev); }));
+document.addEventListener('pointerdown', (e) => { if (G.devPop && !e.target.closest('#devPop, .tb-caret')) closeDevPop(); }, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDevPop(); });
+addEventListener('resize', () => G.devPop && placeDevPop());
+navigator.mediaDevices?.addEventListener?.('devicechange', async () => { if (G.devPop && G.voice) { voiceDevs = await G.voice.devices(); paintDevPop(); } });
 // ---------- หน้าต่างตั้งค่าไมค์ / กล้อง / ฟังเสียงตัวเอง ----------
 let voiceDevs = [];
 async function openVoiceSettings() {
