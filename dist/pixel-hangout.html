@@ -745,6 +745,79 @@ body.dark .ctabs button[data-ct="room"].on { background: #3a3220; }
 .side .rm .cht b { position: absolute; top: -4px; right: -4px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 99px; background: var(--ui-red); color: #fff; font: 600 9.5px/15px Mitr, sans-serif; text-align: center; }
 body.dark .side .rm .cht:hover { background: rgba(255, 255, 255, .08); }
 
+/* ================= 📊 แผงแอดมิน ================= */
+.card.adm-card { width: min(820px, 100%); height: min(760px, calc(100dvh - 24px)); display: flex; flex-direction: column; overflow: hidden; padding: 16px 18px 12px; }
+.adm-head { flex: none; display: flex; align-items: center; gap: 8px; }
+.adm-head h2 { margin: 0; flex: 1; }
+.adm-tabs { flex: none; margin: 10px 0 8px; }
+.adm-tabs button { padding: 7px 6px; font-size: 13.5px; }
+.adm-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 8px 2px; }
+.adm-empty { padding: 26px 10px; text-align: center; color: var(--ink2); font-size: 14px; }
+.adm-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.adm-stat { background: #fff; border: 2px solid #ead9c8; border-radius: 12px; padding: 9px 11px; }
+.adm-stat .l { font-size: 12px; color: var(--ink2); }
+.adm-stat .v { font: 600 21px 'Mitr', sans-serif; line-height: 1.3; }
+.adm-stat .s { font-size: 11.5px; color: var(--ink2); }
+.adm-box { background: #fff; border: 2px solid #ead9c8; border-radius: 12px; padding: 10px 12px 12px; margin-bottom: 10px; }
+.adm-boxh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.adm-boxh b { flex: 1; font-size: 14px; }
+.adm-boxh .seg { margin: 0; }
+.adm-bars { height: 150px; display: flex; align-items: stretch; gap: 3px; padding: 14px 0 18px; }
+.adm-bars .bar { position: relative; flex: 1; display: flex; align-items: flex-end; }
+.adm-bars .bar i { width: 100%; border-radius: 4px 4px 1px 1px; background: #9ad4b1; min-height: 0; }
+.adm-bars .bar.today i { background: var(--ui-green, #2f9e63); }
+.adm-bars .bar:hover i { background: #f2a3b9; }
+.adm-bars .bar .n { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--h, 0%) + 2px); font-size: 9.5px; color: var(--ink2); display: none; }
+.adm-bars .bar .d { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px; font-size: 10px; color: var(--ink2); white-space: nowrap; }
+.adm-hbar { display: grid; grid-template-columns: 130px 1fr 92px; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+.adm-hbar .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-hbar .tr { height: 10px; border-radius: 99px; background: var(--paper2); overflow: hidden; }
+.adm-hbar .tr i { display: block; height: 100%; background: linear-gradient(90deg, #f2a3b9, #b79cf0); border-radius: 99px; }
+.adm-hbar .vv { text-align: right; color: var(--ink2); font-size: 12px; }
+.adm-tools { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 0 0 8px; background: var(--paper); }
+.adm-tools input { flex: 1; min-width: 0; border: 2px solid #ead9c8; border-radius: 10px; padding: 7px 10px; font: 400 14px Mitr, sans-serif; background: #fff; color: var(--ink); }
+.adm-tools .cnt { font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.adm-user { background: #fff; border: 2px solid #ead9c8; border-radius: 12px; margin-bottom: 6px; overflow: hidden; }
+.adm-user.open { border-color: #d9b7e8; }
+.adm-user .um { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 8px 12px; font: inherit; color: inherit; text-align: left; }
+.adm-user .um:hover { background: var(--ui-hover, #f3f1f6); }
+.adm-user .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #cfc6d6; }
+.adm-user.on .dot { background: #3cc36f; box-shadow: 0 0 0 3px rgba(60, 195, 111, .2); }
+.adm-user .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.adm-user .who b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-user .who small { font-size: 11.5px; color: var(--ink2); }
+.adm-user .gift { flex: none; font-size: 12px; color: #b0559a; }
+.adm-user .nums { flex: none; display: flex; flex-direction: column; align-items: flex-end; font-size: 11.5px; color: var(--ink2); }
+.adm-user .chev { flex: none; color: var(--ink2); font-size: 12px; }
+.adm-user .ud { padding: 4px 12px 12px; border-top: 2px dashed #ead9c8; }
+.adm-user .uinfo { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink2); padding: 6px 0 8px; }
+.adm-user .uh { font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+.adm-user .uitems { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-user .uit { display: flex; align-items: center; gap: 5px; border: 2px solid #ead9c8; background: #fff; border-radius: 99px; padding: 4px 11px 4px 6px; font: 400 13px Mitr, sans-serif; color: var(--ink); }
+.adm-user .uit .ck { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--paper2); font-size: 12px; font-weight: 700; }
+.adm-user .uit.has { border-color: #8fd4a8; background: #eaf8ef; }
+.adm-user .uit.has .ck { background: #3cc36f; color: #fff; }
+.adm-user .uit:hover { border-color: #d9b7e8; }
+.adm-user .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.adm-day { position: sticky; top: 0; background: var(--paper); font: 600 12.5px Mitr, sans-serif; color: var(--ink2); padding: 8px 2px 4px; }
+.adm-ev { display: grid; grid-template-columns: 46px 22px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 8px; font-size: 13px; }
+.adm-ev:nth-child(odd) { background: rgba(0, 0, 0, .025); }
+.adm-ev .t { color: var(--ink2); font-size: 12px; }
+.adm-ev .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-ev .what { color: var(--ink2); font-size: 12px; text-align: right; }
+.adm-ev.in .what { color: #2f9e63; }
+@media (max-width: 760px) {
+  .card.adm-card { height: calc(100dvh - 24px); padding: 12px; }
+  .adm-stats { grid-template-columns: repeat(2, 1fr); }
+  .adm-hbar { grid-template-columns: 100px 1fr 70px; }
+  .adm-user .nums { display: none; }
+}
+body.dark .adm-stat, body.dark .adm-box, body.dark .adm-user, body.dark .adm-user .uit, body.dark .adm-tools input { background: var(--d-surf); border-color: #3a3446; }
+body.dark .adm-user .ud { border-color: #3a3446; }
+body.dark .adm-user .uit.has { background: #1d3a2b; border-color: #2f7a4f; }
+body.dark .adm-ev:nth-child(odd) { background: rgba(255, 255, 255, .03); }
+.seg button { white-space: nowrap; }
+
 .ic-cam_off{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAAPlUlEQVR42u3cebBkVX0H8M+53f22mWFYBARZVAQnEiSDw/BmQOOgEZTCJVZYKlARqQSIZeESxKmUW0pNysIyEQ3iVqW4BCxERBQMOMLAMBsugIwoiwgyqAjDDDNv674nf5w7TM99/br7vdeP/JGcqluvXt++3fd+z+/3O9/f7/c9TTHWcuFaNq/lybX861VU/P8QCnBehxtL5772W952Go3/ywBVC5ROjJPPnXUIruoSpNXsNcBekcE6GWSEBnkfE5jImD/OoYFDIgcGnhdYgMFILRADYzk7Ilvwhwq/a/BQlc0TNAK1SDUjVInj6f7rgW0jPLGC0Z4DhF9Pcb5rkF7JU9Kx21hFtcKJgdc0OCpj38jCApihnP6Q7qMSiTGBMI7RwPacbYGn6zxSYd0EN57A3c+pi22kVucGnDjF+6btbmtYlHEmXoUXRg6oJTDkiMWh6W/zTTUfGerpfVuwObIpcO0AVx/N9jkHqABpqM51bUC6coSzVqR7nXLcyUvq/ENkBV5aTZai0QKI6Y6sMPmJ9FmbA3dHrsz55nJG5hSg2YIUqWzknTmnRRZXGcgLa2n35c3HTgDzDmAGaYmNybL+EFidc+lybplTgGYK0jqOxsWR11XZZypgdlpApckSxlJQ3poxGtNbhgJ7DRU3Vy+OqSywuuvcryJfrvG5JTw9ZwBNF6Q7OD3jwsiyitZBqoZ+bCfPuRN3VtiU8ztsbTCW0agmMGoYxN54UeDPI8MDHFqRlqi8xUPUMM5WfLvCvx3LfXMGULcgYQP+scKLW7lFXzHDO9gUuS6wJvCbHfxeWpLbxrONDE2wX84BFRYFXhs5dYgFYy0mowC4gZvxoWHWzhlAXYI0WmGg0cKVhvAMd+EK3FZl02xNfz0H5xyFN+LMQfYYLU1MtismrgmsXMqtcwZQlyDtNgaSG2wP/CeuqbBxSQo3PRu3s1/GCYHzM/6qYvcvyIoHyxNIFy1lzZwBNB2Q5qU4c2fGpzK+18tg2Wqs5fDIuYHz+tlzrAVIDX6Y80/LZ0guQ7dvLEC6BUumouR1rsUlw9z2XDHdteyRc0bG+wd40WgJpJgs6UuBfx5OsW/a3KvbUdMmzymibd9IDwLjdMYwWx/lSzkXj/LLgaZzeUEpAmcG/m6m5LSr0WBlYHkHk3v9IF9btSvHe07GaTSW863Ih0a5f6A0cf1pzTh3PSfPiYutYWmF70X27fJzu0pL1rJ/SBRh3wqDjZSsbs14bB/uO5yx6TxMJKznvMiH+9h/vOkhixDwjch7puNqXQG0LoHzhub3Z8mEJwrX6xqkdYlpvyawPHJYxv6RhQVtiiGVOp4KPBa5J+Pm6axCaxjM+AjenVHNd4+RWwLvP47LewbQurRyXYehWCKBE7wv8nopMW0L0iqq/ZwWeBOOq3FotUVmvzN7rySCOR74ReSWnK8u56fdPNQGXtzg0gHeMFqiIGOJsL5jKY/0BKC1XB84OTbFq2I2Vo1w2gJ2dGLcgQ9Kpn96Hy+Iu8oXHQNkX3ooOetxWeTKbjL3tZyBS2q8YCdHKlKhpwIru7Wi0EVNZ72iZNF80QSvO56bArELnvQoDqqZGWMMxeyPpNjxHyNctiLVhqYcv2D+Ni7p57yxyVb09YVcsIhts1rFMv62SByfHUUl/8YJ7giFESxhR5VT8aMpPuqg0AKcSpHEDmF+QTQHC6sJuwdfI+m9+2NlPxfcVpq08jiSZ/CDMX5TKy39kcVbOX46Jdepxl8rdTcq6Us+8+qSmS9hx0ZOncqSyvnSQIoxf2qkuPKQtHpVYirJ/hmO6U8Z+rPXjiWQFozzXvwuckVo46kT3FpjVY1zJna9BosaDEtV1Jm52JqUPf8spEl+9s05D4+yZAVPzCQtKdjtdnwnckPOzwd5ZAvP7Ec2wj51DsNxgdNxbFbK3AeTRf0k54LlKQS0W2TOiyn1Gcx3v/5bdc49oYObVdu414llFyys57r+NnXgJezYwIWNdOOD5fPFTT5Q5aIlbG7xEZuL47b13Jrz3pw3V+jfCVLhbseM8tbb2NThIe/CXVWOG99Fekmr6JE6MP+sPYvf/XyxLN+wLFm+NmnHOR0WgJfX+VQnxr2UDVXeh+82qGcllw28ZWCK3HDnGOeXuLc2eZJegMNnE6SPLp8fTVb089Cmu7GGwcDJWQoz7cbp3aQlS/htlY8WVcjm+KKfwxscq0M7KvJgo2nGCoD2ixw6I4Bi8qaDm62gKKw/WO9QwqhxAvbrkkt0BdIruCtyzUQK5M9aUOHyx9zGIR1SkMdG2dEMUH/KAPafEUB3sU85fhSB8v6JDvyuwTL0xxL3CDw4G5CqXI97q5MrCEdUOwAU0oLy+6wUT0NKcaYPUJ19QouJD2xe0L6TI3CEppWvyfre0YYndQTpWO6J/DbbfTIEDpQmtN3Yqsn6mmjHYCc+1RKgUebHEkDFP9vGO1hQkfFXm6/bkYLlIx3IZEeQAn+caHLZ4kYWxsQz2z3kmBJvK4J8bahDrGwJUGUK6UulQ/mi+OJaKCWfkdEqsQvG3RakwHiL1aEaOmQEeUGgW8TCbLxzNtHyIceneL2/C3a+PW+6mZgC90BeXDtLkBbUWoAfO9AOVGM6JoXM0GHSsykQf7pM4YuSxN7bOiP+aGhKu2IRpCOH7RRlzQSkG5kXU3+sHNueKGJMu7g4FNL1u10bGWukCDBtF/tjLAXjwmcPntcBoMjdIUlXduMsFU49lD2bGfd0QNqLV+KwxuSV6OEqj3cAaM+QtEuTrL1T6SSbqhCupPUpugOL5mkvzatzS2SkDBDeEnl5OS3pBqSN1Bqp0HZ4vcTsI/dUU7LbbtL2izw/371cA0/OhknfH5qsKKa1e++cA9p94An8Avc1mlw0T6RqQeDdG3jxdEGqc2vGG2op23/2xrenlf4nizvUhgrLD80A1dkWeWzGAEXujC04T4MTrkolm3Yf+pUy7ygSzFNzLro9ZevTAWk4cEhzPalYLX6Usa7dvdzBC3OOyCfXtB6PHSyvE0Cry1XRQmZy6sKpC/WKePFNqRyxG5kaS8Ww8yt8bB0n/XQaMan8gCNMBK5emiy23RJ/ZOCo+uTY9UiNTTMumPWxusH22PQQhe7ntfN5Ph6Y6trDGVvDJzJeEji4WWo3liqHpz/D8DhXr0vlhscxMk5W45J6EnguaieeqnNVxvd17nYuDkn1VmbRD3YjkcnaZNFPRDYqxaFBBiu8pZObLeeGyOdyni5H9e3pxg8d4j24KnJF5PKMLzT42mCqhU9l2cZ5MuOznToTG3hp5IS+JleopEnaip/rQWf1q2UZTiG7Pf+gLpqIy/g4LsvZUim5W92uqluVQ2scU+PlFfYe6yDdw96RCzsluI2kJzp+rNQ/x12hS/1AJ4CuDSWOkSfid1jG33TTYh5OLetPNngoM5kj7GwBTRTHNMSebdOSNbxEElvNLy/vgQ1L+dmsARpma+S/ylZUNOMu7psiTrSoDH40srLBDxtsqRbBL+sg0mzqboxOF6QqZwRWjJasp5G0jDfRI/FCnc8o9bKL9OH5GRevSVpCXbjblQ3Ozvn4BDfVU5XvmZ1ANB/IGzwxkUoc36xw1nTSknWclHNmP3357g0HgZtHpv6smfXm7+BjgfeFUsLXnwB85xCfP7JzwqhJfT+/j7/MEr95aWSvLG0xiCEln4/h7gY/Pr5whW6FpX1J7Pnpctu5L8XPTbhwmP/WY4XZwnriRUe1aOGMRM6+gWs+3DG2tv2O2itSdp3PQun2Ham1fE5zLy7bVfL4+DAfMBcKsw28tcEXyklfoVPejL9fyg/CLEDqhRwwkGdkjZL0ZYLvV3nvktTl0HMB1bFcHfh6TAx2t+W6ygGRz6/nTd/vrmY049GJcccmcJqEFg9GLp8uONOV4NnBRVgVS6ZXiIQOzPnKXpxze6mr8VyD1AzORCKF/76M75pLCR6sSLroCxTt3jJIVRb0cVnGB9aweGOHnG02Yxt9WZKwbG1DFHN8dgtfNpcy4Bar2jH4YsbisjAhFCqNZ/hlziW4pY+He6WVXssekvz3bYG3DzA02v4Br9nBaSu6qKf3DCC4nWMrXCqJDCax32pBzEa4PfLFChsij/+Ap6a72q1ioMbeRf/rjXj7IPt3kZJMSzPZU4BgNUf085nIqwL9+RTa4YHkEg9Frs+4ucEDMbnGSD9jNerbi2ddSKVBbZyBsVRL3qfC4sjrIyfPo7/VPo3QOUWZEUihRyb/KZwSilZubF3nViv+bk/g3I1fh6TzeUqxHarCvJznSX3zlwVeNlTEuHqbbVY5jcgDRZfiZb0CKeid4v3tkXeHJH6qdFoZKsXfrIWaLO6qPXVMXgtwdkRuqPMvg/y6Fzsnew5QkUGfm3FJxp5zyhZL6c4Yq/Cu4aQF6tn20mkv89oruU7K+GhoAU6YwlqmY+bZFDc7lkBagZUbi1r3bDu4Pbeg23lVhW9lafPbpNjTSDX7rUW8npeldnHHuk/Y5WpjIanIMuyZkeUtVLA7+Hrg/cNJVdsTSwo9sJwXSdnxYbH1yrIlpJrS9TFl7scHjogsyFLcrhZ6pFAw9J2hZ2cN7Q8xuc5NWSp+nR1YFugr86+COX+yygeXFB3T2YI0K4CuonJI+vKTAlmL1u5vithwbfna2ziwjxfW2b/CHjHtqc/zZG1P5mwe5/4VSc777Php2hf2EYko7tEicX4656JlfKEXu7nDLK1nkoK0aWW5F2fuDJx6v09sJS7K2CufrIC9NeddzVsXZgrSjIP0KgZiKqIN5pOVsA/nnDFX4BTl4H+NfLrBSFYqB9cScX3jTNrc5cA9Y4AG0u6ffcvmWKeRc/4y7pnrJb6Wem/fUBJVVdP/x65LardZgZTNIsv9i3LjsZZev3Qbq8Psf4miq7IHvhTZWCt1gHFQcZgNSLPZGThYjmEFO944n3lr5rhwVtSZG2M8VuHRrEkvHXeVoWtTAdtu20QBklWcNWOAIo9kLdpBkc9VeFiPt4JrvRcjz1LedsDY5Fr5U7GN6qMJpOvx6ilAunc2AK0q9JnzSiKr+SFJ/J+zkbf+cYFNdX7VyUU3ckobkM6ecQxazt05q2P69aey0Oo5PUxWfvwp8qNXtvjBpyli0in4cYvTW2aVi43zLtwXWytI/W/8IFuhnb78AL49zRr3KTH95sezHhz4SOhBG2bRBF8JqWfWjyx0ds9eV/ViIfYaCXy6widm8qsPq6gO8uZCsnPjMPf2ZOIvp3Z02tv1psCimDYRlh8y5rtKQZVAKNKTnYCGArwYmjy1kBTXkYcERCh/buSPGWsbXLGMn/TSKv8H52vIre9+q7sAAAAASUVORK5CYII=)}
 .ic-cam_on{background-image:url(data:image/png;base64,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)}
 .ic-chat{background-image:url(data:image/png;base64,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)}
@@ -836,6 +909,7 @@ body.dark .side .rm .cht:hover { background: rgba(255, 255, 255, .08); }
     <button class="mob-only" data-tool="emote"><i class="ic ic-emote"></i>อีโมต</button>
     <button class="mob-only" data-tool="status"><i>📝</i>สถานะ</button>
     <button class="hidden" id="voiceSetBtn"><i>⚙️</i>ตั้งค่าไมค์ / กล้อง</button>
+    <button id="moreAdmin" class="hidden"><i>📊</i>แผงแอดมิน</button>
     <button id="moreDiag"><i>🩺</i>ตรวจเสียง</button>
     <button id="moreLeave" class="danger"><i class="ic ic-leave"></i>ออกจากห้อง</button>
   </div>
@@ -4998,6 +5072,7 @@ function showHelp() {
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
+    '📊 สถิติ — เปิดแผงแอดมิน: คนเข้ากี่คน ใช้นานแค่ไหน ประวัติเข้าออก และให้/ยึดของพิเศษแบบกดเลือก',
     '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ รถF1 ผมรุ้ง ชุดราชา เจ้าหญิง ชุดนักแข่ง หมวกนักแข่ง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
     '🎤 npc ร้อง [ชื่อ] — เรียกนักร้อง NPC มาข้างตัว (ถือไมค์ มีกุญแจซอลเด้ง)',
@@ -5020,6 +5095,7 @@ function chatCommand(text) {
   if (!G.net) return false;
   if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
   if (/^\/?(diag|ตรวจเสียง|เช็คเสียง|เช็กเสียง)$/i.test(text)) { openVoiceDiag(); return true; }
+  if (/^\/?(stats|สถิติ|แผงแอดมิน|dashboard)$/i.test(text)) { openAdminPanel(); return true; }
   if (/^\/?(dark|ธีมมืด|มืด|light|ธีมสว่าง|สว่าง)$/i.test(text)) { const d = /dark|มืด/i.test(text); setTheme(d); toast(d ? '🌙 เปลี่ยนเป็นธีมมืดแล้ว' : '☀️ เปลี่ยนเป็นธีมสว่างแล้ว'); return true; }
   if (/^\/?admin\s+(off|logout|ออก)$/i.test(text)) { lsSet('pixel.admin', null); G.isAdmin = false; scheduleChatRender(); addSys('เลิกเป็นแอดมินในเครื่องนี้แล้ว'); return true; }
   // สะกิด: poke ชื่อ / สะกิด ชื่อ / ชื่อ poke
@@ -6909,6 +6985,7 @@ function frame(ms) {
   const dot = $('#connDot');
   net.onStatus((s) => { dot.className = 'dot' + (s === 'online' ? '' : s === 'solo' ? ' solo' : ' off'); });
   if (net.onSys) net.onSys((m) => {
+    if (m.stats) { G.adm.data = m.stats; G.adm.busy = false; paintAdmin(); if (m.quiet) { if (m.message) toast(m.message, 2500); return; } if (!m.message) return; }
     if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
     if (m.admin === false) lsSet('pixel.admin', null);
     if (m.updating) { updateCountdown(Number(m.updating) || 15); return; }
@@ -7092,6 +7169,7 @@ function updateZones() {
   if (z !== G.zone) {
     G.zone = z;
     onChatZone();
+    pres({ zn: z });
     toast(`${ZONES[z].icon} ${zoneName(z)}` + (G.voice && ZONE_TIPS[z] ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
   // ป้ายตำแหน่ง: ห้องที่อยู่ · ใครอยู่ใกล้
@@ -8420,6 +8498,203 @@ G.isDark = () => document.body.classList.contains('dark');
   applyTheme(saved ? saved === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
 })();
 $('#sfTheme').onclick = () => setTheme(!G.isDark());
+
+
+// ================= 📊 แผงแอดมิน: สถิติการใช้งาน · ผู้ใช้ · ให้/ยึดของพิเศษ · ประวัติเข้าออก =================
+// ข้อมูลอยู่ที่เซิร์ฟเวอร์ (ไม่ส่งให้ผู้ใช้ทั่วไป) — ขอใหม่ทุกครั้งที่เปิด/กดรีเฟรช
+G.adm = { tab: lsGet('pixel.admTab', 'over'), q: '', open: null, data: null, busy: false };
+const admKey = () => lsGet('pixel.admin', '') || '';
+function fmtDur(ms) {
+  ms = Math.max(0, ms || 0);
+  const m = Math.round(ms / 60000);
+  if (m < 1) return '< 1 นาที';
+  if (m < 60) return `${m} นาที`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return h < 48 ? `${h} ชม.${r ? ` ${r} นาที` : ''}` : `${Math.round(h / 24)} วัน`;
+}
+function fmtAgo(ts, now) {
+  if (!ts) return '—';
+  const d = Math.max(0, (now || Date.now()) - ts) / 60000;
+  if (d < 1) return 'เมื่อกี้';
+  if (d < 60) return `${Math.round(d)} นาทีก่อน`;
+  if (d < 1440) return `${Math.round(d / 60)} ชม.ก่อน`;
+  if (d < 1440 * 30) return `${Math.round(d / 1440)} วันก่อน`;
+  return new Date(ts).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+const fmtTime = (ts) => new Date(ts).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const thDay = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', timeZone: 'UTC' }); };
+
+function openAdminPanel() {
+  if (!G.isAdmin) { toast('เฉพาะแอดมิน — พิมพ์ admin รหัส ก่อน'); return; }
+  setMore(false);
+  G.adm.open = null;
+  openModal((card) => { card.classList.add('adm-card'); });
+  G.adminOpen = true;
+  paintAdmin();
+  admRefresh();
+}
+function admRefresh() { G.adm.busy = true; paintAdmin(); G.net.admin('stats', admKey()); }
+function admCmd(cmd, uid, items) { G.adm.busy = true; paintAdmin(); G.net.admin(cmd, admKey(), { uid, items }); }
+
+function paintAdmin() {
+  if (!G.adminOpen || $('#modal').classList.contains('hidden') || !$('#card').classList.contains('adm-card')) { G.adminOpen = false; return; }
+  const card = $('#card'), D = G.adm.data, sc = card.querySelector('.adm-body')?.scrollTop || 0;
+  card.innerHTML = '';
+  const head = el('div', 'adm-head');
+  head.append(el('h2', null, '📊 แผงแอดมิน'));
+  const rf = el('button', 'pbtn sm', G.adm.busy ? '⏳' : '🔄 รีเฟรช'); rf.onclick = admRefresh;
+  const x = el('button', 'x', '✕'); x.onclick = () => { G.adminOpen = false; closeModal(); };
+  head.append(rf, x);
+  card.append(head);
+  const tabs = el('div', 'ctabs adm-tabs');
+  [['over', '📈 ภาพรวม'], ['users', '👥 ผู้ใช้ & ของ'], ['log', '🕘 ประวัติ']].forEach(([k, t]) => {
+    const b = el('button', G.adm.tab === k ? 'on' : '', t);
+    b.onclick = () => { G.adm.tab = k; lsSet('pixel.admTab', k); paintAdmin(); };
+    tabs.append(b);
+  });
+  card.append(tabs);
+  const body = el('div', 'adm-body');
+  card.append(body);
+  if (!D) { body.append(el('div', 'adm-empty', 'กำลังโหลดข้อมูล…')); return; }
+  if (G.adm.tab === 'over') admOverview(body, D);
+  else if (G.adm.tab === 'users') admUsers(body, D);
+  else admLog(body, D);
+  body.scrollTop = sc;
+}
+
+function admStat(label, value, sub) {
+  const b = el('div', 'adm-stat');
+  b.append(el('div', 'l', label), el('div', 'v', value));
+  if (sub) b.append(el('div', 's', sub));
+  return b;
+}
+function admOverview(body, D) {
+  const today = D.days.find((d) => d.d === D.today) || { u: 0, s: 0, ms: 0, peak: 0, chats: 0 };
+  const grid = el('div', 'adm-stats');
+  grid.append(
+    admStat('ออนไลน์ตอนนี้', `${D.online} / ${D.max}`, 'คน'),
+    admStat('วันนี้เข้ามา', `${today.u} คน`, `${today.s} ครั้ง · สูงสุดพร้อมกัน ${today.peak}`),
+    admStat('เวลาใช้งานวันนี้', fmtDur(today.ms), `แชต ${today.chats} ข้อความ`),
+    admStat('7 วันล่าสุด', `${D.u7} คน`, 'ไม่นับซ้ำ'),
+    admStat('30 วันล่าสุด', `${D.u30} คน`, 'ไม่นับซ้ำ'),
+    admStat('ผู้ใช้ทั้งหมด', `${D.uAll} คน`, `เริ่มเก็บ ${fmtAgo(D.since, D.now)}`),
+    admStat('พร้อมกันมากสุด', `${D.peak.n || 0} คน`, D.peak.ts ? fmtTime(D.peak.ts) : '—'),
+  );
+  body.append(grid);
+  // กราฟรายวัน 30 วัน (ช่องที่ไม่มีคนเข้า = 0)
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const k = new Date(D.now + 7 * 3600000 - i * 86400000).toISOString().slice(0, 10);
+    days.push(D.days.find((d) => d.d === k) || { d: k, u: 0, s: 0, ms: 0, peak: 0, chats: 0 });
+  }
+  const metric = G.adm.metric || 'u';
+  const box = el('div', 'adm-box');
+  const bh = el('div', 'adm-boxh'); bh.append(el('b', null, 'รายวัน (30 วัน)'));
+  const seg = el('div', 'seg');
+  [['u', 'คน'], ['s', 'ครั้งที่เข้า'], ['ms', 'เวลาใช้'], ['chats', 'แชต']].forEach(([k, t]) => { const b = el('button', metric === k ? 'on' : '', t); b.onclick = () => { G.adm.metric = k; paintAdmin(); }; seg.append(b); });
+  bh.append(seg); box.append(bh);
+  const max = Math.max(1, ...days.map((d) => d[metric] || 0));
+  const bars = el('div', 'adm-bars');
+  days.forEach((d, i) => {
+    const v = d[metric] || 0;
+    const col = el('div', 'bar' + (d.d === D.today ? ' today' : ''));
+    col.title = `${thDay(d.d)} — ${metric === 'ms' ? fmtDur(v) : v + (metric === 'u' ? ' คน' : metric === 's' ? ' ครั้ง' : ' ข้อความ')}`;
+    const f = el('i'); f.style.height = (v ? Math.max(4, (v / max) * 100) : 0) + '%'; col.append(f);
+    if (v && (metric !== 'ms') && days.length <= 31) { const n = el('span', 'n', String(v)); col.append(n); }
+    if (i % 5 === 0 || i === days.length - 1) col.append(el('span', 'd', thDay(d.d)));
+    bars.append(col);
+  });
+  box.append(bars);
+  body.append(box);
+  // ห้องยอดนิยม (เวลาที่คนอยู่ในห้องนั้นรวมกัน)
+  const zs = Object.entries(D.zones || {}).filter(([z]) => ZONES[z]).sort((a, b) => b[1] - a[1]);
+  const zb = el('div', 'adm-box');
+  zb.append(el('div', 'adm-boxh', null)); zb.firstChild.append(el('b', null, 'ห้องยอดนิยม (เวลาที่คนอยู่รวมกัน)'));
+  if (!zs.length) zb.append(el('div', 'adm-empty', 'ยังไม่มีข้อมูล — จะเริ่มนับเมื่อมีคนเข้าห้อง'));
+  const zmax = Math.max(1, ...zs.map(([, v]) => v));
+  zs.forEach(([z, v]) => {
+    const r = el('div', 'adm-hbar');
+    r.append(el('span', 'nm', `${ZONES[z].icon} ${zoneName(z)}`));
+    const t = el('span', 'tr'); const f = el('i'); f.style.width = (v / zmax) * 100 + '%'; t.append(f);
+    r.append(t, el('span', 'vv', fmtDur(v)));
+    zb.append(r);
+  });
+  body.append(zb);
+}
+
+function admUsers(body, D) {
+  const top = el('div', 'adm-tools');
+  const q = el('input'); q.type = 'search'; q.placeholder = '🔎 ค้นหาชื่อ'; q.value = G.adm.q;
+  q.oninput = () => { G.adm.q = q.value; const pos = q.selectionStart; paintAdmin(); const nq = $('#card .adm-tools input'); if (nq) { nq.focus(); try { nq.setSelectionRange(pos, pos); } catch {} } };
+  top.append(q, el('span', 'cnt', `${D.users.length} คน · ออนไลน์ ${D.users.filter((u) => u.on).length}`));
+  body.append(top);
+  const term = G.adm.q.trim().toLowerCase();
+  const list = D.users.filter((u) => !term || String(u.n || '').toLowerCase().includes(term));
+  if (!list.length) body.append(el('div', 'adm-empty', term ? `ไม่เจอ "${G.adm.q}"` : 'ยังไม่มีผู้ใช้'));
+  for (const u of list) {
+    const row = el('div', 'adm-user' + (u.on ? ' on' : '') + (G.adm.open === u.uid ? ' open' : ''));
+    const main = el('button', 'um');
+    const dot = el('i', 'dot');
+    const who = el('span', 'who');
+    who.append(el('b', null, (u.n || 'ไม่มีชื่อ') + (u.admin ? ' 🛡️' : '')), el('small', null, u.on ? `🟢 ออนไลน์ ${fmtDur(D.now - u.since)}` : `เห็นล่าสุด ${fmtAgo(u.last, D.now)}`));
+    const nums = el('span', 'nums');
+    nums.append(el('span', null, `${u.visits} ครั้ง`), el('span', null, fmtDur(u.ms)));
+    const gift = el('span', 'gift', u.items.length ? `🎁 ${u.items.length}` : '');
+    main.append(dot, who, gift, nums, el('span', 'chev', G.adm.open === u.uid ? '▴' : '▾'));
+    main.onclick = () => { G.adm.open = G.adm.open === u.uid ? null : u.uid; paintAdmin(); };
+    row.append(main);
+    if (G.adm.open === u.uid) {
+      const det = el('div', 'ud');
+      const info = el('div', 'uinfo');
+      info.append(
+        el('span', null, `เข้าครั้งแรก ${u.first ? fmtTime(u.first) : '—'}`),
+        el('span', null, `เข้ามา ${u.visits} ครั้ง · ใช้รวม ${fmtDur(u.ms)}`),
+        el('span', null, `แชต ${u.chats} ข้อความ`),
+      );
+      det.append(info);
+      det.append(el('div', 'uh', '🎁 ของพิเศษ — แตะเพื่อให้ / แตะอีกครั้งเพื่อยึดคืน (ถ้าใส่อยู่จะถอดออกทันที)'));
+      const chips = el('div', 'uitems');
+      for (const it of D.items) {
+        const has = u.items.includes(it.id);
+        const b = el('button', 'uit' + (has ? ' has' : ''));
+        b.append(el('span', 'ck', has ? '✓' : '+'), el('span', null, it.label.replace(/^⭐\s*/, '')));
+        b.title = has ? 'แตะเพื่อยึดคืน' : 'แตะเพื่อให้';
+        b.onclick = () => admCmd(has ? 'revoke' : 'grant', u.uid, [it.id]);
+        chips.append(b);
+      }
+      det.append(chips);
+      const acts = el('div', 'acts');
+      const all = el('button', 'pbtn sm', '🎁 ให้ทั้งหมด'); all.onclick = () => admCmd('grant', u.uid, ['all']);
+      const none = el('button', 'pbtn sm', '↩️ ยึดคืนทั้งหมด'); none.disabled = !u.items.length;
+      none.onclick = () => { if (confirm(`ยึดของพิเศษทั้งหมดคืนจาก ${u.n}?`)) admCmd('revoke', u.uid, ['all']); };
+      acts.append(all, none);
+      if (u.on) {
+        const rt = [...G.others.values()].find((r) => r.by === u.uid || (r.p && r.p.uid === u.uid));
+        if (rt) { const go = el('button', 'pbtn sm', '🚶 ไปหา'); go.onclick = () => { G.adminOpen = false; closeModal(); walkTo(rt.x + 14, rt.y + 4); }; acts.append(go); }
+      }
+      det.append(acts);
+      row.append(det);
+    }
+    body.append(row);
+  }
+}
+
+function admLog(body, D) {
+  if (!D.log.length) { body.append(el('div', 'adm-empty', 'ยังไม่มีประวัติ')); return; }
+  let lastDay = '';
+  for (const e of D.log) {
+    const k = new Date(e.ts + 7 * 3600000).toISOString().slice(0, 10);
+    if (k !== lastDay) { lastDay = k; body.append(el('div', 'adm-day', k === D.today ? 'วันนี้' : thDay(k))); }
+    const r = el('div', 'adm-ev ' + e.ev);
+    r.append(el('span', 't', new Date(e.ts).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })), el('span', 'ic2', e.ev === 'in' ? '➡️' : '⬅️'),
+      el('span', 'nm', e.n || 'ไม่มีชื่อ'), el('span', 'what', e.ev === 'in' ? 'เข้ามา' : `ออกไป · อยู่ ${fmtDur(e.ms)}`));
+    body.append(r);
+  }
+}
+// ปุ่มในเมนู ⋯ (เห็นเฉพาะแอดมิน) + พิมพ์ "สถิติ" / "stats"
+$('#moreAdmin').onclick = openAdminPanel;
+setInterval(() => { $('#moreAdmin').classList.toggle('hidden', !G.isAdmin); }, 1000);
+setInterval(() => { if (G.adminOpen && G.adm.tab !== 'users' && !G.adm.busy && !document.hidden) admRefresh(); }, 30000);
 
 })();
 </script>

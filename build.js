@@ -8,7 +8,7 @@ const src = (f) => fs.readFileSync(path.join(__dirname, 'src', f), 'utf8');
 // RNNoise (ตัดเสียงรบกวนแบบ AI) ฝังเป็น base64
 const wasmPath = path.join(__dirname, 'assets', 'rnnoise.wasm');
 const wasmJs = fs.existsSync(wasmPath) ? `const RNNOISE_WASM_B64 = '${fs.readFileSync(wasmPath).toString('base64')}';\n` : '';
-const js = wasmJs + ['sprites.js', 'world.js', 'net.js', 'voice.js', 'main.js', 'extras.js'].map(src).join('\n\n');
+const js = wasmJs + ['sprites.js', 'world.js', 'net.js', 'voice.js', 'main.js', 'extras.js', 'admin.js'].map(src).join('\n\n');
 // ไอคอนใน assets/icons/*.png → คลาส .ic-<ชื่อ> (ฝังเป็น data URI ให้ยังเป็นไฟล์เดียว)
 const iconDir = path.join(__dirname, 'assets', 'icons');
 const iconCss = fs.existsSync(iconDir) ? fs.readdirSync(iconDir).filter((f) => f.endsWith('.png')).sort()

@@ -565,6 +565,7 @@ function showHelp() {
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
+    '📊 สถิติ — เปิดแผงแอดมิน: คนเข้ากี่คน ใช้นานแค่ไหน ประวัติเข้าออก และให้/ยึดของพิเศษแบบกดเลือก',
     '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ รถF1 ผมรุ้ง ชุดราชา เจ้าหญิง ชุดนักแข่ง หมวกนักแข่ง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
     '🎤 npc ร้อง [ชื่อ] — เรียกนักร้อง NPC มาข้างตัว (ถือไมค์ มีกุญแจซอลเด้ง)',
@@ -587,6 +588,7 @@ function chatCommand(text) {
   if (!G.net) return false;
   if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
   if (/^\/?(diag|ตรวจเสียง|เช็คเสียง|เช็กเสียง)$/i.test(text)) { openVoiceDiag(); return true; }
+  if (/^\/?(stats|สถิติ|แผงแอดมิน|dashboard)$/i.test(text)) { openAdminPanel(); return true; }
   if (/^\/?(dark|ธีมมืด|มืด|light|ธีมสว่าง|สว่าง)$/i.test(text)) { const d = /dark|มืด/i.test(text); setTheme(d); toast(d ? '🌙 เปลี่ยนเป็นธีมมืดแล้ว' : '☀️ เปลี่ยนเป็นธีมสว่างแล้ว'); return true; }
   if (/^\/?admin\s+(off|logout|ออก)$/i.test(text)) { lsSet('pixel.admin', null); G.isAdmin = false; scheduleChatRender(); addSys('เลิกเป็นแอดมินในเครื่องนี้แล้ว'); return true; }
   // สะกิด: poke ชื่อ / สะกิด ชื่อ / ชื่อ poke
@@ -2476,6 +2478,7 @@ function frame(ms) {
   const dot = $('#connDot');
   net.onStatus((s) => { dot.className = 'dot' + (s === 'online' ? '' : s === 'solo' ? ' solo' : ' off'); });
   if (net.onSys) net.onSys((m) => {
+    if (m.stats) { G.adm.data = m.stats; G.adm.busy = false; paintAdmin(); if (m.quiet) { if (m.message) toast(m.message, 2500); return; } if (!m.message) return; }
     if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
     if (m.admin === false) lsSet('pixel.admin', null);
     if (m.updating) { updateCountdown(Number(m.updating) || 15); return; }

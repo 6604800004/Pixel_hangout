@@ -85,12 +85,59 @@ const store = Object.fromEntries(COLS.map((c) => [c, {}]));
 try {
   const saved = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
   for (const c of COLS) if (saved[c] && typeof saved[c] === 'object') store[c] = saved[c];
+  if (saved.stats && typeof saved.stats === 'object') var savedStats = saved.stats;
 } catch { /* ห้องใหม่ */ }
+// ================= สถิติการใช้งาน (เห็นเฉพาะแอดมิน · ไม่ส่งให้ผู้ใช้ทั่วไป) =================
+// users: ต่อคน (ชื่อล่าสุด เข้าครั้งแรก/ล่าสุด จำนวนครั้ง เวลาใช้รวม แชต) · days: ต่อวัน (เวลาไทย) · log: เข้า/ออกล่าสุด
+const stats = { users: {}, days: {}, zones: {}, log: [], peak: { n: 0, ts: 0 }, since: Date.now() };
+if (typeof savedStats === 'object' && savedStats) Object.assign(stats, savedStats);
+const dayKey = (ts = Date.now()) => new Date(ts + 7 * 3600000).toISOString().slice(0, 10);
+const dayOf = (ts) => { const k = dayKey(ts); return (stats.days[k] ||= { u: [], s: 0, ms: 0, peak: 0, chats: 0 }); };
+const userOf = (uid, n) => { const u = (stats.users[uid] ||= { n: n || '', first: Date.now(), last: Date.now(), visits: 0, ms: 0, chats: 0 }); if (n) u.n = String(n).slice(0, 40); return u; };
+function statsLog(ev, uid, n, extra) {
+  stats.log.push({ ts: Date.now(), ev, uid, n: String(n || '').slice(0, 40), ...extra });
+  if (stats.log.length > 400) stats.log.splice(0, stats.log.length - 400);
+}
+function statsTrim() {
+  const days = Object.keys(stats.days).sort();
+  for (const k of days.slice(0, Math.max(0, days.length - 180))) delete stats.days[k];
+  const us = Object.entries(stats.users).sort((a, b) => (b[1].last || 0) - (a[1].last || 0));
+  for (const [u] of us.slice(1000)) delete stats.users[u];
+}
+// เก็บเวลาที่อยู่ในห้องเป็นช่วงๆ (ไม่ต้องรอออก — เซิร์ฟเวอร์รีสตาร์ตก็ไม่หาย)
+function statsAccrue(c, now = Date.now()) {
+  if (!c.acc) return;
+  const dt = Math.max(0, Math.min(now - c.acc, 10 * 60000));
+  c.acc = now;
+  const u = userOf(c.uid); u.ms += dt; u.last = now;
+  dayOf(now).ms += dt;
+  const z = typeof c.p.zn === 'string' && ZONE_IDS.includes(c.p.zn) ? c.p.zn : '';
+  if (z) stats.zones[z] = (stats.zones[z] || 0) + dt;
+}
+function statsReport() {
+  const now = Date.now();
+  for (const c of peers.values()) statsAccrue(c, now);
+  const grants = store.settings.grants || {};
+  const online = new Map([...peers.values()].map((c) => [c.uid, c]));
+  const days = Object.entries(stats.days).sort((a, b) => a[0].localeCompare(b[0])).slice(-60).map(([k, d]) => ({ d: k, u: d.u.length, s: d.s, ms: d.ms, peak: d.peak, chats: d.chats }));
+  const uniq = (n) => { const ks = new Set(); const cut = dayKey(now - (n - 1) * 86400000); for (const [k, d] of Object.entries(stats.days)) if (k >= cut) d.u.forEach((u) => ks.add(u)); return ks.size; };
+  const ids = new Set([...Object.keys(stats.users), ...Object.keys(grants).filter((u) => u !== 'id')]);
+  const users = [...ids].map((uid) => {
+    const u = stats.users[uid] || { n: (grants[uid] && grants[uid].n) || '?', first: 0, last: 0, visits: 0, ms: 0, chats: 0 };
+    const c = online.get(uid);
+    return { uid, n: (c && c.p.n) || u.n, first: u.first, last: c ? now : u.last, visits: u.visits, ms: u.ms, chats: u.chats, on: !!c, since: c ? c.start : 0, admin: !!(c && c.isAdmin), items: grantsOf(uid) };
+  }).sort((a, b) => (b.on - a.on) || (b.last - a.last)).slice(0, 400);
+  return {
+    now, since: stats.since, today: dayKey(now), online: peers.size, max: MAX_USERS, peak: stats.peak,
+    u7: uniq(7), u30: uniq(30), uAll: Object.keys(stats.users).length,
+    days, zones: stats.zones, users, log: stats.log.slice(-200).reverse(), items: ADMIN_ITEMS.map((it) => ({ id: it, label: ITEM_TH[it] || it })),
+  };
+}
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(DATA_FILE, JSON.stringify(store), (e) => e && console.warn('save failed', e.message)));
+    fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(DATA_FILE, JSON.stringify({ ...store, stats }), (e) => e && console.warn('save failed', e.message)));
     if (typeof ghSchedule === 'function') ghSchedule();
   }, 500);
 }
@@ -109,6 +156,29 @@ function mergeStore(incoming) {
     const src = incoming && incoming[c];
     if (!src || typeof src !== 'object') continue;
     for (const [id, d] of Object.entries(src)) if (!store[c][id] && d && typeof d === 'object') { store[c][id] = d; n++; }
+  }
+  const st = incoming && incoming.stats;
+  if (st && typeof st === 'object') {
+    // สถิติ: รวมแบบเอาค่ามากสุด (รับซ้ำจากทั้ง GitHub และตัวเก่าก็ไม่นับเบิ้ล)
+    const mx = (a, b) => Math.max(Number(a) || 0, Number(b) || 0);
+    for (const [uid, u] of Object.entries(st.users || {})) {
+      const cur = stats.users[uid];
+      if (!cur) stats.users[uid] = u;
+      else stats.users[uid] = { n: (cur.last || 0) >= (u.last || 0) ? cur.n || u.n : u.n || cur.n, first: Math.min(cur.first || Infinity, u.first || Infinity), last: mx(cur.last, u.last), visits: mx(cur.visits, u.visits), ms: mx(cur.ms, u.ms), chats: mx(cur.chats, u.chats) };
+    }
+    for (const [k, d] of Object.entries(st.days || {})) {
+      const cur = stats.days[k];
+      if (!cur) stats.days[k] = d;
+      else stats.days[k] = { u: [...new Set([...(cur.u || []), ...(d.u || [])])], s: mx(cur.s, d.s), ms: mx(cur.ms, d.ms), peak: mx(cur.peak, d.peak), chats: mx(cur.chats, d.chats) };
+    }
+    for (const [z, ms] of Object.entries(st.zones || {})) stats.zones[z] = mx(stats.zones[z], ms);
+    if (Array.isArray(st.log)) {
+      const seen = new Set(), all = [...st.log, ...stats.log].filter((e) => { const k = e.ts + e.uid + e.ev; if (seen.has(k)) return false; seen.add(k); return true; });
+      stats.log = all.sort((a, b) => a.ts - b.ts).slice(-400);
+    }
+    if (st.peak && st.peak.n > stats.peak.n) stats.peak = st.peak;
+    if (st.since) stats.since = Math.min(stats.since, st.since);
+    n++;
   }
   if (n) { save(); broadcast({ t: 'cols', cols: Object.fromEntries(COLS.map((c) => [c, list(c)])) }); }
   return n;
@@ -147,7 +217,7 @@ async function ghSave() {
   if (!ghOn() || GH.busy) return;
   GH.busy = true;
   try {
-    const content = Buffer.from(JSON.stringify(store)).toString('base64');
+    const content = Buffer.from(JSON.stringify({ ...store, stats })).toString('base64');
     let r = await ghApi('PUT', `/contents/${GH.file}`, { message: 'room data backup [skip ci]', content, branch: GH.branch, ...(GH.sha ? { sha: GH.sha } : {}) });
     if (r.status === 404 && (await ghEnsureBranch())) r = await ghApi('PUT', `/contents/${GH.file}`, { message: 'room data backup [skip ci]', content, branch: GH.branch });
     if ((r.status === 409 || r.status === 422) && !r.ok) { const g = await ghApi('GET', `/contents/${GH.file}?ref=${encodeURIComponent(GH.branch)}`); GH.sha = g.ok ? g.j.sha : null; r = await ghApi('PUT', `/contents/${GH.file}`, { message: 'room data backup [skip ci]', content, branch: GH.branch, ...(GH.sha ? { sha: GH.sha } : {}) }); }
@@ -158,7 +228,7 @@ function ghSchedule() { if (!ghOn()) return; clearTimeout(GH.timer); GH.timer = 
 async function handoff() {
   if (!HANDOFF_KEY || !PUBLIC_URL) return;
   try {
-    const r = await fetch(`${PUBLIC_URL.replace(/\/$/, '')}/api/handoff`, { method: 'POST', signal: AbortSignal.timeout(8000), headers: { 'Content-Type': 'application/json', 'X-Handoff': crypto.createHash('sha256').update('handoff:' + HANDOFF_KEY).digest('hex'), 'X-Boot': BOOT_ID }, body: JSON.stringify(store) });
+    const r = await fetch(`${PUBLIC_URL.replace(/\/$/, '')}/api/handoff`, { method: 'POST', signal: AbortSignal.timeout(8000), headers: { 'Content-Type': 'application/json', 'X-Handoff': crypto.createHash('sha256').update('handoff:' + HANDOFF_KEY).digest('hex'), 'X-Boot': BOOT_ID }, body: JSON.stringify({ ...store, stats }) });
     console.log('ส่งข้อมูลห้องให้เซิร์ฟเวอร์ใหม่:', r.status);
   } catch (e) { console.warn('handoff failed', e.message); }
 }
@@ -377,7 +447,16 @@ wss.on('connection', (ws) => {
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
       const isAdmin = adminKeyOk(m.ak);
       if (!isAdmin && p.l) p.l = stripAdminLook(p.l, uid);
-      peers.set(key, { ws, uid, p, isAdmin });
+      peers.set(key, { ws, uid, p, isAdmin, start: Date.now(), acc: Date.now() });
+      {
+        const now = Date.now(), u = userOf(uid, p.n), d = dayOf(now);
+        u.visits++; u.last = now;
+        if (!d.u.includes(uid)) d.u.push(uid);
+        d.s++; d.peak = Math.max(d.peak, peers.size);
+        if (peers.size > stats.peak.n) stats.peak = { n: peers.size, ts: now };
+        statsLog('in', uid, p.n);
+        statsTrim(); save();
+      }
       send(ws, {
         t: 'welcome', key, ice: iceServers(), turn: hasTurn(), roomName: ROOM_NAME, now: Date.now(), v: BUILD,
         peers: [...peers].filter(([k]) => k !== key).map(([k, c]) => ({ key: k, uid: c.uid, p: c.p })),
@@ -418,6 +497,7 @@ wss.on('connection', (ws) => {
         store[m.col][m.id] = m.doc;
         broadcast({ t: 'col', col: m.col, id: m.id, doc: m.doc }, key);
         if (m.col === 'chat') {
+          userOf(me.uid, me.p.n).chats++; dayOf().chats++;
           const ids = Object.entries(store.chat).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0)).map(([id]) => id);
           for (const id of ids.slice(0, Math.max(0, ids.length - 100))) { delete store.chat[id]; broadcast({ t: 'col', col: 'chat', id, doc: null }); }
         }
@@ -501,6 +581,34 @@ wss.on('connection', (ws) => {
           store.settings.names = names;
           broadcast({ t: 'col', col: 'settings', id: 'names', doc: names });
           save();
+          break;
+        }
+        if (m.cmd === 'stats') { send(ws, { t: 'sys', stats: statsReport() }); break; }
+        // ให้/ยึดของจากแผงแอดมิน (ระบุด้วย uid · ได้ทั้งคนออนไลน์และออฟไลน์)
+        if ((m.cmd === 'grant' || m.cmd === 'revoke') && m.arg && typeof m.arg === 'object' && typeof m.arg.uid === 'string') {
+          const uid = m.arg.uid.slice(0, 40);
+          const raw = Array.isArray(m.arg.items) ? m.arg.items : [m.arg.item];
+          const items = raw.includes('all') ? ADMIN_ITEMS : raw.filter((it) => ADMIN_ITEMS.includes(it));
+          if (!items.length) break;
+          const grants = { ...(store.settings.grants || {}) }; delete grants.id;
+          const live = [...peers].filter(([, c]) => c.uid === uid);
+          const n = (live[0] && live[0][1].p.n) || (stats.users[uid] && stats.users[uid].n) || (grants[uid] && grants[uid].n) || '?';
+          const cur = new Set(grantsOf(uid));
+          for (const it of items) m.cmd === 'grant' ? cur.add(it) : cur.delete(it);
+          if (cur.size) grants[uid] = { n, items: [...cur] }; else delete grants[uid];
+          store.settings.grants = grants;
+          broadcast({ t: 'col', col: 'settings', id: 'grants', doc: grants });
+          save();
+          const label = items.length > 1 ? `ของพิเศษ ${items.length} อย่าง` : ITEM_TH[items[0]];
+          for (const [k, c] of live) {
+            if (m.cmd === 'grant') send(c.ws, { t: 'sys', message: `🎁 แอดมินให้คุณใช้ ${label} แล้ว — กด 👕 แต่งตัว เพื่อเลือกใช้` });
+            else {
+              const fixed = stripAdminLook(c.p.l, c.uid);
+              if (fixed !== c.p.l) { c.p = { ...c.p, l: fixed }; broadcast({ t: 'peer', key: k, uid: c.uid, p: c.p }, k); }
+              send(c.ws, { t: 'sys', message: `แอดมินยึด ${label} คืนแล้ว`, look: fixed });
+            }
+          }
+          send(ws, { t: 'sys', kind: 'info', quiet: true, message: m.cmd === 'grant' ? `🎁 ให้ ${label} กับ ${n} แล้ว` : `↩️ ยึด ${label} คืนจาก ${n} แล้ว`, stats: statsReport() });
           break;
         }
         if (m.cmd === 'grant' || m.cmd === 'revoke' || m.cmd === 'grants') {
@@ -604,6 +712,7 @@ wss.on('connection', (ws) => {
     if (!me || me.ws !== ws) return; // ถูกแทนที่ไปแล้ว
     peers.delete(key);
     broadcast({ t: 'peer-left', key });
+    statsAccrue(me); statsLog('out', me.uid, me.p.n, { ms: Date.now() - (me.start || Date.now()) }); save();
     console.log(`- ${(me && me.p.n) || key} (${peers.size} ออนไลน์)`);
   });
 });
@@ -626,6 +735,15 @@ function sweepBoard() {
 }
 sweepBoard();
 setInterval(sweepBoard, 5 * 60 * 1000);
+// สถิติ: เก็บเวลาใช้งานทุกนาที (บันทึกลงดิสก์ · สำรอง GitHub ทุก 15 นาทีถ้ามีคนออนไลน์)
+let statsGh = Date.now();
+setInterval(() => {
+  if (!peers.size) return;
+  const now = Date.now();
+  for (const c of peers.values()) statsAccrue(c, now);
+  fs.mkdir(DATA_DIR, { recursive: true }, () => fs.writeFile(DATA_FILE, JSON.stringify({ ...store, stats }), () => {}));
+  if (now - statsGh > 15 * 60000) { statsGh = now; ghSchedule(); }
+}, 60000);
 
 setInterval(pruneFiles, 60 * 60 * 1000);
 setInterval(() => {

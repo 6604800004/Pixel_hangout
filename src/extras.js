@@ -67,6 +67,7 @@ function updateZones() {
   if (z !== G.zone) {
     G.zone = z;
     onChatZone();
+    pres({ zn: z });
     toast(`${ZONES[z].icon} ${zoneName(z)}` + (G.voice && ZONE_TIPS[z] ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
   // ป้ายตำแหน่ง: ห้องที่อยู่ · ใครอยู่ใกล้
