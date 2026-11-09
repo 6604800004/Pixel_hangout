@@ -1380,4 +1380,4 @@ G.isDark = () => document.body.classList.contains('dark');
   const saved = lsGet('pixel.theme', '');
   applyTheme(saved ? saved === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
 })();
-$('#moreTheme').onclick = () => { setTheme(!G.isDark()); setMore(false); };
+$('#sfTheme').onclick = () => setTheme(!G.isDark());
