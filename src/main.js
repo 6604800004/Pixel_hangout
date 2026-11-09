@@ -542,6 +542,7 @@ function showHelp() {
     '👉 poke ชื่อ — สะกิดเฉพาะคน (หรือ สะกิด ชื่อ / ชื่อ poke / poke all)',
     '🎧 bg on · bg off — เปิด/ปิด ได้ยินเสียงตอนพับจอหรือสลับแอป',
     '🩺 ตรวจเสียง — ดูว่าทำไมพูด/ได้ยินใครไม่ได้ (หรือ diag)',
+    '🌙 ธีมมืด / ☀️ ธีมสว่าง — เปลี่ยนสีหน้าจอ (หรือ dark / light)',
     '🚪 ออก — ออกจากห้องหรือออกจากเว็บ (หรือ leave / exit / ปุ่ม 🚪 มุมขวาบน)',
     '🐾 ขี่ — ขี่สัตว์เลี้ยง เดินเร็วขึ้น (พิมพ์ ลง เพื่อลงจากหลัง)',
     '👣 เสียงเดิน — เปิด/ปิดเสียงฝีเท้า (หรือ เสียงเดิน on / off)',
@@ -579,6 +580,7 @@ function chatCommand(text) {
   if (!G.net) return false;
   if (/^\/?(help|คำสั่ง|\?|commands?)$/i.test(text)) { showHelp(); return true; }
   if (/^\/?(diag|ตรวจเสียง|เช็คเสียง|เช็กเสียง)$/i.test(text)) { openVoiceDiag(); return true; }
+  if (/^\/?(dark|ธีมมืด|มืด|light|ธีมสว่าง|สว่าง)$/i.test(text)) { const d = /dark|มืด/i.test(text); setTheme(d); toast(d ? '🌙 เปลี่ยนเป็นธีมมืดแล้ว' : '☀️ เปลี่ยนเป็นธีมสว่างแล้ว'); return true; }
   if (/^\/?admin\s+(off|logout|ออก)$/i.test(text)) { lsSet('pixel.admin', null); G.isAdmin = false; scheduleChatRender(); addSys('เลิกเป็นแอดมินในเครื่องนี้แล้ว'); return true; }
   // สะกิด: poke ชื่อ / สะกิด ชื่อ / ชื่อ poke
   let p = text.match(/^\/?(?:poke|สะกิด|สกิด|จิ้ม)\s+(.+)$/i) || text.match(/^(.+?)\s+(?:poke|สะกิด|สกิด)$/i);

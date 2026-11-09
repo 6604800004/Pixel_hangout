@@ -1366,3 +1366,18 @@ $('#mmFull').onclick = async () => {
   try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
   catch { toast('เครื่องนี้ไม่รองรับโหมดเต็มจอ — ลองเพิ่มเว็บไว้ที่หน้าจอโฮมแทน'); }
 };
+
+// ---------- 🌙 ธีมมืด / ☀️ สว่าง (จำไว้ในเครื่อง · ครั้งแรกตามการตั้งค่าของเครื่อง) ----------
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', !!dark);
+  $('#themeIc').textContent = dark ? '☀️' : '🌙';
+  $('#themeTxt').textContent = dark ? 'ธีมสว่าง' : 'ธีมมืด';
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#1c1924' : '#2e2235';
+}
+function setTheme(dark) { lsSet('pixel.theme', dark ? 'dark' : 'light'); applyTheme(dark); }
+G.isDark = () => document.body.classList.contains('dark');
+(() => {
+  const saved = lsGet('pixel.theme', '');
+  applyTheme(saved ? saved === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
+})();
+$('#moreTheme').onclick = () => { setTheme(!G.isDark()); setMore(false); };

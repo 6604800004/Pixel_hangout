@@ -663,3 +663,44 @@ body.chat-open { --chat-w: 334px; }
 .seg { display: flex; gap: 2px; margin: 2px 8px; padding: 3px; border-radius: 10px; background: var(--ui-hover); }
 .seg button { flex: 1; border: 0; background: none; border-radius: 8px; padding: 6px 4px; font: 400 12.5px Mitr, sans-serif; color: var(--ui-sub); }
 .seg button.on { background: #fff; color: #1f6b42; font-weight: 600; box-shadow: 0 1px 3px rgba(30, 20, 40, .15); }
+
+/* ================= 🌙 ธีมมืด (body.dark) ================= */
+body.dark {
+  --ink: #ece6f5; --ink2: #b9b0cc; --paper: #221e2b; --paper2: #2e2939; --pink2: #5a3445;
+  --ui-line: #3a3446; --ui-text: #ece6f5; --ui-sub: #9c93ad; --ui-hover: #2f2a3a; --ui-green: #2f9e63; --ui-green2: #1d3a2b; --ui-red2: #43232a;
+  --ui-shadow: 0 8px 26px rgba(0, 0, 0, .5);
+  --d-surf: #1c1924; --d-field: #15131b; --d-dash: #463f55;
+  color-scheme: dark;
+}
+body.dark .side, body.dark #toolbar, body.dark .more-menu, body.dark .mm-ctl, body.dark .dev-pop, body.dark .side-open,
+body.dark .dev-pop .acts button, body.dark .seg button.on { background: var(--d-surf); }
+body.dark .loc-pill { background: rgba(28, 25, 36, .94); }
+body.dark .loc-pill:hover { background: var(--d-surf); }
+body.dark .side-search { background: var(--d-field); }
+body.dark .side-search:focus-within { background: var(--d-field); }
+body.dark .side .rm .c, body.dark .rm.here .c { background: var(--d-field); }
+body.dark .side .rm.here { color: #8fe0b0; }
+body.dark .dev-pop .dv.sel, body.dark .seg button.on { color: #8fe0b0; }
+body.dark .side .mem .on-dot, body.dark .tb-av::after, body.dark #toolbar .badge { border-color: var(--d-surf); }
+body.dark .mm-map { border-color: var(--d-surf); }
+body.dark .tb-av, body.dark .side .mem .av { background: #2a3a2e; }
+/* กล่องเก่า (แชต โมดัล ถาด) : ขอบ/เงาเข้ม พื้นมืด */
+body.dark .card, body.dark .chat, body.dark .tray, body.dark .pbtn, body.dark .people, body.dark .dock, body.dark .bye-card, body.dark .toast, body.dark .banner,
+body.dark .btile, body.dark .ch, body.dark .fchip { border-color: #4a4259; box-shadow: 0 3px 0 #0b0910; }
+body.dark .pbtn { background: var(--paper2); color: var(--ink); }
+body.dark .pbtn:hover { background: #3a3448; }
+body.dark .pbtn.pink { background: #d9607f; color: #fff; }
+body.dark .pbtn.on { background: #1d3a2b; }
+body.dark .chat input, body.dark .field input, body.dark .num-in, body.dark .vset select, body.dark .vmeter, body.dark .mon, body.dark .sys.help, body.dark pre.diag,
+body.dark .ch, body.dark .btile, body.dark .fchip, body.dark .gl-opt { background: var(--d-field); color: var(--ink); border-color: #4a4259; }
+body.dark .chat header, body.dark .chat form, body.dark .card.split .foot, body.dark .sys.help, body.dark pre.diag { border-color: var(--d-dash); }
+body.dark .msg .meta time, body.dark .sys { color: #8a819b; }
+body.dark .modal { background: rgba(8, 6, 12, .66); }
+body.dark select, body.dark input[type=text], body.dark textarea { background: var(--d-field); color: var(--ink); }
+body.dark .ic { filter: brightness(1.35); }
+body.dark .tb-grp .ic-mic_off, body.dark .tb-grp .ic-cam_off, body.dark .tb-grp .ic-hp_off, body.dark .ic-leave { filter: brightness(1.15) saturate(1.1); }
+body.dark { color: var(--ink); }
+body.dark .chat, body.dark .rooms { background: rgba(34, 30, 43, .97); }
+body.dark .toast { background: #0e0c13; color: #ece6f5; box-shadow: 0 4px 16px rgba(0, 0, 0, .5); }
+body.dark .banner, body.dark .focus-cap { color: #2e2235; }
+body.dark .btile .x { background: rgba(28, 25, 36, .9); }
