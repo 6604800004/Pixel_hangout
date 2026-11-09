@@ -708,3 +708,8 @@ body.dark .btile .x { background: rgba(28, 25, 36, .9); }
 .side-foot { grid-template-columns: repeat(4, 1fr); gap: 2px; }
 .side-foot button { flex-direction: column; gap: 2px; padding: 6px 2px; font-size: 11.5px; }
 .side-foot button i { font-style: normal; font-size: 17px; line-height: 1.1; }
+/* กล่องที่เดิมใช้สีหมึกเป็นพื้น (เครื่องเล่น YouTube / แชร์จอ) */
+body.dark .yt { background: #120f18; border-color: #4a4259; box-shadow: 0 5px 0 #0b0910; }
+body.dark .yt.onscreen { background: transparent; }
+body.dark .ytvol { color: var(--ink2); }
+body.dark .cam-prev { border-color: #4a4259; }
