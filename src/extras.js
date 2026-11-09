@@ -1235,7 +1235,7 @@ function renderRooms() {
   const here = zoneAt(G.me.x, G.me.y);
   const inCall = !!G.voice;
   const q = ($('#sideSearch').value || '').trim().toLowerCase();
-  const sig = JSON.stringify([q, here, inCall, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf, m.st, m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr]))]);
+  const sig = JSON.stringify([q, here, inCall, G.tabUnread.room, G.chatOpen && G.chatTab, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf, m.st, m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr]))]);
   const list = $('#roomsList');
   if (sig !== G.roomsSig) {
     G.roomsSig = sig;
@@ -1253,6 +1253,19 @@ function renderRooms() {
       const n = document.createElement('span'); n.className = 'n'; n.textContent = `${ZONES[z].icon} ${zoneName(z)}`;
       b.append(spk, n);
       if (by[z].length) { const c = document.createElement('span'); c.className = 'c'; c.textContent = by[z].length; b.append(c); }
+      // 💬 แชตเฉพาะห้อง: ห้องที่อยู่ = เปิดแท็บห้องเลย · ห้องอื่น = เดินไปก่อน แล้วแท็บห้องจะเป็นห้องนั้นเมื่อไปถึง
+      const ctOn = z === here && G.chatOpen && G.chatTab === 'room';
+      const ct = document.createElement('span'); ct.className = 'cht' + (ctOn ? ' on' : '');
+      ct.title = z === here ? `แชตเฉพาะ${zoneName(z)}` : `ไป${zoneName(z)} แล้วเปิดแชตของห้อง`;
+      const ci = document.createElement('i'); ci.className = 'ic ic-' + (ctOn ? 'chat_on' : 'chat'); ct.append(ci);
+      if (z === here && G.tabUnread.room) { const u = document.createElement('b'); u.textContent = G.tabUnread.room > 9 ? '9+' : G.tabUnread.room; ct.append(u); }
+      ct.onclick = (e) => {
+        e.stopPropagation();
+        if (z !== here) goToRoom(z);
+        else if (isMobile()) setRoomsOpen(false);
+        setChatTab('room'); setChatOpen(true);
+      };
+      b.append(ct);
       if (G.isAdmin) {
         const ed = document.createElement('span'); ed.className = 'ed'; ed.textContent = '✏️'; ed.title = 'ตั้งชื่อห้อง (แอดมิน)';
         ed.onclick = (e) => {

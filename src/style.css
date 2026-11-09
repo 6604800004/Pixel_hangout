@@ -725,3 +725,10 @@ body.dark .cam-prev { border-color: #4a4259; }
 #helpBtn { margin-left: 0; margin-right: 0; padding: 3px 7px; }
 body.dark .ctabs button.on { background: var(--d-surf); }
 body.dark .ctabs button[data-ct="room"].on { background: #3a3220; }
+/* 💬 ข้างชื่อห้อง */
+.side .rm .cht { position: relative; flex: none; width: 26px; height: 24px; display: grid; place-items: center; border-radius: 7px; opacity: .6; }
+.side .rm .cht .ic { width: 18px; height: 18px; }
+.side .rm:hover .cht, .side .rm.here .cht { opacity: 1; }
+.side .rm .cht:hover { background: rgba(0, 0, 0, .06); }
+.side .rm .cht b { position: absolute; top: -4px; right: -4px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 99px; background: var(--ui-red); color: #fff; font: 600 9.5px/15px Mitr, sans-serif; text-align: center; }
+body.dark .side .rm .cht:hover { background: rgba(255, 255, 255, .08); }

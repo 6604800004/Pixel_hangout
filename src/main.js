@@ -680,6 +680,7 @@ function paintChatTabs() {
     b.classList.toggle('on', G.chatTab === k);
     c.textContent = n > 9 ? '9+' : n; c.classList.toggle('hidden', !n);
   });
+  G.roomsSig = '';
   $('#chatInput').placeholder = G.chatTab === 'room' ? `พิมพ์ถึงคนใน${zoneName(z)}เท่านั้น…` : 'พิมพ์ถึงทุกคน… (help = ดูคำสั่ง)';
 }
 function setChatTab(t) {
