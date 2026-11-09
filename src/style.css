@@ -713,3 +713,15 @@ body.dark .yt { background: #120f18; border-color: #4a4259; box-shadow: 0 5px 0 
 body.dark .yt.onscreen { background: transparent; }
 body.dark .ytvol { color: var(--ink2); }
 body.dark .cam-prev { border-color: #4a4259; }
+/* ---- แท็บแชต: 🌐 ทุกห้อง / เฉพาะห้อง ---- */
+.chat header { gap: 6px; }
+.ctabs { flex: 1; min-width: 0; display: flex; gap: 3px; padding: 3px; border-radius: 11px; background: var(--paper2); }
+.ctabs button { position: relative; flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; border: 0; background: none; border-radius: 8px;
+  padding: 5px 6px; font: 500 12.5px Mitr, sans-serif; color: var(--ink2); white-space: nowrap; }
+.ctabs button span { overflow: hidden; text-overflow: ellipsis; }
+.ctabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(30, 20, 40, .15); }
+.ctabs button[data-ct="room"].on { background: #fff4d6; }
+.ctabs .cnt { flex: none; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--red); color: #fff; font: 600 10px/16px Mitr, sans-serif; font-style: normal; }
+#helpBtn { margin-left: 0; margin-right: 0; padding: 3px 7px; }
+body.dark .ctabs button.on { background: var(--d-surf); }
+body.dark .ctabs button[data-ct="room"].on { background: #3a3220; }

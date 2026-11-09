@@ -108,7 +108,7 @@
   </div>
 
   <aside class="chat" id="chat">
-    <header><b>💌 แชตในห้อง</b><button class="pbtn sm" id="helpBtn" title="ดูคำสั่งที่ใช้ได้">❓ คำสั่ง</button><button class="x" id="chatClose">✕</button></header>
+    <header><div class="ctabs" id="chatTabs"><button data-ct="all" title="แชตที่ทุกคนเห็น">🌐 ทุกห้อง<i class="cnt hidden"></i></button><button data-ct="room" title="แชตเฉพาะคนในห้องที่คุณอยู่"><span id="ctRoom">🏠 ห้องนี้</span><i class="cnt hidden"></i></button></div><button class="pbtn sm" id="helpBtn" title="ดูคำสั่งที่ใช้ได้">❓</button><button class="x" id="chatClose">✕</button></header>
     <div class="msgs" id="msgs"></div>
     <div class="attach-prog hidden" id="attachProg"><i></i></div>
     <form id="chatForm" autocomplete="off">

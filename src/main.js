@@ -418,8 +418,9 @@ function onPeers(list) {
         rt.saySeen.add(m.i);
         // ข้อความใหม่ขึ้นบนหัวเสมอ (แม้แชตจากฐานข้อมูลจะมาถึงก่อน presence) — saySeen กันขึ้นซ้ำ, isNew = เพิ่งเห็นคนนี้ ไม่โชว์ข้อความเก่า
         const fresh = !isNew;
-        addMessage({ id: m.i, by: peer.by || p.uid || peer.key, n: p.n, l: p.l, text: m.t.slice(0, 200), ts: Number(m.ts) || Date.now(), f: mf });
-        if (fresh) { rt.bubble = { id: m.i, text: (m.t || (mf ? fileLabel(mf) : '')).slice(0, 200), until: now + 6000, lines: null }; SFX.msg(); }
+        const mz = chatZone(m.z);
+        addMessage({ id: m.i, by: peer.by || p.uid || peer.key, n: p.n, l: p.l, text: m.t.slice(0, 200), ts: Number(m.ts) || Date.now(), f: mf, z: mz });
+        if (fresh && (!mz || mz === G.zone)) { rt.bubble = { id: m.i, text: (m.t || (mf ? fileLabel(mf) : '')).slice(0, 200), until: now + 6000, lines: null }; SFX.msg(); }
       }
     }
   }
@@ -469,7 +470,11 @@ function addMessage(m) {
     const oldest = [...G.messages.values()].sort((a, b) => a.ts - b.ts)[0];
     G.messages.delete(oldest.id);
   }
-  if (!m.sys && m.by !== myBy() && !G.chatOpen) { G.unread++; updateBadge(); }
+  if (!m.sys && m.by !== myBy() && (!m.z || m.z === G.zone)) {
+    if (!G.chatOpen) { G.unread++; updateBadge(); }
+    const tab = m.z ? 'room' : 'all';
+    if (!G.chatOpen || G.chatTab !== tab) { G.tabUnread[tab]++; paintChatTabs(); }
+  }
   scheduleChatRender();
 }
 function addSys(text) { addMessage({ id: 'sys' + randomId(6), sys: true, text, ts: Date.now() }); }
@@ -483,8 +488,10 @@ function renderChat() {
   const box = $('#msgs');
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
   box.innerHTML = '';
-  const list = [...G.messages.values()].sort((a, b) => a.ts - b.ts);
-  if (!list.length) { const e = document.createElement('div'); e.className = 'sys'; e.textContent = 'ยังไม่มีข้อความ ทักเพื่อนได้เลย 👋'; box.append(e); }
+  // แท็บ 🌐 ทุกห้อง = ข้อความที่ไม่ได้ระบุห้อง · แท็บห้อง = เฉพาะข้อความของห้องที่เราอยู่ตอนนี้
+  const room = G.chatTab === 'room';
+  const list = [...G.messages.values()].filter((m) => (m.sys ? m.help || !room : room ? m.z === G.zone : !m.z)).sort((a, b) => a.ts - b.ts);
+  if (!list.length) { const e = document.createElement('div'); e.className = 'sys'; e.textContent = room ? `ยังไม่มีข้อความใน${zoneName(G.zone)} — พิมพ์ตรงนี้ เห็นเฉพาะคนในห้องนี้ 🤫` : 'ยังไม่มีข้อความ ทักเพื่อนได้เลย 👋'; box.append(e); }
   let prev = null;
   for (const m of list) try {
     if (m.sys) { const e = document.createElement('div'); e.className = 'sys' + (m.help ? ' help' : ''); e.textContent = m.text; box.append(e); prev = null; continue; }
@@ -640,12 +647,14 @@ function sendChat(text, file) {
   const ts = Date.now();
   const m = { i: randomId(9), t: text, ts };
   if (file) m.f = file;
+  const z = G.chatTab === 'room' && ZONES[G.zone] ? G.zone : undefined;
+  if (z) m.z = z;
   G.mySay = [...G.mySay.slice(-2), m];
   pres({ say: G.mySay });
-  addMessage({ id: m.i, by: myBy(), n: G.me.nick, l: G.me.look, text, ts, f: file || null });
+  addMessage({ id: m.i, by: myBy(), n: G.me.nick, l: G.me.look, text, ts, f: file || null, z });
   G.me.bubble = { id: m.i, text: text || fileLabel(file), until: performance.now() + 6000, lines: null };
   if (G.net.hasDb && G.net.canWrite !== false) {
-    G.net.set('chat', m.i, { uid: G.net.uid || '', n: G.me.nick, l: G.me.look, text, ts, ...(file ? { f: file } : {}) }).then(pruneChat).catch(() => {});
+    G.net.set('chat', m.i, { uid: G.net.uid || '', n: G.me.nick, l: G.me.look, text, ts, ...(file ? { f: file } : {}), ...(z ? { z } : {}) }).then(pruneChat).catch(() => {});
   }
   const box = $('#msgs'); requestAnimationFrame(() => (box.scrollTop = box.scrollHeight));
 }
@@ -659,13 +668,36 @@ function updateBadge() {
   b.textContent = G.unread > 9 ? '9+' : G.unread;
   b.classList.toggle('hidden', !G.unread);
 }
+// ---- แชตเฉพาะห้อง: แท็บ 🌐 ทุกห้อง / ห้องที่เราอยู่ ----
+G.chatTab = lsGet('pixel.chatTab', 'all') === 'room' ? 'room' : 'all';
+G.tabUnread = { all: 0, room: 0 };
+function chatZone(z) { return typeof z === 'string' && ZONES[z] ? z : undefined; }
+function paintChatTabs() {
+  const z = ZONES[G.zone] ? G.zone : 'hall';
+  $('#ctRoom').textContent = `${ZONES[z].icon} ${zoneName(z)}`;
+  document.querySelectorAll('#chatTabs button').forEach((b) => {
+    const k = b.dataset.ct, n = G.tabUnread[k] || 0, c = b.querySelector('.cnt');
+    b.classList.toggle('on', G.chatTab === k);
+    c.textContent = n > 9 ? '9+' : n; c.classList.toggle('hidden', !n);
+  });
+  $('#chatInput').placeholder = G.chatTab === 'room' ? `พิมพ์ถึงคนใน${zoneName(z)}เท่านั้น…` : 'พิมพ์ถึงทุกคน… (help = ดูคำสั่ง)';
+}
+function setChatTab(t) {
+  G.chatTab = t === 'room' ? 'room' : 'all'; lsSet('pixel.chatTab', G.chatTab);
+  G.tabUnread[G.chatTab] = 0; paintChatTabs(); renderChat();
+  const box = $('#msgs'); box.scrollTop = box.scrollHeight;
+  typingSent = null; shareTyping(true);
+}
+// ย้ายห้อง: แท็บห้องเปลี่ยนเป็นห้องใหม่ (ข้อความค้างของห้องเดิมไม่นับ)
+function onChatZone() { G.tabUnread.room = 0; paintChatTabs(); if (G.chatTab === 'room') renderChat(); }
+document.querySelectorAll('#chatTabs button').forEach((b) => (b.onclick = () => setChatTab(b.dataset.ct)));
 function setChatOpen(open, focus = true) {
   G.chatOpen = open;
   $('#chat').classList.toggle('closed', !open);
   $('[data-tool="chat"]').classList.toggle('active', open);
   setIcon($('[data-tool="chat"] .ic'), open ? 'chat_on' : 'chat');
   document.body.classList.toggle('chat-open', !!open);
-  if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (focus && !isMobile()) $('#chatInput').focus(); }
+  if (open) { G.unread = 0; updateBadge(); G.tabUnread[G.chatTab] = 0; paintChatTabs(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (focus && !isMobile()) $('#chatInput').focus(); }
 }
 // ---- กำลังพิมพ์: เพื่อนเห็นข้อความที่กำลังพิมพ์ขึ้นบนหัว (ไม่ส่งคำสั่งแอดมิน/รหัส) ----
 G.showTyping = lsGet('pixel.showTyping', true) !== false;
@@ -679,7 +711,7 @@ function shareTyping(force) {
   if (!force && t && now - typingT < 300) { clearTimeout(shareTyping.tm); shareTyping.tm = setTimeout(() => shareTyping(true), 320); return; }
   typingT = now; typingSent = t;
   G.me.typing = t;
-  pres({ ty: t || null });
+  pres({ ty: t || null, tz: t && G.chatTab === 'room' ? G.zone : null });
 }
 $('#chatInput').addEventListener('input', () => shareTyping());
 $('#chatInput').addEventListener('blur', () => { if (!$('#chatInput').value.trim()) shareTyping(true); });
@@ -1422,7 +1454,7 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
       top = by;
     } else if (bub) { if (ch === G.me) G.me.bubble = null; else ch.bubble = null; }
     // กำลังพิมพ์ (ข้อความสด สีจาง + จุดกระพริบ)
-    const ty = ch === G.me ? G.me.typing : p && p.ty;
+    const ty = ch === G.me ? G.me.typing : p && p.ty && (!p.tz || p.tz === G.zone) ? p.ty : '';
     if (ty && !(bub && bub.until > now)) {
       c.font = 'italic 400 12px Mitr, sans-serif';
       const dots = '.'.repeat(1 + (Math.floor(now / 350) % 3));
@@ -2399,6 +2431,7 @@ async function join() {
   G.net.setPresence(fullPresence());
   G.presLast = performance.now();
   G.zone = zoneAt(G.me.x, G.me.y);
+  paintChatTabs();
   setTimeout(spPoll, 1500);
   if (net.mode === 'claude' && net.canWrite === false) showBanner('คุณมีสิทธิ์ดูอย่างเดียว: เดิน แชต อีโมตได้ แต่ห้อง/โต๊ะจะไม่ถูกบันทึก');
   if (net.mode === 'solo') showBanner(net.reason);
@@ -2496,7 +2529,7 @@ function frame(ms) {
   });
   net.watch('chat', (docs) => {
     G.chatDocs = docs;
-    for (const d of docs) if (typeof d.text === 'string') addMessage({ id: d.id, by: d.uid || d.id, n: d.n, l: d.l, text: d.text.slice(0, 200), ts: Number(d.ts) || 0, f: cleanFile(d.f) });
+    for (const d of docs) if (typeof d.text === 'string') addMessage({ id: d.id, by: d.uid || d.id, n: d.n, l: d.l, text: d.text.slice(0, 200), ts: Number(d.ts) || 0, f: cleanFile(d.f), z: chatZone(d.z) });
   });
   net.watch('settings', (docs) => {
     const s = docs.find((d) => d.id === 'room');
