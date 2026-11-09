@@ -473,3 +473,141 @@ pre.diag { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; backgrou
 .sw.custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
 
 .num-in { width: 84px; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 10px; font: 600 18px Mitr, sans-serif; text-align: center; background: #fff; color: var(--ink); }
+
+/* =====================================================================
+   เลย์เอาต์ใหม่: แถบข้างซ้าย · ป้ายตำแหน่ง · แถบควบคุมล่าง · แผนที่ย่อ (โทนขาวสะอาด สีเขียวเป็นหลัก)
+   ===================================================================== */
+:root { --side-w: 0px; --chat-w: 0px; --ui-line: #e6e2ea; --ui-text: #2b2433; --ui-sub: #8a8296; --ui-green: #2f8f5b; --ui-green2: #e6f4ec; --ui-hover: #f4f2f6; --ui-red: #e24c5a; --ui-red2: #fdebed; --ui-shadow: 0 6px 22px rgba(30, 20, 40, .14); }
+body.side-on { --side-w: 264px; }
+body.side-off { --side-w: 52px; }
+body.chat-open { --chat-w: 334px; }
+
+/* ---- แถบข้างซ้าย ---- */
+.side { position: fixed; left: 0; top: 0; bottom: 0; width: 264px; z-index: 7; display: flex; flex-direction: column; background: #fff; border-right: 1px solid var(--ui-line);
+  padding-top: var(--safe-t); padding-bottom: var(--safe-b); color: var(--ui-text); box-shadow: 2px 0 18px rgba(30, 20, 40, .06); }
+.side-head { display: flex; align-items: center; gap: 6px; padding: 14px 10px 8px 14px; }
+.side-title { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; background: none; padding: 4px 6px; border-radius: 10px; text-align: left; }
+.side-title:hover { background: var(--ui-hover); }
+.side-title b { font-size: 16px; font-weight: 600; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-title small { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ui-sub); }
+.side .dot { width: 8px; height: 8px; border-radius: 50%; border: 0; background: #3cc36f; }
+.side .dot.off { background: #f0b429; } .side .dot.solo { background: #c8c4d0; }
+.ib { flex: none; width: 32px; height: 32px; border: 0; border-radius: 9px; background: none; font-size: 20px; color: var(--ui-sub); display: grid; place-items: center; }
+.ib:hover { background: var(--ui-hover); color: var(--ui-text); }
+.side-invite { margin: 4px 14px 8px; border: 0; border-radius: 11px; background: var(--ui-green); color: #fff; font: 600 14px Mitr, sans-serif; padding: 10px; box-shadow: 0 2px 0 #1f6b42; }
+.side-invite:hover { filter: brightness(1.06); } .side-invite:active { transform: translateY(1px); box-shadow: none; }
+.side-search { margin: 2px 14px 6px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--ui-line); border-radius: 10px; padding: 7px 10px; background: #fbfafc; color: var(--ui-sub); }
+.side-search:focus-within { border-color: var(--ui-green); background: #fff; }
+.side-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: 400 13.5px Mitr, sans-serif; color: var(--ui-text); }
+.side-sub { padding: 8px 18px 4px; font-size: 12px; color: var(--ui-sub); }
+.side #roomsList { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 2px; overscroll-behavior: contain; }
+.side .rm { color: var(--ui-text); font-size: 14px; padding: 7px 10px; border-radius: 10px; gap: 8px; }
+.side .rm:hover { background: var(--ui-hover); }
+.side .rm.here { background: var(--ui-green2); color: #1f6b42; font-weight: 600; }
+.side .rm .spk { font-size: 12px; opacity: .55; filter: grayscale(1); }
+.side .rm .c { background: #fff; color: var(--ui-green); font-weight: 600; border-radius: 999px; padding: 0 7px; font-size: 11.5px; }
+.side .rm:not(.here) .c { background: var(--ui-hover); color: var(--ui-sub); }
+.side .rm .ed { font-size: 12px; opacity: .5; } .side .rm .ed:hover { opacity: 1; }
+.side .mem { padding: 4px 8px 4px 26px; gap: 9px; color: var(--ui-text); border-radius: 10px; }
+.side .mem:hover { background: var(--ui-hover); }
+.side .mem .av { position: relative; flex: none; width: 30px; height: 30px; border-radius: 50%; background: #eef3ea; overflow: hidden; display: grid; place-items: center; }
+.side .mem .av canvas { width: 30px; height: 30px; border-radius: 0; }
+.side .mem .on-dot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; background: #3cc36f; border: 2px solid #fff; }
+.side .mem.talk .av { box-shadow: 0 0 0 2px #3cc36f; }
+.side .mem .who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.side .mem .nm { font-size: 13.5px; }
+.side .mem .sub { font-size: 11.5px; color: var(--ui-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side .mem.talk .sub { color: var(--ui-green); }
+.side .empty { padding: 14px 12px; text-align: center; font-size: 13px; color: var(--ui-sub); }
+.side-foot { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--ui-line); padding: 6px 8px; }
+.side-foot button { border: 0; background: none; border-radius: 10px; padding: 8px 4px; font: 400 12.5px Mitr, sans-serif; color: var(--ui-sub); display: flex; align-items: center; justify-content: center; gap: 5px; }
+.side-foot button:hover { background: var(--ui-hover); color: var(--ui-text); }
+.side-foot i { font-style: normal; font-size: 14px; }
+.side-open { position: fixed; left: 10px; top: calc(10px + var(--safe-t)); z-index: 7; width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--ui-line); background: #fff; font-size: 18px; color: var(--ui-text); box-shadow: var(--ui-shadow); }
+
+/* ---- ป้ายตำแหน่ง ---- */
+.loc-pill { position: fixed; z-index: 5; top: calc(12px + var(--safe-t)); left: calc(var(--side-w) + 12px); display: flex; align-items: center; gap: 6px; max-width: calc(100vw - var(--side-w) - 24px);
+  border: 1px solid var(--ui-line); border-radius: 999px; background: rgba(255, 255, 255, .96); padding: 6px 14px 6px 10px; font: 400 13px Mitr, sans-serif; color: var(--ui-text); box-shadow: 0 2px 10px rgba(30, 20, 40, .1); white-space: nowrap; overflow: hidden; }
+.loc-pill:hover { background: #fff; }
+.loc-pill .pin { font-size: 13px; filter: hue-rotate(90deg) saturate(.8); }
+.loc-pill b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.loc-pill .near { color: var(--ui-sub); overflow: hidden; text-overflow: ellipsis; }
+.loc-pill .near::before { content: '·'; margin: 0 6px 0 2px; }
+.loc-pill .near:empty { display: none; }
+
+/* ---- แถบควบคุมล่าง ---- */
+#toolbar { left: calc((100vw + var(--side-w) - var(--chat-w)) / 2); transform: translateX(-50%); bottom: calc(14px + var(--safe-b)); display: flex; align-items: center; gap: 3px;
+  padding: 6px 8px; background: #fff; border: 1px solid var(--ui-line); border-radius: 16px; box-shadow: var(--ui-shadow); width: auto; max-width: calc(100vw - var(--side-w) - var(--chat-w) - 24px); }
+#toolbar > button { position: relative; width: 40px; height: 40px; padding: 0; flex: none; display: grid; place-items: center; border: 0; border-radius: 11px; background: none; font-size: 19px; color: var(--ui-text); }
+#toolbar > button:hover { background: var(--ui-hover); }
+#toolbar > button.active { background: var(--ui-green2); }
+#toolbar > button i { font-style: normal; font-size: 19px; }
+#toolbar .tb.off, #toolbar #camBtn:not(.on) { background: var(--ui-red2); }
+#toolbar .tb.on { background: var(--ui-green2); }
+#toolbar .tb.call { width: auto; display: flex; gap: 6px; padding: 0 14px; background: var(--ui-green); color: #fff; font: 600 14px Mitr, sans-serif; }
+#toolbar .tb.call:hover { filter: brightness(1.06); background: var(--ui-green); }
+#toolbar .tb.call.on { box-shadow: 0 0 0 3px #b9e4c9; }
+#toolbar .tb.leave:hover { background: var(--ui-red2); }
+#toolbar > .tb-me { width: auto; height: 44px; display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 0 10px 0 4px; max-width: 180px; }
+.tb-av { position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; background: #eef3ea; overflow: visible; display: grid; place-items: center; }
+.tb-av canvas { width: 34px !important; height: 34px !important; border-radius: 50%; image-rendering: pixelated; }
+.tb-av::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; background: #3cc36f; border: 2px solid #fff; }
+.tb-who { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.2; }
+.tb-who b { font-size: 13.5px; font-weight: 600; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-who small { font-size: 11.5px; color: var(--ui-sub); white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.tb-sep { flex: none; width: 1px; height: 26px; background: var(--ui-line); margin: 0 5px; }
+#toolbar .badge { top: -3px; right: -3px; border: 2px solid #fff; border-radius: 999px; background: var(--ui-red); }
+.mob-only { display: none !important; }
+.actions { left: calc((100vw + var(--side-w) - var(--chat-w)) / 2); bottom: calc(80px + var(--safe-b)); }
+
+/* ---- เมนูเพิ่มเติม (⋯) ---- */
+.more-menu { position: fixed; z-index: 9; bottom: calc(72px + var(--safe-b)); left: calc((100vw + var(--side-w) - var(--chat-w)) / 2 + 60px); min-width: 210px; display: flex; flex-direction: column; gap: 2px;
+  background: #fff; border: 1px solid var(--ui-line); border-radius: 14px; box-shadow: var(--ui-shadow); padding: 6px; animation: pop .14s ease-out; }
+.more-menu button { display: flex; align-items: center; gap: 10px; border: 0; background: none; border-radius: 10px; padding: 9px 12px; font: 400 14px Mitr, sans-serif; color: var(--ui-text); text-align: left; }
+.more-menu button:hover { background: var(--ui-hover); }
+.more-menu button i { font-style: normal; width: 20px; text-align: center; }
+.more-menu .danger { color: var(--ui-red); } .more-menu .danger:hover { background: var(--ui-red2); }
+
+/* ---- แผนที่ย่อ ---- */
+.mm { position: fixed; z-index: 5; right: calc(var(--chat-w) + 14px); bottom: calc(14px + var(--safe-b)); display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
+.mm > * { pointer-events: auto; }
+.mm-map { display: block; border: 3px solid #fff; border-radius: 14px; box-shadow: var(--ui-shadow); background: #cfe5c4; image-rendering: pixelated; cursor: pointer; }
+.mm.collapsed .mm-map { display: none; }
+.mm.lift { bottom: calc(76px + var(--safe-b)); }
+.mm-ctl { display: flex; flex-direction: column; gap: 2px; background: #fff; border: 1px solid var(--ui-line); border-radius: 13px; box-shadow: var(--ui-shadow); padding: 4px; }
+.mm-ctl button { width: 34px; height: 34px; border: 0; border-radius: 9px; background: none; font-size: 16px; color: var(--ui-text); display: grid; place-items: center; }
+.mm-ctl button:hover { background: var(--ui-hover); }
+.mm:not(.collapsed) #mmToggle { background: var(--ui-green2); }
+
+/* ---- ตำแหน่งของเดิมให้หลบแถบข้าง ---- */
+.chat { top: calc(12px + var(--safe-t)); bottom: calc(14px + var(--safe-b)); right: 12px; }
+.people { left: calc(var(--side-w) + 12px); top: calc(56px + var(--safe-t)); }
+.dock { left: calc(var(--side-w) + 12px); bottom: calc(80px + var(--safe-b)); }
+.banner { top: calc(56px + var(--safe-t)); left: calc((100vw + var(--side-w) - var(--chat-w)) / 2); }
+
+/* ---- มือถือ: แถบข้างเป็นลิ้นชักทับจอ · แถบล่างเต็มกว้าง · แผนที่ย่อซ่อนไว้ก่อน ---- */
+@media (max-width: 760px), (max-height: 500px) and (orientation: landscape) {
+  body.side-on, body.side-off { --side-w: 52px; }
+  body.chat-open { --chat-w: 0px; }
+  .side { width: min(300px, 86vw); z-index: 14; box-shadow: 8px 0 30px rgba(30, 20, 40, .25); }
+  #toolbar { left: 50%; width: calc(100vw - 16px); max-width: none; bottom: calc(8px + var(--safe-b)); justify-content: space-between; padding: 5px 6px; gap: 0; }
+  #toolbar > button { width: 38px; height: 38px; font-size: 18px; }
+  #toolbar > .tb-me { width: 44px; padding: 0 4px; }
+  .tb-who, .tb-sep, #toolbar .tb.call .lbl { display: none; }
+  #toolbar .tb.call { padding: 0 12px; }
+  .desk-only { display: none !important; }
+  .mob-only { display: flex !important; }
+  .more-menu { left: auto; right: 8px; bottom: calc(64px + var(--safe-b)); }
+  .mm { right: 8px; bottom: calc(66px + var(--safe-b)); }
+  .mm-map { width: 150px !important; height: auto !important; }
+  .mm-ctl button { width: 32px; height: 30px; font-size: 14px; }
+  .actions { left: 50%; bottom: calc(66px + var(--safe-b)); }
+  .loc-pill { left: 56px; top: calc(10px + var(--safe-t)); padding: 6px 12px 6px 9px; font-size: 12.5px; max-width: calc(100vw - 68px); }
+  .dock { left: auto; }
+  .banner { left: 50%; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  #toolbar { width: auto; left: 50%; bottom: calc(6px + var(--safe-b)); }
+  #toolbar > button { width: 36px; height: 34px; }
+  .mm-map { display: none !important; }
+}

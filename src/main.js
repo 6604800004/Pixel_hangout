@@ -661,6 +661,7 @@ function setChatOpen(open, focus = true) {
   G.chatOpen = open;
   $('#chat').classList.toggle('closed', !open);
   $('[data-tool="chat"]').classList.toggle('active', open);
+  document.body.classList.toggle('chat-open', !!open);
   if (open) { G.unread = 0; updateBadge(); renderChat(); const box = $('#msgs'); box.scrollTop = box.scrollHeight; if (focus && !isMobile()) $('#chatInput').focus(); }
 }
 // ---- กำลังพิมพ์: เพื่อนเห็นข้อความที่กำลังพิมพ์ขึ้นบนหัว (ไม่ส่งคำสั่งแอดมิน/รหัส) ----
@@ -1164,7 +1165,8 @@ function render(t) {
   const me = G.me;
   // กล้องตามจุดกึ่งกลาง (ตัวละคร หรือจุดที่ลากไว้ตอนจัดห้อง) — ซูมเข้า/ออกแล้วตัวละครยังอยู่กลางจอเสมอ
   // เผื่อที่ให้แผงแชตด้านขวาบนจอใหญ่ ให้อยู่กลางพื้นที่ที่มองเห็นจริง
-  const vw = bw - (G.chatOpen && !isMobile() ? 330 / scale : 0);
+  const sideW = !isMobile() && document.body.classList.contains('side-on') ? 264 / scale : 0;
+  const vw = bw - (G.chatOpen && !isMobile() ? 330 / scale : 0) - sideW;
   let tx, ty;
   if (G.camManual && Number.isFinite(G.cam.mx)) { tx = G.cam.mx; ty = G.cam.my; }
   else { tx = me.x; ty = me.y - 16; }
@@ -1178,8 +1180,8 @@ function render(t) {
   const pop = document.getElementById('micPop');
   const popTop = pop && !pop.classList.contains('hidden') ? pop.getBoundingClientRect().top : 0;
   const topOff = popTop ? (isMobile() ? 96 : 0) : (G.dockBottom || 0);
-  const botOff = popTop ? ch - popTop : isLand() ? 52 : 86; // แถบเครื่องมือด้านล่าง
-  const camX = Math.round((G.cam.cx - vw / 2) * scale) / scale, camY = Math.round((G.cam.cy - (topOff + ch - botOff) / 2 / scale) * scale) / scale;
+  const botOff = popTop ? ch - popTop : isLand() ? 46 : 70; // แถบเครื่องมือด้านล่าง
+  const camX = Math.round((G.cam.cx - sideW - vw / 2) * scale) / scale, camY = Math.round((G.cam.cy - (topOff + ch - botOff) / 2 / scale) * scale) / scale;
   G.cam.x = camX; G.cam.y = camY;
 
   const b = bctx;
@@ -1557,7 +1559,7 @@ function buildTrays() {
     const i = document.createElement('i'); i.textContent = e || '➖';
     const s = document.createElement('span'); s.textContent = label;
     b.append(i, s);
-    b.onclick = () => { G.me.st = e; lsSet('pixel.status', e); pres({ st: e }); $('#statusIcon').textContent = e || '💬'; buildTrays(); $('#statusTray').classList.add('hidden'); closeTrays(); };
+    b.onclick = () => { G.me.st = e; lsSet('pixel.status', e); pres({ st: e }); $('#statusIcon').textContent = e || '📝'; buildTrays(); $('#statusTray').classList.add('hidden'); closeTrays(); };
     st.append(b);
   }
 }
@@ -2256,7 +2258,7 @@ async function join() {
   else { G.me.x = 230 + Math.random() * 40; G.me.y = 318; }
   G.me.pet.x = G.me.x + 12; G.me.pet.y = G.me.y;
   G.me.st = lsGet('pixel.status', '');
-  $('#statusIcon').textContent = G.me.st || '💬';
+  $('#statusIcon').textContent = G.me.st || '📝';
   buildPalette(); buildTrays();
   if (net.mode === 'ws') { setupVoice(); net.start(); }
   if (net.mode === 'ws' && G.bgAudio) keepAlive(true); // ต้องเริ่มจากการกดปุ่ม (iOS)

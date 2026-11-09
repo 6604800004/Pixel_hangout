@@ -17,29 +17,8 @@
 <canvas id="game"></canvas>
 
 <div id="hud" class="hidden">
-  <header class="topbar">
-    <div class="top-left">
-      <button class="chip" id="roomChip" aria-label="ใครอยู่บ้าง">
-        <span class="dot" id="connDot"></span>
-        <b id="roomName">Pixel Hangout</b>
-        <span class="count"><span>👥</span><span id="onlineCount">1</span></span>
-      </button>
-      <button class="chip zone" id="zoneChip" title="ตั้งรัศมีไมค์">🏠 ห้องรวม</button>
-    </div>
-    <div class="top-right">
-      <button class="pbtn" id="callBtn" title="ห้องคุยเสียง">🎧 <span class="lbl">ห้องเสียง</span></button>
-      <button class="pbtn sq hidden" id="micBtn" title="ไมค์">🎙️</button>
-      <button class="pbtn sq hidden" id="camBtn" title="กล้อง">📷</button>
-      <button class="pbtn sq hidden" id="deafBtn" title="ปิดเสียงเพื่อน">🔊</button>
-      <button class="pbtn sq hidden" id="shareBtn" title="แชร์จอ">🖥️</button>
-      <button class="pbtn sq hidden" id="voiceSetBtn" title="ตั้งค่าไมค์/กล้อง/ฟังเสียงตัวเอง">⚙️</button>
-      <div class="zoom">
-        <button class="pbtn sq" id="zoomOut" title="ซูมออก">－</button>
-        <button class="pbtn sq" id="zoomIn" title="ซูมเข้า">＋</button>
-      </div>
-      <button class="pbtn danger leave-top" id="leaveTop" title="ออกจากห้อง / ออกจากเว็บ">🚪<span class="lbl"> ออก</span></button>
-    </div>
-  </header>
+  <!-- จุดบอกตำแหน่ง (ห้องที่อยู่ + ใครอยู่ใกล้) มุมบนซ้ายของพื้นที่เกม -->
+  <button class="loc-pill" id="zoneChip" title="ตั้งรัศมีไมค์"><span class="pin">📍</span><b id="zoneName">ห้องรวม</b><span class="near" id="nearTxt"></span></button>
   <div class="banner hidden" id="banner"></div>
 
   <section class="panel people hidden" id="people">
@@ -49,11 +28,26 @@
     <div class="leave-row"><button class="pbtn sm" id="diagBtn">🩺 ตรวจเสียง</button><button class="pbtn sm danger" id="leaveBtn">🚪 ออกจากห้อง</button></div>
   </section>
 
-  <button class="pbtn sq roomsTab hidden" id="roomsTab" title="ห้องทั้งหมด">🔊</button>
-  <section class="rooms hidden" id="rooms">
-    <header><b>🔊 ห้องเสียง</b><button class="x" id="roomsClose" title="ซ่อน">‹</button></header>
+  <!-- แถบข้างซ้าย: ชื่อห้อง/ออนไลน์ · ชวนเพื่อน · ค้นหา · ห้องทั้งหมด (+คนในห้อง) · บัญชี/วิธีใช้/ตั้งค่า -->
+  <button class="side-open hidden" id="roomsTab" title="เปิดแถบห้อง">☰</button>
+  <aside class="side hidden" id="rooms">
+    <header class="side-head">
+      <button class="side-title" id="roomChip" title="ดูว่าใครอยู่บ้าง">
+        <b id="roomName">Pixel Hangout</b>
+        <small><span class="dot" id="connDot"></span>ออนไลน์ <span id="onlineCount">1</span> คน</small>
+      </button>
+      <button class="ib" id="roomsClose" title="ซ่อนแถบข้าง">‹</button>
+    </header>
+    <button class="side-invite" id="inviteBtn">＋ ชวนเพื่อนเข้าห้อง</button>
+    <label class="side-search"><span>⌕</span><input id="sideSearch" placeholder="ค้นหาคนหรือห้อง" autocomplete="off" /></label>
+    <div class="side-sub">ห้องทั้งหมด</div>
     <div id="roomsList"></div>
-  </section>
+    <footer class="side-foot">
+      <button id="sfAccount"><i>👤</i>บัญชี</button>
+      <button id="sfHelp"><i>❔</i>วิธีใช้</button>
+      <button id="sfSettings"><i>⚙️</i>ตั้งค่า</button>
+    </footer>
+  </aside>
 
   <div class="actions" id="actions"></div>
 
@@ -70,14 +64,44 @@
     <button class="pbtn sm danger" data-sel="delete">🗑️ ลบ</button>
   </div>
 
+  <!-- แถบควบคุมล่างกลาง: ตัวเรา · ไมค์ กล้อง แชร์จอ หูฟัง · อีโมต สถานะ แชต · เพิ่มเติม · ออก -->
   <nav class="toolbar" id="toolbar">
-    <button data-tool="look"><i>👕</i><span>แต่งตัว</span></button>
-    <button data-tool="desk"><i>🖥️</i><span>โต๊ะฉัน</span></button>
-    <button data-tool="edit"><i>🛋️</i><span>จัดห้อง</span></button>
-    <button data-tool="emote"><i>😊</i><span>อีโมต</span></button>
-    <button data-tool="status"><i id="statusIcon">💬</i><span>สถานะ</span></button>
-    <button data-tool="chat"><i>💌</i><span>แชต</span><b class="badge hidden" id="chatBadge">0</b></button>
+    <button class="tb-me" data-tool="look" title="แต่งตัว / บัญชี"><span class="tb-av" id="meHead"></span><span class="tb-who"><b id="meName">คุณ</b><small id="meSt">ว่าง</small></span></button>
+    <span class="tb-sep"></span>
+    <button class="tb call" id="callBtn" title="เข้าห้องคุยเสียง">🎧<span class="lbl">เข้าห้องเสียง</span></button>
+    <button class="tb hidden" id="micBtn" title="ไมค์">🎙️</button>
+    <button class="tb hidden" id="camBtn" title="กล้อง">📷</button>
+    <button class="tb hidden" id="shareBtn" title="แชร์จอ">🖥️</button>
+    <button class="tb hidden" id="deafBtn" title="ปิดเสียงเพื่อน (หูฟัง)">🔊</button>
+    <span class="tb-sep"></span>
+    <button class="tb desk-only" data-tool="emote" title="อีโมต">😊</button>
+    <button class="tb desk-only" data-tool="status" title="สถานะ"><i id="statusIcon">📝</i></button>
+    <button class="tb" data-tool="chat" title="แชต">💬<b class="badge hidden" id="chatBadge">0</b></button>
+    <button class="tb" id="moreBtn" title="เพิ่มเติม">⋯</button>
+    <button class="tb leave" id="leaveTop" title="ออกจากห้อง / ออกจากเว็บ">🚪</button>
   </nav>
+  <div class="more-menu hidden" id="moreMenu">
+    <button data-tool="look"><i>👕</i>แต่งตัว</button>
+    <button data-tool="desk"><i>🖥️</i>โต๊ะฉัน</button>
+    <button data-tool="edit"><i>🛋️</i>จัดห้อง</button>
+    <button class="mob-only" data-tool="emote"><i>😊</i>อีโมต</button>
+    <button class="mob-only" data-tool="status"><i>📝</i>สถานะ</button>
+    <button class="hidden" id="voiceSetBtn"><i>⚙️</i>ตั้งค่าไมค์ / กล้อง</button>
+    <button id="moreDiag"><i>🩺</i>ตรวจเสียง</button>
+    <button id="moreLeave" class="danger"><i>🚪</i>ออกจากห้อง</button>
+  </div>
+
+  <!-- แผนที่ย่อ + ปุ่มกล้อง มุมล่างขวา -->
+  <div class="mm" id="mm">
+    <canvas class="mm-map" id="mmCanvas" title="แตะเพื่อเดินไปตรงนั้น"></canvas>
+    <div class="mm-ctl">
+      <button id="mmMe" title="กลับมาที่ตัวฉัน">◎</button>
+      <button id="zoomIn" title="ซูมเข้า">＋</button>
+      <button id="zoomOut" title="ซูมออก">－</button>
+      <button id="mmFull" title="เต็มจอ">⛶</button>
+      <button id="mmToggle" title="เปิด/ปิดแผนที่ย่อ">🗺️</button>
+    </div>
+  </div>
 
   <aside class="chat" id="chat">
     <header><b>💌 แชตในห้อง</b><button class="pbtn sm" id="helpBtn" title="ดูคำสั่งที่ใช้ได้">❓ คำสั่ง</button><button class="x" id="chatClose">✕</button></header>

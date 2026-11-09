@@ -68,10 +68,13 @@ function updateZones() {
     G.zone = z;
     toast(`${ZONES[z].icon} ${zoneName(z)}` + (G.voice && ZONE_TIPS[z] ? ' — ' + ZONE_TIPS[z] : ''), 3200);
   }
-  const chip = $('#zoneChip');
-  const n = othersInZone(z).size + 1;
-  const label = `${ZONES[z].icon} ${zoneName(z)} · ${G.voice && z === 'hall' ? `ได้ยิน ${hear.size} คน` : `${n} คน`}`;
-  if (chip.textContent !== label) chip.textContent = label;
+  // ป้ายตำแหน่ง: ห้องที่อยู่ · ใครอยู่ใกล้
+  const zn = `${ZONES[z].icon} ${zoneName(z)}`;
+  let near = 0;
+  for (const rt of G.others.values()) if (Number.isFinite(rt.x) && Math.hypot(rt.x - G.me.x, rt.y - G.me.y) < 110) near++;
+  const nt = G.voice && z === 'hall' ? (hear.size ? `ได้ยิน ${hear.size} คน` : 'ยังไม่ได้ยินใคร') : near ? `ใกล้ๆ มี ${near} คน` : othersInZone(z).size ? `ในห้องนี้ ${othersInZone(z).size + 1} คน` : 'ยังไม่มีใครอยู่ใกล้';
+  if ($('#zoneName').textContent !== zn) $('#zoneName').textContent = zn;
+  if ($('#nearTxt').textContent !== nt) $('#nearTxt').textContent = nt;
   if (G.voice) { G.voice.setAudience(send, hear); G.voice.setScreenAudience(othersInZone(z)); }
 }
 // วงรัศมีไมค์ (เฉพาะห้องรวม): ของเราตอนเปิดไมค์/ตอนตั้งค่า, ของเพื่อนตอนเขากำลังพูด
@@ -1197,19 +1200,31 @@ function setRoomsOpen(v) {
   roomsOpen = v; lsSet('pixel.rooms', v);
   $('#rooms').classList.toggle('hidden', !v);
   $('#roomsTab').classList.toggle('hidden', v);
+  document.body.classList.toggle('side-on', v); document.body.classList.toggle('side-off', !v);
   G.roomsSig = '';
   if (v) renderRooms();
 }
+// แถบข้าง: ชวนเพื่อน · ค้นหา · บัญชี / วิธีใช้ / ตั้งค่า
+$('#sideSearch').addEventListener('input', () => { G.roomsSig = ''; renderRooms(); });
+$('#inviteBtn').onclick = async () => {
+  const url = location.origin + location.pathname, title = ($('#roomName').textContent || 'Pixel Hangout');
+  try { if (navigator.share && isMobile()) { await navigator.share({ title, text: `มาแฮงก์เอาต์กันที่ ${title} 🎮`, url }); return; } } catch { return; }
+  try { await navigator.clipboard.writeText(url); toast('🔗 คัดลอกลิงก์ห้องแล้ว — ส่งให้เพื่อนได้เลย', 2600); }
+  catch { prompt('คัดลอกลิงก์นี้ส่งให้เพื่อน', url); }
+};
+$('#sfAccount').onclick = () => { if (isMobile()) setRoomsOpen(false); openCreator(false); };
+$('#sfHelp').onclick = () => { if (isMobile()) setRoomsOpen(false); setChatOpen(true, false); showHelp(); };
+$('#sfSettings').onclick = () => { if (isMobile()) setRoomsOpen(false); if (G.voice) openVoiceSettings(); else { toast('⚙️ ตั้งค่าไมค์/กล้องได้หลังเข้าห้องเสียง'); openCallModal(); } };
 $('#roomsTab').onclick = () => setRoomsOpen(true);
 $('#roomsClose').onclick = () => setRoomsOpen(false);
 function roomMembers() {
   const by = Object.fromEntries(ROOM_ORDER.map((z) => [z, []]));
   const V = G.voice;
-  by[zoneAt(G.me.x, G.me.y)].push({ key: G.net && G.net.myKey, me: true, n: G.me.nick, l: G.me.look, mic: !!(V && V.mic), deaf: !!(V && V.deaf) });
+  by[zoneAt(G.me.x, G.me.y)].push({ key: G.net && G.net.myKey, me: true, n: G.me.nick, l: G.me.look, st: G.me.st || '', mic: !!(V && V.mic), deaf: !!(V && V.deaf) });
   for (const rt of G.others.values()) {
     if (!Number.isFinite(rt.p.x)) continue;
     const z = zoneAt(rt.p.x, rt.p.y);
-    if (by[z]) by[z].push({ key: rt.key, rt, n: rt.p.n, l: rt.p.l, mic: rt.p.mic === 1, deaf: rt.p.hp === 1 });
+    if (by[z]) by[z].push({ key: rt.key, rt, n: rt.p.n, l: rt.p.l, st: typeof rt.p.st === 'string' ? rt.p.st.slice(0, 8) : '', mic: rt.p.mic === 1, deaf: rt.p.hp === 1 });
   }
   return by;
 }
@@ -1218,12 +1233,19 @@ function renderRooms() {
   const by = roomMembers();
   const here = zoneAt(G.me.x, G.me.y);
   const inCall = !!G.voice;
-  const sig = JSON.stringify([here, inCall, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf, m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr]))]);
+  const q = ($('#sideSearch').value || '').trim().toLowerCase();
+  const sig = JSON.stringify([q, here, inCall, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf, m.st, m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr]))]);
   const list = $('#roomsList');
   if (sig !== G.roomsSig) {
     G.roomsSig = sig;
     list.innerHTML = '';
+    let shown = 0;
     for (const z of ROOM_ORDER) {
+      // ค้นหา: แสดงห้องที่ชื่อตรง (พร้อมคนทั้งหมด) หรือห้องที่มีคนชื่อตรง (เฉพาะคนนั้น)
+      const roomHit = !q || `${zoneName(z)} ${ZONES[z].name}`.toLowerCase().includes(q);
+      const mems = roomHit ? by[z] : by[z].filter((m) => String(m.n || '').toLowerCase().includes(q));
+      if (!roomHit && !mems.length) continue;
+      shown++;
       const b = document.createElement('button');
       b.className = 'rm' + (z === here ? ' here' : '');
       const spk = document.createElement('span'); spk.className = 'spk'; spk.textContent = '🔊';
@@ -1242,11 +1264,16 @@ function renderRooms() {
       }
       b.onclick = () => goToRoom(z);
       list.append(b);
-      for (const m of by[z]) {
+      for (const m of mems) {
         const row = document.createElement('div'); row.className = 'mem'; row.dataset.key = m.key || '';
-        const cv = mkCanvas(22, 36);
-        cv.getContext('2d').drawImage(charSprite(cleanLook(m.l), 'down', 0, 'stand', false), 0, 0);
-        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (m.n || 'เพื่อน') + (m.me ? ' (คุณ)' : '');
+        const cv = document.createElement('span'); cv.className = 'av'; cv.append(headCanvas(m.l, 30));
+        const dot = document.createElement('i'); dot.className = 'on-dot'; cv.append(dot);
+        const who = document.createElement('span'); who.className = 'who';
+        const nmT = document.createElement('span'); nmT.className = 'nm'; nmT.textContent = (m.n || 'เพื่อน') + (m.me ? ' (คุณ)' : '');
+        const sub = document.createElement('span'); sub.className = 'sub';
+        sub.textContent = (m.st ? m.st + ' ' : '') + (!inCall ? 'ว่าง' : m.deaf ? 'ปิดหูฟัง' : m.mic ? 'เปิดไมค์' : 'ปิดไมค์');
+        who.append(nmT, sub);
+        const nm = who;
         const mi = document.createElement('span'); mi.className = 'mi';
         const live = m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr === 1;
         if (inCall && (m.deaf || !m.mic)) { const ic = (k, t) => { const im = new Image(); im.src = statusIcon(k).toDataURL(); im.title = t; return im; }; mi.append(ic('mic', 'ปิดไมค์')); if (m.deaf) mi.append(ic('hp', 'ปิดหูฟัง')); }
@@ -1256,6 +1283,7 @@ function renderRooms() {
         list.append(row);
       }
     }
+    if (!shown) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = `ไม่เจอ "${q}"`; list.append(e); }
   }
   // ขอบเขียวรอบตัวคนที่กำลังพูด (อัปเดตถี่โดยไม่ต้องสร้างรายการใหม่)
   const V = G.voice;
@@ -1268,10 +1296,73 @@ setInterval(() => {
   if (!G.joined) return;
   const tabHidden = $('#roomsTab').classList.contains('hidden'), panelHidden = $('#rooms').classList.contains('hidden');
   if (tabHidden && panelHidden) setRoomsOpen(roomsOpen); // ครั้งแรกหลังเข้าห้อง
-  // วางไว้ใต้ชิปด้านบนซ้ายเสมอ (ชิปสูงไม่เท่ากันในแต่ละจอ)
-  const top = Math.round($('.top-left').getBoundingClientRect().bottom + 8) + 'px';
-  for (const el of [$('#rooms'), $('#roomsTab')]) if (el.style.top !== top) el.style.top = top;
-  const mh = `calc(100dvh - ${top} - 110px - var(--safe-b))`;
-  if ($('#rooms').style.maxHeight !== mh) $('#rooms').style.maxHeight = mh;
   renderRooms();
+  paintMeChip();
+  // แผนที่ย่อชนแถบล่าง (จอแคบ/เปิดแชต) → ยกขึ้นไปอยู่เหนือแถบ
+  const mm = $('#mm'), tb = $('#toolbar').getBoundingClientRect();
+  mm.classList.remove('lift');
+  const r = mm.getBoundingClientRect();
+  if (r.left < tb.right + 8 && r.bottom > tb.top) mm.classList.add('lift');
 }, 250);
+
+// ---------- แถบล่าง: ตัวเรา (หน้า + ชื่อ + สถานะ) ----------
+function paintMeChip() {
+  const V = G.voice, st = G.me.st || '';
+  const sub = (st ? st + ' ' : '') + (!V ? 'ว่าง' : V.deaf ? 'ปิดหูฟัง' : V.mic ? 'เปิดไมค์' : 'ปิดไมค์');
+  const sig = JSON.stringify([G.me.look, G.me.nick, sub]);
+  if (sig === G.meChipSig) return;
+  G.meChipSig = sig;
+  const av = $('#meHead'); av.innerHTML = ''; av.append(headCanvas(G.me.look, 34));
+  $('#meName').textContent = G.me.nick || 'คุณ';
+  $('#meSt').textContent = sub;
+}
+// ---------- เมนูเพิ่มเติม (⋯) ----------
+function setMore(v) { $('#moreMenu').classList.toggle('hidden', !v); $('#moreBtn').classList.toggle('active', v); }
+$('#moreBtn').onclick = (e) => { e.stopPropagation(); setMore($('#moreMenu').classList.contains('hidden')); };
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#moreMenu, #moreBtn')) setMore(false); });
+$('#moreMenu').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  setMore(false);
+  const tool = b.dataset.tool;
+  if (tool === 'look') openCreator(false);
+  if (tool === 'desk') { if (G.edit) setEdit(false); goToMyDesk(); }
+  if (tool === 'edit') setEdit(!G.edit);
+  if (tool === 'emote') toggleTray('emoteTray');
+  if (tool === 'status') toggleTray('statusTray');
+});
+$('#moreDiag').onclick = () => openVoiceDiag();
+$('#moreLeave').onclick = () => askLeave();
+
+// ---------- แผนที่ย่อ (มุมล่างขวา) ----------
+let mmOn = lsGet('pixel.mm', null);
+if (typeof mmOn !== 'boolean') mmOn = !isMobile();
+const MM_W = 200, MM_K = MM_W / (RIGHT - LEFT), MM_H = Math.round((H - TOP) * MM_K);
+let mmBase = null;
+function setMM(v) { mmOn = v; lsSet('pixel.mm', v); $('#mm').classList.toggle('collapsed', !v); if (v) drawMinimap(); }
+setMM(mmOn);
+function drawMinimap() {
+  if (!mmOn || !G.joined) return;
+  const cv = $('#mmCanvas'), dpr = 2;
+  if (!mmBase) { mmBase = mkCanvas(MM_W * dpr, MM_H * dpr); const g0 = mmBase.getContext('2d'); g0.imageSmoothingEnabled = true; g0.drawImage(BG, 0, 0, MM_W * dpr, MM_H * dpr); }
+  if (cv.width !== MM_W * dpr) { cv.width = MM_W * dpr; cv.height = MM_H * dpr; cv.style.width = MM_W + 'px'; cv.style.height = MM_H + 'px'; }
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(mmBase, 0, 0); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const P = (x, y) => [(x - LEFT) * MM_K, (y - TOP) * MM_K];
+  if (G.scale && G.view) { const [vx, vy] = P(G.cam.x, G.cam.y); g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5; g.strokeRect(vx, vy, (G.view.cw / G.scale) * MM_K, (G.view.ch / G.scale) * MM_K); }
+  const dot = (x, y, r, fill) => { const [px, py] = P(x, y); g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fillStyle = fill; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#2b2433'; g.stroke(); };
+  for (const n of G.npcs || []) dot(n.x, n.y, 2, '#c46bff');
+  for (const rt of G.others.values()) if (Number.isFinite(rt.x)) dot(rt.x, rt.y, 2.6, '#ffffff');
+  dot(G.me.x, G.me.y, 3.6, '#3cc36f');
+}
+setInterval(drawMinimap, 120);
+$('#mmCanvas').addEventListener('click', (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = LEFT + ((e.clientX - r.left) / r.width) * (RIGHT - LEFT), y = TOP + ((e.clientY - r.top) / r.height) * (H - TOP);
+  G.camManual = false; walkTo(x, y);
+});
+$('#mmToggle').onclick = () => setMM(!mmOn);
+$('#mmMe').onclick = () => { G.camManual = false; G.cam.mx = NaN; toast('📍 กลับมาที่ตัวคุณแล้ว', 1200); };
+$('#mmFull').onclick = async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
+  catch { toast('เครื่องนี้ไม่รองรับโหมดเต็มจอ — ลองเพิ่มเว็บไว้ที่หน้าจอโฮมแทน'); }
+};
