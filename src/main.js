@@ -2084,6 +2084,24 @@ function testTone() {
     o.connect(g).connect(ac.destination); o.start(t + d); o.stop(t + d + 0.3);
   });
 }
+// ระดับตัดเสียงรบกวน: ปิด · ปกติ (ของเบราว์เซอร์ — ตัดได้แค่เสียงฮัมเบาๆ) · แรง AI (RNNoise — ตัดพัดลม แอร์ คีย์บอร์ด)
+function nsLevels(repaint) {
+  const V = G.voice, st = V.settings;
+  const cur = !st.ns ? 'off' : st.nsAi && V.nsOk ? 'ai' : 'std';
+  const wrap = el('div');
+  const seg = el('div', 'seg');
+  [['off', 'ปิด'], ['std', 'ปกติ'], ['ai', '✨ แรง (AI)']].forEach(([k, label]) => {
+    if (k === 'ai' && !V.nsOk) return;
+    const b = el('button', cur === k ? 'on' : '', label);
+    b.onclick = () => { st.nsAi = k === 'ai'; V.setOption('ns', k !== 'off'); setTimeout(repaint, 400); repaint(); };
+    seg.append(b);
+  });
+  wrap.append(seg);
+  const msg = cur === 'ai' ? (V.nsStalled() ? '⚠️ ตัวตัดเสียงพักอยู่ — แตะจอ 1 ครั้ง' : V.nsActive() ? '✓ ตัดพัดลม แอร์ คีย์บอร์ด เหลือแต่เสียงคน' : 'จะเริ่มทำงานตอนเปิดไมค์')
+    : cur === 'std' ? 'ของเบราว์เซอร์ ตัดได้แค่เสียงฮัมเบาๆ' : 'ส่งเสียงไมค์ตรงๆ (เหมาะกับไมค์ดีๆ / ร้องเพลง)';
+  wrap.append(el('div', 'note', msg));
+  return wrap;
+}
 function paintDevPop() {
   const kind = G.devPop, pop = $('#devPop'), V = G.voice, st = V.settings;
   if (!kind || !V) return;
@@ -2102,8 +2120,8 @@ function paintDevPop() {
     const mon = el('label', 'row2'); const mc = el('input'); mc.type = 'checkbox'; mc.checked = !!st.monitor;
     mc.onchange = async () => { await V.setMonitor(mc.checked); paintDevPop(); };
     mon.append(mc, el('span', null, '🎧 ฟังเสียงตัวเอง (ใส่หูฟังก่อน)')); pop.append(mon);
-    const ns = el('label', 'row2'); const nc = el('input'); nc.type = 'checkbox'; nc.checked = !!st.ns;
-    nc.onchange = () => V.setOption('ns', nc.checked); ns.append(nc, el('span', null, 'ตัดเสียงรบกวน')); pop.append(ns);
+    pop.append(el('h4', null, 'ตัดเสียงรบกวน'));
+    pop.append(nsLevels(() => paintDevPop()));
     pop.append(el('hr'));
     acts(btn(V.mic ? '🔇 ปิดไมค์' : '🎙️ เปิดไมค์', () => V.toggleMic(), V.mic ? '' : 'pri'), btn('🩺 ตรวจเสียง', () => { closeDevPop(); openVoiceDiag(); }), more());
   } else if (kind === 'cam') {
@@ -2265,7 +2283,7 @@ function paintVoiceSettings() {
     const l = el('label', 'chk'); const c = el('input'); c.type = 'checkbox'; c.checked = !!st[key];
     c.onchange = () => V.setOption(key, c.checked); l.append(c, el('span', null, label)); return l;
   };
-  opt.append(chk('ตัดเสียงรบกวน (พัดลม แอร์ เสียงคีย์บอร์ด)', 'ns'), chk('ตัดเสียงสะท้อน (ปิดได้ถ้าใส่หูฟัง เสียงจะเป็นธรรมชาติขึ้น)', 'ec'), chk('ปรับความดังไมค์อัตโนมัติ', 'agc'), chk('เสียงคุณภาพสูง Opus 128 kbps', 'hq'));
+  const nsBox = el('div'); nsBox.append(el('span', 'tip', 'ตัดเสียงรบกวน'), nsLevels(() => paintVoiceSettings())); opt.append(nsBox, chk('ตัดเสียงสะท้อน (ปิดได้ถ้าใส่หูฟัง เสียงจะเป็นธรรมชาติขึ้น)', 'ec'), chk('ปรับความดังไมค์อัตโนมัติ', 'agc'), chk('เสียงคุณภาพสูง Opus 128 kbps', 'hq'));
   right.append(opt);
   if (V.canPickSpeaker) {
     const spk = deviceSelect('audiooutput', st.spkId, (id) => V.setSpeaker(id));

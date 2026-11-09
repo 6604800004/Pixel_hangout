@@ -327,6 +327,8 @@ function makeVoice(net, onChange) {
     for (const t of [V.audioTrack, V.meterTrack, V.videoTrack, V.screenTrack]) { try { t && t.stop(); } catch {} }
     V.audioTrack = V.meterTrack = V.videoTrack = V.screenTrack = null; V.mic = V.cam = false;
     try { V.actx && V.actx.close(); } catch {}
+    for (const ch of nsChains.values()) { try { ch.stop(); } catch {} } nsChains.clear();
+    try { nsCtx && nsCtx.close(); } catch {}
   };
   function close(key) {
     const p = V.peers.get(key);
@@ -348,10 +350,79 @@ function makeVoice(net, onChange) {
   V.closeAll = () => { for (const k of [...V.peers.keys()]) close(k); };
 
   // ---------------------------------------------------------- ตั้งค่า ----
-  V.settings = Object.assign({ micId: '', camId: '', spkId: '', ns: true, ec: true, agc: true, monitor: false, monVol: 0.8, hq: true, facing: 'user' }, lsGet('pixel.voice', {}));
+  V.settings = Object.assign({ micId: '', camId: '', spkId: '', ns: true, ec: true, agc: true, monitor: false, monVol: 0.8, hq: true, facing: 'user', nsAi: true }, lsGet('pixel.voice', {}));
   V.hq = V.settings.hq;
   const saveSettings = () => lsSet('pixel.voice', V.settings);
   V.mon = null;
+
+  // ---------- ตัดเสียงรบกวนแบบ AI (RNNoise · ทำงานในเครื่องเราเอง ไม่ส่งเสียงไปไหน) ----------
+  // ตัวตัดเสียงของเบราว์เซอร์ตัดได้แค่เสียงฮัมเบาๆ — ตัวนี้ตัดพัดลม แอร์ คีย์บอร์ด เสียงรถ ได้จริง เหลือแต่เสียงคน
+  // ต่อสายแบบนี้: ไมค์ดิบ → AudioContext 48kHz → AudioWorklet (RNNoise ทีละ 10ms) → track ใหม่ที่ส่งให้เพื่อน
+  const nsChains = new Map();   // track ที่ตัดเสียงแล้ว → { raw, rawClone, stop }
+  let nsCtx = null, nsMod = null, nsBytes = null;
+  const NS_WORKLET = `
+class PxNs extends AudioWorkletProcessor {
+  constructor(o) { super();
+    const env = { log10: Math.log10, sin: Math.sin, cos: Math.cos };
+    this.e = new WebAssembly.Instance(new WebAssembly.Module(o.processorOptions.wasm), { env }).exports;
+    this.st = this.e.rnnoise_create(0); this.ib = this.e.px_buf(); this.ob = this.e.px_buf();
+    this.inb = new Float32Array(480); this.ni = 0;
+    this.q = new Float32Array(4096); this.qr = 0; this.qn = 480;           // หน่วง 10ms ไว้ก่อน (ให้มีของส่งออกทันเสมอ)
+    this.on = true; this.vad = 0; this.g = 1; this.t = 0;
+    this.port.onmessage = (e) => { if ('on' in e.data) this.on = e.data.on; };
+  }
+  frame() {
+    const m = new Float32Array(this.e.memory.buffer), ib = this.ib >> 2, ob = this.ob >> 2;
+    for (let k = 0; k < 480; k++) m[ib + k] = this.inb[k] * 32768;
+    const vad = this.e.rnnoise_process_frame(this.st, this.ob, this.ib);
+    const o = new Float32Array(this.e.memory.buffer);
+    // ประตูเสียงเบาๆ ตามความน่าจะเป็นว่า "มีคนพูด": ไม่มีใครพูด = ลดอีก ~20dB (ตัดเสียงคลิกคีย์บอร์ดที่หลุดมา) · มีเสียงพูด = เปิดทันที
+    this.vad = vad > this.vad ? vad : this.vad * 0.93;
+    const want = this.vad > 0.35 ? 1 : 0.1;
+    let w = (this.q.length + this.qr + this.qn) % this.q.length;
+    for (let k = 0; k < 480; k++) {
+      this.g += (want - this.g) * (want > this.g ? 0.05 : 0.0015);
+      this.q[w] = (o[ob + k] / 32768) * this.g; w = (w + 1) % this.q.length;
+    }
+    this.qn += 480;
+  }
+  process(i, out) {
+    const a = i[0] && i[0][0], b = out[0][0]; if (!b) return true;
+    if (!this.on) { if (a) b.set(a); return true; }
+    if (a) for (let k = 0; k < a.length; k++) { this.inb[this.ni++] = a[k]; if (this.ni === 480) { this.ni = 0; this.frame(); } }
+    for (let k = 0; k < b.length; k++) { if (this.qn > 0) { b[k] = this.q[this.qr]; this.qr = (this.qr + 1) % this.q.length; this.qn--; } else b[k] = 0; }
+    if (++this.t % 25 === 0) this.port.postMessage({ vad: this.vad });
+    return true;
+  }
+}
+registerProcessor('px-ns', PxNs);`;
+  V.nsOk = typeof AudioWorkletNode !== 'undefined' && typeof WebAssembly !== 'undefined' && typeof RNNOISE_WASM_B64 === 'string';
+  V.nsActive = () => !!(V.audioTrack && nsChains.has(V.audioTrack));
+  async function aiDenoise(raw) {
+    if (!V.nsOk) return null;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!nsCtx || nsCtx.state === 'closed') { nsCtx = new AC({ sampleRate: 48000, latencyHint: 'interactive' }); nsMod = null; }
+      if (nsCtx.sampleRate !== 48000) throw new Error('rate ' + nsCtx.sampleRate);
+      if (!nsMod) nsMod = nsCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([NS_WORKLET], { type: 'text/javascript' })));
+      await nsMod;
+      if (!nsBytes) { const bin = atob(RNNOISE_WASM_B64); nsBytes = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) nsBytes[k] = bin.charCodeAt(k); }
+      if (nsCtx.state !== 'running') await Promise.race([nsCtx.resume(), new Promise((r) => setTimeout(r, 800))]);
+      const src = nsCtx.createMediaStreamSource(new MediaStream([raw]));
+      const node = new AudioWorkletNode(nsCtx, 'px-ns', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 1, channelCountMode: 'explicit', processorOptions: { wasm: nsBytes } });
+      const dest = nsCtx.createMediaStreamDestination(); dest.channelCount = 1;
+      src.connect(node).connect(dest);
+      const out = dest.stream.getAudioTracks()[0];
+      try { out.contentHint = 'speech'; } catch {}
+      const rawClone = raw.clone();
+      node.port.onmessage = (e) => { V.nsVad = e.data.vad; };
+      nsChains.set(out, { raw, rawClone, node, stop: () => { try { src.disconnect(); node.disconnect(); } catch {} raw.stop(); rawClone.stop(); } });
+      return out;
+    } catch (e) { console.warn('ai-ns off', e); return null; }
+  }
+  // เบราว์เซอร์พักเสียงไว้ (ยังไม่แตะจอ / สลับแอปบนมือถือ) — แตะครั้งถัดไปให้ทำงานต่อ
+  addEventListener('pointerdown', () => { if (nsCtx && nsCtx.state !== 'running' && nsCtx.state !== 'closed') nsCtx.resume().catch(() => {}); }, true);
+  V.nsStalled = () => !!(nsCtx && V.nsActive() && nsCtx.state !== 'running');
 
   async function getMicTrack() {
     const st = V.settings;
@@ -363,12 +434,15 @@ function makeVoice(net, onChange) {
       if (st.micId && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) { st.micId = ''; delete a.deviceId; s = await navigator.mediaDevices.getUserMedia({ audio: a }); }
       else throw e;
     }
-    const t = s.getAudioTracks()[0];
-    try { t.contentHint = 'speech'; } catch {}
-    t.addEventListener('ended', () => {
+    const raw = s.getAudioTracks()[0];
+    try { raw.contentHint = 'speech'; } catch {}
+    // ตัดเสียงรบกวนแบบ AI (RNNoise) — ถ้าใช้ไม่ได้ก็ส่งเสียงไมค์ตรงๆ เหมือนเดิม
+    const t = (st.ns && st.nsAi && (await aiDenoise(raw))) || raw;
+    raw.addEventListener('ended', () => {
       if (V.audioTrack !== t) return;
       V.micLost = true;
       onChange('error', 'ไมค์หลุด — มักเกิดเพราะแอปอื่นแย่งไมค์ไป (เช่น Discord, โทรศัพท์, LINE call) ปิดแอปนั้นแล้วกดเปิดไมค์ใหม่');
+      const ch = nsChains.get(t); if (ch) { nsChains.delete(t); ch.stop(); t.stop(); }
       V.audioTrack = null; V.mic = false; onChange('media');
     });
     return t;
@@ -386,8 +460,10 @@ function makeVoice(net, onChange) {
     if (V.meterTrack) V.meterTrack.enabled = true;
     if (t) t.enabled = V.mic && !V.deaf;
     for (const p of V.peers.values()) apply(p);
-    if (old && old !== t) old.stop();
+    if (old && old !== t) { old.stop(); const ch = nsChains.get(old); if (ch) { nsChains.delete(old); ch.stop(); } }
     meter('me', V.meterTrack);
+    const ch = t && nsChains.get(t);
+    meter('raw', ch ? ch.rawClone : null);   // ไว้เช็ก "ไมค์ไม่มีเสียงเข้า" จากเสียงดิบ (เสียงที่ตัดแล้วเงียบได้จริง)
     updateMonitor();
   }
   V.ensureMic = async () => {
@@ -434,7 +510,7 @@ function makeVoice(net, onChange) {
   V.setOption = (k, v) => {
     V.settings[k] = v; saveSettings();
     if (k === 'hq') { V.hq = v; for (const p of V.peers.values()) tune(p); }
-    if (k === 'ns' || k === 'ec' || k === 'agc' || k === 'micId') V.reacquireMic();
+    if (k === 'ns' || k === 'nsAi' || k === 'ec' || k === 'agc' || k === 'micId') V.reacquireMic();
   };
 
   // ---------------------------------------------------------- ปุ่มหลัก ----
@@ -757,7 +833,7 @@ registerProcessor('px-play', PxPlay);`;
       if (p.allowed && !V.audience.has(p.key) && !wantFresh(p)) { p.allowed = false; apply(p); }
     }
     // ไมค์เปิดอยู่แต่ไม่มีสัญญาณเสียงเข้าเลย (เลือกไมค์ผิดตัว / แอปอื่นแย่ง / ระบบปิดไมค์)
-    const me = V.meters.get('me');
+    const me = V.meters.get('raw') || V.meters.get('me');
     if (!V.mic || !V.audioTrack || !me || !V.actx || V.actx.state !== 'running' || me.lvl > 0.00002) { V.micAliveAt = now; if (V.micDead) { V.micDead = false; onChange('mic-alive'); } }
     else if (!V.micDead && now - (V.micAliveAt || now) > 12000) { V.micDead = true; onChange('mic-dead'); }
   }, 2000);

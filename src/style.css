@@ -660,3 +660,6 @@ body.chat-open { --chat-w: 334px; }
   #toolbar .ic { width: 23px; height: 23px; }
 }
 @media (max-height: 500px) and (orientation: landscape) { #toolbar .tb-grp > .tb, #toolbar .tb-caret { height: 34px; } }
+.seg { display: flex; gap: 2px; margin: 2px 8px; padding: 3px; border-radius: 10px; background: var(--ui-hover); }
+.seg button { flex: 1; border: 0; background: none; border-radius: 8px; padding: 6px 4px; font: 400 12.5px Mitr, sans-serif; color: var(--ui-sub); }
+.seg button.on { background: #fff; color: #1f6b42; font-weight: 600; box-shadow: 0 1px 3px rgba(30, 20, 40, .15); }
