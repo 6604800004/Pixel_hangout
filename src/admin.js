@@ -134,7 +134,10 @@ function admUsers(body, D) {
     const main = el('button', 'um');
     const dot = el('i', 'dot');
     const who = el('span', 'who');
-    who.append(el('b', null, (u.n || 'ไม่มีชื่อ') + (u.admin ? ' 🛡️' : '')), el('small', null, u.on ? `🟢 ออนไลน์ ${fmtDur(D.now - u.since)}` : `เห็นล่าสุด ${fmtAgo(u.last, D.now)}`));
+    const nmB = el('b', null, (u.n || 'ไม่มีชื่อ') + (u.admin ? ' 👑' : ''));
+    if (u.mod) nmB.append(el('span', 'tag', '🛡️ ผู้ดูแล'));
+    if (u.fm || u.fd) nmB.append(el('span', 'tag lock', u.fm && u.fd ? '🔒 ปิดไมค์+หู' : u.fm ? '🔒 ปิดไมค์' : '🔒 ปิดหู'));
+    who.append(nmB, el('small', null, u.on ? `🟢 ออนไลน์ ${fmtDur(D.now - u.since)}` : `เห็นล่าสุด ${fmtAgo(u.last, D.now)}`));
     const nums = el('span', 'nums');
     nums.append(el('span', null, `${u.visits} ครั้ง`), el('span', null, fmtDur(u.ms)));
     const gift = el('span', 'gift', u.items.length ? `🎁 ${u.items.length}` : '');
@@ -171,6 +174,25 @@ function admUsers(body, D) {
         if (rt) { const go = el('button', 'pbtn sm', '🚶 ไปหา'); go.onclick = () => { G.adminOpen = false; closeModal(); walkTo(rt.x + 14, rt.y + 4); }; acts.append(go); }
       }
       det.append(acts);
+      // สิทธิ์ผู้ดูแล + ปิดไมค์ / ปิดหู / เตะ
+      det.append(el('div', 'uh', '🛡️ ผู้ดูแล — ปิดไมค์ / ปิดหู / เตะ คนอื่นได้ (จัดการแอดมินกับผู้ดูแลด้วยกันไม่ได้)'));
+      const ma = el('div', 'modacts');
+      const mt = el('button', 'uit' + (u.mod ? ' has' : '')); mt.append(el('span', 'ck', u.mod ? '✓' : '+'), el('span', null, u.mod ? 'เป็นผู้ดูแลอยู่ — แตะเพื่อยกเลิก' : 'ให้เป็นผู้ดูแล'));
+      mt.onclick = () => { G.adm.busy = true; paintAdmin(); G.net.admin(u.mod ? 'delmod' : 'addmod', admKey(), { uid: u.uid }); };
+      ma.append(mt);
+      det.append(ma);
+      if (u.on) {
+        const rt = [...G.others.values()].find((r) => r.by === u.uid || (r.p && r.p.uid === u.uid));
+        if (rt) {
+          const mc = el('div', 'modacts');
+          const b1 = el('button', 'pbtn sm', u.fm ? '🎙️ เปิดไมค์คืน' : '🔇 ปิดไมค์'); b1.onclick = () => { G.adm.busy = true; paintAdmin(); G.net.mod(u.fm ? 'unmute' : 'mute', rt.key); };
+          const b2 = el('button', 'pbtn sm', u.fd ? '🔊 เปิดหูคืน' : '🔕 ปิดหู'); b2.onclick = () => { G.adm.busy = true; paintAdmin(); G.net.mod(u.fd ? 'undeaf' : 'deaf', rt.key); };
+          const b3 = el('button', 'pbtn sm', '👢 เตะ'); b3.onclick = () => { if (confirm(`เตะ ${u.n} ออกจากห้อง?`)) { G.net.mod('kick', rt.key); setTimeout(admRefresh, 600); } };
+          const b4 = el('button', 'pbtn sm', '⏳ เตะ + ห้าม 10 นาที'); b4.onclick = () => { if (confirm(`เตะ ${u.n} และห้ามเข้า 10 นาที?`)) { G.net.mod('kick', rt.key, 10 * 60000); setTimeout(admRefresh, 600); } };
+          mc.append(b1, b2, b3, b4);
+          det.append(mc);
+        }
+      }
       row.append(det);
     }
     body.append(row);

@@ -569,6 +569,7 @@ function showHelp() {
     '⏳ ชื่อ kick delay 1m — เตะ + ห้ามเข้าตามเวลา (30s, 5m, 1h · all kick delay 10m)',
     '🧹 clear chat — ล้างแชตทั้งหมด (หรือ ล้างแชท)',
     '✏️ แตะ ✏️ ข้างชื่อห้องในแถบห้องเสียง (ซ้ายมือ) — ตั้งชื่อห้องใหม่',
+    '🛡️ ปิดไมค์ / ปิดหู / เตะ รายคน — กด ⋯ ข้างชื่อในแถบรายชื่อซ้าย (ให้สิทธิ์ผู้ดูแลได้ที่ 📊 สถิติ → ผู้ใช้)',
     '📊 สถิติ — เปิดแผงแอดมิน: คนเข้ากี่คน ใช้นานแค่ไหน ประวัติเข้าออก และให้/ยึดของพิเศษแบบกดเลือก',
     '🎁 ให้ ชื่อ มังกร — ให้คนนั้นใช้ของพิเศษ (มังกร ยูนิคอร์น เมฆ รถF1 ผมรุ้ง ชุดราชา เจ้าหญิง ชุดนักแข่ง หมวกนักแข่ง ปีก หรือ ทั้งหมด)',
     '↩️ ยึด ชื่อ มังกร — ยึดคืน (ยึด ชื่อ ทั้งหมด = ยึดหมด, ถ้ากำลังใช้อยู่จะถูกถอดทันที)',
@@ -2055,12 +2056,47 @@ function setupVoice() {
   $('#voiceSetBtn').onclick = openVoiceSettings;
   if (V.canShare) { $('#shareBtn').classList.remove('hidden'); $('#shareBtn').onclick = () => (V.screenTrack ? V.stopScreen() : openGoLive()); }
   $('#callBtn').classList.add('hidden');
+  // โดนแอดมิน/ผู้ดูแลปิดไมค์-ปิดหู: เปิดเองไม่ได้
+  const tMic = V.toggleMic, tDeaf = V.toggleDeaf;
+  V.toggleMic = (...a) => { if (!V.mic && G.forced.mic) { toast('🔇 แอดมิน/ผู้ดูแลปิดไมค์คุณไว้ — รอให้เปิดคืนก่อน'); return Promise.resolve(); } return tMic(...a); };
+  V.toggleDeaf = (...a) => { if (V.deaf && G.forced.deaf) { toast('🔕 แอดมิน/ผู้ดูแลปิดหูคุณไว้ — รอให้เปิดคืนก่อน'); return; } return tDeaf(...a); };
+  applyForced(false);
   $('#micBtn').onclick = () => V.toggleMic();
   $('#camBtn').onclick = () => V.toggleCam();
   $('#deafBtn').onclick = () => V.toggleDeaf();
   document.addEventListener('pointerdown', () => V.unlock(), { once: true });
   paintVoiceButtons();
 }
+// ---- โดนปิดไมค์/ปิดหู + เมนูผู้ดูแล ----
+G.forced = { mic: false, deaf: false };
+G.mods = {};
+const myUidNow = () => (G.net && (G.net.uid || G.net.myUid)) || '';
+G.canMod = () => !!(G.isAdmin || (G.mods && myUidNow() && G.mods[myUidNow()]));
+function applyForced() {
+  const V = G.voice; if (!V) return;
+  if (G.forced.mic && V.mic) V.toggleMic();   // ปิดได้เสมอ (ที่บล็อกคือการเปิด)
+  if (G.forced.deaf && !V.deaf) { V.toggleDeaf(); G.forcedDeafApplied = true; }
+  else if (!G.forced.deaf && V.deaf && G.forcedDeafApplied) { G.forcedDeafApplied = false; V.toggleDeaf(); }
+  paintVoiceButtons();
+}
+function modMenu(anchor, rt) {
+  closeModMenu();
+  const p = rt.p || {}, name = p.n || 'เพื่อน';
+  const pop = el('div', 'dev-pop mod-pop'); pop.id = 'modPop';
+  pop.append(el('h4', null, `จัดการ ${name}`));
+  const item = (icon, label, fn, cls) => { const b = el('button', 'dv' + (cls ? ' ' + cls : '')); b.append(el('span', 'ck', icon), el('span', null, label)); b.onclick = () => { closeModMenu(); fn(); }; pop.append(b); };
+  item(p.fm ? '🎙️' : '🔇', p.fm ? 'เปิดไมค์คืน' : 'ปิดไมค์ (เปิดเองไม่ได้)', () => G.net.mod(p.fm ? 'unmute' : 'mute', rt.key));
+  item(p.fd ? '🔊' : '🔕', p.fd ? 'เปิดหูคืน' : 'ปิดหู (ไม่ได้ยินใคร)', () => G.net.mod(p.fd ? 'undeaf' : 'deaf', rt.key));
+  pop.append(el('hr'));
+  item('👢', 'เตะออก (เข้าใหม่ได้ทันที)', () => { if (confirm(`เตะ ${name} ออกจากห้อง?`)) G.net.mod('kick', rt.key); }, 'danger');
+  item('⏳', 'เตะ + ห้ามเข้า 10 นาที', () => { if (confirm(`เตะ ${name} และห้ามเข้า 10 นาที?`)) G.net.mod('kick', rt.key, 10 * 60000); }, 'danger');
+  document.body.append(pop);
+  const r = anchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right + 6)) + 'px';
+  pop.style.top = Math.max(8, Math.min(innerHeight - h - 8, r.top - 8)) + 'px';
+}
+function closeModMenu() { document.getElementById('modPop')?.remove(); }
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#modPop, .mem .mod')) closeModMenu(); }, true);
 function setIcon(i, name) { if (i) i.className = 'ic ic-' + name; }
 function paintVoiceButtons() {
   const V = G.voice;
@@ -2483,6 +2519,7 @@ function frame(ms) {
   const dot = $('#connDot');
   net.onStatus((s) => { dot.className = 'dot' + (s === 'online' ? '' : s === 'solo' ? ' solo' : ' off'); });
   if (net.onSys) net.onSys((m) => {
+    if (m.force) { G.forced = { mic: !!m.force.mic, deaf: !!m.force.deaf }; applyForced(true); }
     if (m.stats) { G.adm.data = m.stats; G.adm.busy = false; paintAdmin(); if (m.quiet) { if (m.message) toast(m.message, 2500); return; } if (!m.message) return; }
     if (m.admin === true && G.pendingAdminKey) lsSet('pixel.admin', G.pendingAdminKey);
     if (m.admin === false) lsSet('pixel.admin', null);
@@ -2548,6 +2585,8 @@ function frame(ms) {
     const prev = new Map((G.npcs || []).map((n) => [n.id, n]));
     G.npcs = (nd && Array.isArray(nd.list) ? nd.list : []).filter((n) => n && Number.isFinite(n.x) && Number.isFinite(n.y)).slice(0, 40)
       .map((n) => ({ id: String(n.id), x: n.x, y: n.y, a: n.a === 'sing' ? 'sing' : 'dance', n: String(n.n || '').slice(0, 24) || (n.a === 'sing' ? 'นักร้อง' : 'นักเต้น'), l: cleanLook(n.l || {}), seed: prev.has(String(n.id)) ? prev.get(String(n.id)).seed : Math.random() * 10 }));
+    const md = docs.find((d) => d.id === 'mods');
+    G.mods = md && typeof md === 'object' ? md : {};
     const gr = docs.find((d) => d.id === 'grants');
     const mine = gr && G.net.myUid && gr[G.net.myUid];
     G.myGrants = mine && Array.isArray(mine.items) ? mine.items : [];

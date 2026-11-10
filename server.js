@@ -114,6 +114,18 @@ function statsAccrue(c, now = Date.now()) {
   const z = typeof c.p.zn === 'string' && ZONE_IDS.includes(c.p.zn) ? c.p.zn : '';
   if (z) stats.zones[z] = (stats.zones[z] || 0) + dt;
 }
+// ================= ผู้ดูแล (แอดมินให้สิทธิ์) + บังคับปิดไมค์/ปิดหู =================
+// settings 'mods' = { uid: { n } } · forced = uid → { mic: ปิดไมค์, deaf: ปิดหู } (อยู่ในหน่วยความจำ: เข้าใหม่ก็ยังโดน จนกว่าจะเปิดคืน/เซิร์ฟเวอร์รีสตาร์ต)
+const forced = new Map();
+const isMod = (uid) => { const d = store.settings.mods; return !!(d && uid && uid !== 'id' && d[uid]); };
+const canModerate = (c) => !!(c && (c.isAdmin || isMod(c.uid)));
+function forcedP(uid, p) {
+  const f = forced.get(uid);
+  const next = { ...p };
+  if (f && f.mic) next.fm = 1; else delete next.fm;
+  if (f && f.deaf) next.fd = 1; else delete next.fd;
+  return next;
+}
 function statsReport() {
   const now = Date.now();
   for (const c of peers.values()) statsAccrue(c, now);
@@ -125,7 +137,7 @@ function statsReport() {
   const users = [...ids].map((uid) => {
     const u = stats.users[uid] || { n: (grants[uid] && grants[uid].n) || '?', first: 0, last: 0, visits: 0, ms: 0, chats: 0 };
     const c = online.get(uid);
-    return { uid, n: (c && c.p.n) || u.n, first: u.first, last: c ? now : u.last, visits: u.visits, ms: u.ms, chats: u.chats, on: !!c, since: c ? c.start : 0, admin: !!(c && c.isAdmin), items: grantsOf(uid) };
+    return { uid, n: (c && c.p.n) || u.n, first: u.first, last: c ? now : u.last, visits: u.visits, ms: u.ms, chats: u.chats, on: !!c, since: c ? c.start : 0, admin: !!(c && c.isAdmin), mod: isMod(uid), fm: !!(forced.get(uid) || {}).mic, fd: !!(forced.get(uid) || {}).deaf, items: grantsOf(uid) };
   }).sort((a, b) => (b.on - a.on) || (b.last - a.last)).slice(0, 400);
   return {
     now, since: stats.since, today: dayKey(now), online: peers.size, max: MAX_USERS, peak: stats.peak,
@@ -431,6 +443,7 @@ wss.on('connection', (ws) => {
     if (isBinary) {
       // เสียงสำรอง: [1][จำนวนผู้รับ]([ยาว][คีย์])...[เสียง] → ส่งต่อให้ผู้รับแต่ละคน [1][ยาว][คีย์ผู้ส่ง][เสียง]
       if (!key || raw.length > 4096 || raw[0] !== 1) return;
+      { const mc = peers.get(key); if (mc && mc.p.fm) return; }   // โดนปิดไมค์ = ไม่ส่งเสียงต่อ
       const now = Date.now();
       if (now - relayWin > 1000) { relayWin = now; relayCount = 0; }
       if (++relayCount > 120) return;
@@ -464,6 +477,7 @@ wss.on('connection', (ws) => {
       const p = m.p && typeof m.p === 'object' && JSON.stringify(m.p).length < 4096 ? m.p : {};
       const isAdmin = adminKeyOk(m.ak);
       if (!isAdmin && p.l) p.l = stripAdminLook(p.l, uid);
+      const p2 = forcedP(uid, p); for (const k of Object.keys(p)) delete p[k]; Object.assign(p, p2);
       peers.set(key, { ws, uid, p, isAdmin, start: Date.now(), acc: Date.now() });
       {
         const now = Date.now(), u = userOf(uid, p.n), d = dayOf(now);
@@ -480,6 +494,7 @@ wss.on('connection', (ws) => {
         cols: Object.fromEntries(COLS.map((c) => [c, list(c)])),
       });
       broadcast({ t: 'peer', key, uid, p }, key);
+      if (forced.has(uid)) { const f = forced.get(uid); send(ws, { t: 'sys', kind: 'info', force: { mic: !!f.mic, deaf: !!f.deaf }, message: f.mic && f.deaf ? '🔇 คุณยังถูกปิดไมค์และปิดหูอยู่' : f.mic ? '🔇 คุณยังถูกปิดไมค์อยู่' : '🔕 คุณยังถูกปิดหูอยู่' }); }
       console.log(`+ ${p.n || key} (${peers.size} ออนไลน์)`);
       return;
     }
@@ -488,6 +503,7 @@ wss.on('connection', (ws) => {
       case 'p': {
         if (!m.patch || typeof m.patch !== 'object') break;
         if (m.patch.l && !me.isAdmin) m.patch.l = stripAdminLook(m.patch.l, me.uid);
+        delete m.patch.fm; delete m.patch.fd;   // สถานะโดนปิดไมค์/ปิดหู ตั้งได้จากเซิร์ฟเวอร์เท่านั้น
         const next = { ...me.p };
         for (const [k, v] of Object.entries(m.patch)) { if (v === null) delete next[k]; else next[k] = v; }
         if (JSON.stringify(next).length > 4096) break;
@@ -508,7 +524,7 @@ wss.on('connection', (ws) => {
       }
       case 'set': {
         if (!COLS.includes(m.col) || m.col === 'board' || !okId(m.id) || !m.doc || typeof m.doc !== 'object') break;
-        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants' || m.id === 'npcs')) break; // ชื่อห้อง/ของพิเศษ/NPC: แอดมินเท่านั้น
+        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants' || m.id === 'npcs' || m.id === 'mods')) break; // ชื่อห้อง/ของพิเศษ/NPC: แอดมินเท่านั้น
         if (JSON.stringify(m.doc).length > 8192) break;
         if (!store[m.col][m.id] && Object.keys(store[m.col]).length >= (m.col === 'chat' ? 100000 : 200)) break;
         store[m.col][m.id] = m.doc;
@@ -523,7 +539,7 @@ wss.on('connection', (ws) => {
       }
       case 'del': {
         if (!COLS.includes(m.col) || !okId(m.id) || !store[m.col][m.id]) break;
-        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants' || m.id === 'npcs')) break;
+        if (m.col === 'settings' && (m.id === 'names' || m.id === 'grants' || m.id === 'npcs' || m.id === 'mods')) break;
         if (m.col === 'board') removeImage(m.id);
         else delete store[m.col][m.id];
         broadcast({ t: 'col', col: m.col, id: m.id, doc: null }, key);
@@ -534,6 +550,34 @@ wss.on('connection', (ws) => {
         if (!okId(m.b)) break;
         for (const [id, d] of Object.entries(store.board)) if (d.b === m.b) { removeImage(id); broadcast({ t: 'col', col: 'board', id, doc: null }); }
         save();
+        break;
+      }
+      case 'mod': {
+        // ปิดไมค์ / ปิดหู / เตะ — แอดมิน หรือคนที่แอดมินให้สิทธิ์ผู้ดูแล
+        if (!canModerate(me)) { send(ws, { t: 'sys', message: 'ต้องเป็นแอดมินหรือผู้ดูแลถึงจะใช้ได้' }); break; }
+        const tg = typeof m.key === 'string' && peers.get(m.key);
+        if (!tg || m.key === key) { send(ws, { t: 'sys', kind: 'info', message: 'คนนี้ออกจากห้องไปแล้ว' }); break; }
+        if (tg.isAdmin && !me.isAdmin) { send(ws, { t: 'sys', message: 'ผู้ดูแลจัดการแอดมินไม่ได้' }); break; }
+        if (isMod(tg.uid) && !me.isAdmin) { send(ws, { t: 'sys', message: 'ผู้ดูแลจัดการผู้ดูแลด้วยกันไม่ได้' }); break; }
+        const who = tg.p.n || 'เพื่อน', by = me.isAdmin ? 'แอดมิน' : `ผู้ดูแล ${me.p.n || ''}`.trim();
+        if (m.cmd === 'kick') {
+          const banMs = Math.min(24 * 3600000, Math.max(0, Number(m.ban) || 0));
+          if (banMs) kickedUntil.set(tg.uid, Date.now() + banMs); else kickedUntil.delete(tg.uid);
+          send(tg.ws, { t: 'error', kicked: true, message: banMs ? `คุณถูก${by}เตะออกจากห้อง — กลับเข้าได้อีกใน ${fmtWait(banMs)}` : `คุณถูก${by}เตะออกจากห้อง` });
+          setTimeout(() => { try { tg.ws.close(); } catch {} }, 100);
+          send(ws, { t: 'sys', kind: 'info', message: `👢 เตะ ${who} ออกแล้ว` + (banMs ? ` (ห้ามเข้า ${fmtWait(banMs)})` : '') });
+          console.log(`! kick by ${me.p.n || key}: ${who}`);
+          break;
+        }
+        const f = { ...(forced.get(tg.uid) || {}) };
+        if (m.cmd === 'mute') f.mic = true; else if (m.cmd === 'unmute') f.mic = false;
+        else if (m.cmd === 'deaf') f.deaf = true; else if (m.cmd === 'undeaf') f.deaf = false;
+        else break;
+        if (f.mic || f.deaf) forced.set(tg.uid, f); else forced.delete(tg.uid);
+        tg.p = forcedP(tg.uid, tg.p);
+        broadcast({ t: 'peer', key: m.key, uid: tg.uid, p: tg.p }, m.key);
+        send(tg.ws, { t: 'sys', kind: 'info', force: { mic: !!f.mic, deaf: !!f.deaf }, message: { mute: `🔇 ${by}ปิดไมค์คุณ — เปิดเองไม่ได้จนกว่าจะเปิดคืน`, unmute: `🎙️ ${by}เปิดไมค์คืนให้แล้ว (กดปุ่มไมค์เพื่อพูด)`, deaf: `🔕 ${by}ปิดหูคุณ (ไม่ได้ยินเสียงเพื่อน)`, undeaf: `🔊 ${by}เปิดหูคืนให้แล้ว` }[m.cmd] });
+        send(ws, { t: 'sys', kind: 'info', quiet: true, message: { mute: `🔇 ปิดไมค์ ${who} แล้ว`, unmute: `🎙️ เปิดไมค์คืนให้ ${who} แล้ว`, deaf: `🔕 ปิดหู ${who} แล้ว`, undeaf: `🔊 เปิดหูคืนให้ ${who} แล้ว` }[m.cmd], ...(me.isAdmin ? { stats: statsReport() } : {}) });
         break;
       }
       case 'admin': {
@@ -601,6 +645,19 @@ wss.on('connection', (ws) => {
           break;
         }
         if (m.cmd === 'stats') { send(ws, { t: 'sys', stats: statsReport() }); break; }
+        if ((m.cmd === 'addmod' || m.cmd === 'delmod') && m.arg && typeof m.arg.uid === 'string') {
+          const uid = m.arg.uid.slice(0, 40);
+          const mods = { ...(store.settings.mods || {}) }; delete mods.id;
+          const live = [...peers.values()].filter((c) => c.uid === uid);
+          const n = (live[0] && live[0].p.n) || (stats.users[uid] && stats.users[uid].n) || '?';
+          if (m.cmd === 'addmod') mods[uid] = { n }; else delete mods[uid];
+          store.settings.mods = mods;
+          broadcast({ t: 'col', col: 'settings', id: 'mods', doc: mods });
+          save();
+          for (const c of live) send(c.ws, { t: 'sys', kind: 'info', message: m.cmd === 'addmod' ? '🛡️ แอดมินให้คุณเป็นผู้ดูแลแล้ว — ปิดไมค์ / ปิดหู / เตะ คนอื่นได้จากแถบรายชื่อ (⋯ ข้างชื่อ)' : 'แอดมินยกเลิกสิทธิ์ผู้ดูแลของคุณแล้ว' });
+          send(ws, { t: 'sys', kind: 'info', quiet: true, message: m.cmd === 'addmod' ? `🛡️ ให้ ${n} เป็นผู้ดูแลแล้ว` : `ยกเลิกผู้ดูแล ${n} แล้ว`, stats: statsReport() });
+          break;
+        }
         // ให้/ยึดของจากแผงแอดมิน (ระบุด้วย uid · ได้ทั้งคนออนไลน์และออฟไลน์)
         if ((m.cmd === 'grant' || m.cmd === 'revoke') && m.arg && typeof m.arg === 'object' && typeof m.arg.uid === 'string') {
           const uid = m.arg.uid.slice(0, 40);

@@ -212,6 +212,7 @@ function makeWsNet(cfg) {
     },
     poke(name, key) { send({ t: 'poke', name, key }); },
     admin(cmd, key, arg, ban) { send({ t: 'admin', cmd, key, arg, ban: ban || 0 }); },
+    mod(cmd, key, ban) { send({ t: 'mod', cmd, key, ban: ban || 0 }); },
     onWriteDenied() {},
     watch(col, cb) { watchers[col].push(cb); },
     async set(col, id, data) {

@@ -805,3 +805,16 @@ body.dark .adm-user .ud { border-color: #3a3446; }
 body.dark .adm-user .uit.has { background: #1d3a2b; border-color: #2f7a4f; }
 body.dark .adm-ev:nth-child(odd) { background: rgba(255, 255, 255, .03); }
 .seg button { white-space: nowrap; }
+/* ⋯ จัดการคน (แอดมิน/ผู้ดูแล) */
+.side .mem .mod { flex: none; width: 26px; height: 24px; border: 0; border-radius: 7px; background: none; color: var(--ui-sub); font: 700 15px/1 Mitr, sans-serif; opacity: 0; }
+.side .mem:hover .mod, .side .mem .mod:focus { opacity: 1; }
+.side .mem .mod:hover { background: rgba(0, 0, 0, .07); color: var(--ui-text); }
+@media (hover: none) { .side .mem .mod { opacity: 1; } }
+.mod-pop { width: 240px; z-index: 30; }
+.dev-pop .dv.danger { color: #c63b4f; }
+body.dark .dev-pop .dv.danger { color: #ff8a9a; }
+.adm-user .modacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.adm-user .tag { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: #e9e1f7; color: #5b3f8c; margin-left: 4px; font-weight: 500; }
+.adm-user .tag.lock { background: #fde2e6; color: #b03247; }
+body.dark .adm-user .tag { background: #3a3150; color: #d6c6f5; }
+body.dark .adm-user .tag.lock { background: #4a2530; color: #ffb3bf; }

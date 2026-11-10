@@ -52,7 +52,7 @@ function updateZones() {
   const hear = new Set(), send = new Set();
   for (const rt of G.others.values()) {
     if (!Number.isFinite(rt.p.x) || zoneAt(rt.p.x, rt.p.y) !== z) continue;
-    if (G.voice) G.voice.setUserMuted(rt.key, peerVol(rt).m || peerVol(rt).v === 0);
+    if (G.voice) G.voice.setUserMuted(rt.key, peerVol(rt).m || peerVol(rt).v === 0 || rt.p.fm === 1);   // โดนปิดไมค์ = ทุกเครื่องปิดเสียงคนนั้นด้วย
     if (z !== 'hall') { hear.add(rt.key); send.add(rt.key); if (G.voice) G.voice.setVolume(rt.key, peerVol(rt).v); continue; }
     const d = Math.hypot(rt.x - G.me.x, rt.y - G.me.y);
     const theirR = peerRange(rt.p), myR = G.micSet.r;
@@ -1236,7 +1236,7 @@ function renderRooms() {
   const here = zoneAt(G.me.x, G.me.y);
   const inCall = !!G.voice;
   const q = ($('#sideSearch').value || '').trim().toLowerCase();
-  const sig = JSON.stringify([q, here, inCall, G.tabUnread.room, G.chatOpen && G.chatTab, !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf, m.st, m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr]))]);
+  const sig = JSON.stringify([q, here, inCall, G.tabUnread.room, G.chatOpen && G.chatTab, G.canMod(), [...G.others.values()].map((r) => (r.p.fm ? 1 : 0) + (r.p.fd ? 2 : 0)).join(''), !!G.isAdmin, G.roomNames || {}, ROOM_ORDER.map((z) => by[z].map((m) => [m.key, m.n, m.l, m.mic, m.deaf, m.st, m.me ? !!(G.voice && G.voice.screenTrack) : m.rt && m.rt.p.scr]))]);
   const list = $('#roomsList');
   if (sig !== G.roomsSig) {
     G.roomsSig = sig;
@@ -1286,7 +1286,8 @@ function renderRooms() {
         const who = document.createElement('span'); who.className = 'who';
         const nmT = document.createElement('span'); nmT.className = 'nm'; nmT.textContent = (m.n || 'เพื่อน') + (m.me ? ' (คุณ)' : '');
         const sub = document.createElement('span'); sub.className = 'sub';
-        sub.textContent = (m.st ? m.st + ' ' : '') + (!inCall ? 'ว่าง' : m.deaf ? 'ปิดหูฟัง' : m.mic ? 'เปิดไมค์' : 'ปิดไมค์');
+        const fm = m.rt && m.rt.p.fm === 1, fd = m.rt && m.rt.p.fd === 1;
+        sub.textContent = (m.st ? m.st + ' ' : '') + (fm && fd ? '🔒 ถูกปิดไมค์+หู' : fm ? '🔒 ถูกปิดไมค์' : fd ? '🔒 ถูกปิดหู' : !inCall ? 'ว่าง' : m.deaf ? 'ปิดหูฟัง' : m.mic ? 'เปิดไมค์' : 'ปิดไมค์');
         who.append(nmT, sub);
         const nm = who;
         const mi = document.createElement('span'); mi.className = 'mi';
@@ -1294,6 +1295,12 @@ function renderRooms() {
         if (inCall && (m.deaf || !m.mic)) { const ic = (k, t) => { const im = new Image(); im.src = statusIcon(k).toDataURL(); im.title = t; return im; }; mi.append(ic('mic', 'ปิดไมค์')); if (m.deaf) mi.append(ic('hp', 'ปิดหูฟัง')); }
         if (live) { const lv = document.createElement('span'); lv.className = 'live'; lv.textContent = 'LIVE'; lv.title = 'กำลังแชร์จอ — แตะเพื่อดู'; lv.onclick = (e) => { e.stopPropagation(); if (m.me) watchStream('me'); else watchStream(m.key); }; row.append(cv, nm, lv, mi); }
         else row.append(cv, nm, mi);
+        // ⋯ จัดการ (ปิดไมค์/ปิดหู/เตะ) — แอดมิน หรือผู้ดูแลที่แอดมินให้สิทธิ์
+        if (m.rt && !m.me && G.canMod()) {
+          const mb = document.createElement('button'); mb.className = 'mod'; mb.textContent = '⋯'; mb.title = 'ปิดไมค์ / ปิดหู / เตะ';
+          mb.onclick = (e) => { e.stopPropagation(); if (document.getElementById('modPop')) closeModMenu(); else modMenu(mb, m.rt); };
+          row.append(mb);
+        }
         if (m.rt) row.onclick = () => { walkTo(m.rt.x + 14, m.rt.y + 4); if (isMobile()) setRoomsOpen(false); };
         list.append(row);
       }
