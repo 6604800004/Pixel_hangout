@@ -818,3 +818,4 @@ body.dark .dev-pop .dv.danger { color: #ff8a9a; }
 .adm-user .tag.lock { background: #fde2e6; color: #b03247; }
 body.dark .adm-user .tag { background: #3a3150; color: #d6c6f5; }
 body.dark .adm-user .tag.lock { background: #4a2530; color: #ffb3bf; }
+.num-in.pn-in { width: min(240px, 100%); text-align: left; letter-spacing: 0; font-size: 15px; }

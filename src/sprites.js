@@ -39,6 +39,7 @@ function cleanLook(l) {
   if (inRange(l.pc, PET_COLORS.length) || isHex(l.pc)) o.pc = isHex(l.pc) ? l.pc.toLowerCase() : l.pc;
   for (const k of ['k1', 'k2']) if (okCol(l[k], CLOTH_COLORS.length)) o[k] = isHex(l[k]) ? l[k].toLowerCase() : l[k]; // สีลายรถ F1
   if (typeof l.num === 'string' && /^\d{1,2}$/.test(l.num)) o.num = l.num; // เบอร์นักแข่ง (หมวก + รถ)
+  if (typeof l.pn === 'string') { const v = l.pn.replace(/[\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 14); if (v) o.pn = v; } // ชื่อสัตว์เลี้ยง
   return o;
 }
 

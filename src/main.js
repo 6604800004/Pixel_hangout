@@ -1384,6 +1384,18 @@ function drawOverlay(t, chars, deskInfos, camX, camY, scale) {
     if (sx < -150 || sx > G.view.cw + 150 || sy0 < -80 || sy0 > G.view.ch + 200) continue;
     const rLift = isRiding(ch) ? (ch.look.pet === 'f1' ? (ch.dir === 'up' || ch.dir === 'down' ? 12 : 0) : RIDE_LIFT + 2 + (ch.look.pet === 'cloud' ? 9 : ch.look.pet === 'fish' || ch.look.pet === 'dragon' ? 4 : 0)) : 0;
     let top = sy0 - ((ch.sit ? 33 : 35) + rLift) * scale;
+    // ชื่อสัตว์เลี้ยง: ป้ายเล็กใต้ตัวสัตว์ (ตอนขี่ไม่แสดง)
+    const pn = ch.look && ch.look.pn;
+    if (pn && ch.look.pet !== 'none' && ch.pet && !rLift && !isRiding(ch)) {
+      const [px, py] = S(ch.pet.x, ch.pet.y + 3);
+      c.font = '500 10px Mitr, sans-serif';
+      const pw2 = c.measureText(pn).width + 12;
+      c.globalAlpha = 0.92;
+      c.fillStyle = 'rgba(255,247,236,.92)'; c.strokeStyle = 'rgba(46,34,53,.55)'; c.lineWidth = 1.5;
+      rrect(c, px - pw2 / 2, py, pw2, 14, 7); c.fill(); c.stroke();
+      c.fillStyle = '#5a3d5c'; fillCenter(c, pn, px, py + 7.5);
+      c.globalAlpha = 1;
+    }
     const away = ch !== G.me && (G.voice ? !G.audible.has(ch.key) : zoneAt(ch.x, ch.y) !== G.zone);
     c.globalAlpha = away && G.voice ? 0.5 : 1;
     const key = ch === G.me ? G.net.myKey : ch.key;
@@ -1747,6 +1759,17 @@ function numRow() {
   o.append(row);
   return o;
 }
+function petNameRow() {
+  const o = el('div', 'opt');
+  o.append(el('span', null, '🏷️ ชื่อสัตว์เลี้ยง / ชื่อรถ (เว้นว่าง = ไม่แสดงชื่อ)'));
+  const row = el('div', 'row');
+  const inp = el('input', 'num-in pn-in'); inp.type = 'text'; inp.maxLength = 14; inp.placeholder = 'เช่น ถั่วแดง';
+  inp.value = G.draftLook && G.draftLook.pn ? G.draftLook.pn : '';
+  inp.addEventListener('input', () => { const v = inp.value.slice(0, 14); if (G.draftLook) { if (v.trim()) G.draftLook.pn = v; else delete G.draftLook.pn; } });
+  row.append(inp);
+  o.append(row);
+  return o;
+}
 function colorRow(label, pal, get, set, natural) {
   // สร้างปุ่มครั้งเดียว แล้วแค่เปลี่ยนไฮไลต์ — ห้ามสร้าง <input type=color> ใหม่ระหว่างเลือก
   // (iPhone จะปิดหน้าต่างเลือกสีทันทีถ้า input ถูกลบ/สร้างใหม่ ต้องกดเปิดใหม่เรื่อยๆ)
@@ -1859,6 +1882,7 @@ function openCreator(first) {
       optRow('เครื่องประดับ', visItems(ACCS, 'acc'), (it) => draft.acc === it[0], (it) => (draft.acc = it[0])),
       optRow('สัตว์เลี้ยงคู่ใจ', visItems(PETS, 'pet'), (it) => draft.pet === it[0], (it) => (draft.pet = it[0])),
       colorRow('สีสัตว์เลี้ยง / สีตัวรถ (ช่องแรก = สีธรรมชาติ)', PET_COLORS, () => draft.pc || 0, (v) => (draft.pc = v), 'linear-gradient(135deg,#f2a65a,#7ed37a 50%,#7d9cf0)'),
+      petNameRow(),
       ...(visItems(ACCS, 'acc').some((a) => a[0] === 'racehelmet') || visItems(PETS, 'pet').some((p) => p[0] === 'f1') ? [numRow()] : []),
       ...(visItems(PETS, 'pet').some((p) => p[0] === 'f1') ? [
         colorRow('🏎️ สีลายรถ F1 — ลายหลัก', CLOTH_COLORS, () => draft.k1 ?? '#36e0ff', (v) => (draft.k1 = v)),
