@@ -5773,7 +5773,8 @@ function render(t) {
   for (const c of chars) {
     if (c !== me) c.sit = c.p.s || null;
     const seat = c.sit && G.seatById && G.seatById.get(c.sit);
-    list.push({ y: seat && seat.over ? seat.itemY + 0.5 : c.y + 0.2, kind: 'char', c });
+    // เก้าอี้โต๊ะทำงาน (นั่งหันหลัง): วาดคนก่อน แล้วพนักเก้าอี้ทับหลังคน = ตัวอยู่ในเก้าอี้
+    list.push({ y: seat && seat.kind === 'desk' ? seat.itemY - 0.5 : seat && seat.over ? seat.itemY + 0.5 : c.y + 0.2, kind: 'char', c });
     if (c.look.pet !== 'none' && !isRiding(c)) list.push({ y: c.pet.y, kind: 'pet', c });
     else if (c.pet && isRiding(c)) { c.pet.x = c.x + 10; c.pet.y = c.y; }
   }
