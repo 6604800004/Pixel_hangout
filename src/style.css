@@ -819,3 +819,7 @@ body.dark .dev-pop .dv.danger { color: #ff8a9a; }
 body.dark .adm-user .tag { background: #3a3150; color: #d6c6f5; }
 body.dark .adm-user .tag.lock { background: #4a2530; color: #ffb3bf; }
 .num-in.pn-in { width: min(240px, 100%); text-align: left; letter-spacing: 0; font-size: 15px; }
+/* ธีมมืด: ตัวเลือกที่เลือกอยู่ต้องเห็นชัด (เดิมถูกพื้นมืดทับจนดูเหมือนกดไม่ติด) */
+body.dark .ch.sel { background: #f2c94c; color: #2e2235; border-color: #f2c94c; box-shadow: 0 2px 0 #0b0910; font-weight: 600; }
+body.dark .ch:hover:not(.sel) { background: #2f2a3a; }
+body.dark .sw.sel { outline-color: #ff8fab; }
