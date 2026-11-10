@@ -303,7 +303,7 @@ function updatePet(owner, pet, dt) {
   let tx = owner.x + side * Math.max(13, 7 + pw / 2), ty = owner.y + (owner.dir === 'up' ? 6 : 2);
   // นั่งหันหลัง (เก้าอี้เรียงกัน) + สัตว์/รถตัวใหญ่ = จอดไว้ข้างหลังเก้าอี้ ไม่ไปทับเก้าอี้/คนข้างๆ
   const big = owner.sit && pw >= 24;
-  if (big && owner.dir === 'up') { tx = owner.x; ty = owner.y + 16 + (FARM[owner.look.pet] ? FARM[owner.look.pet][1] : 14) * 0.5; }
+  if (big && owner.dir === 'up') { tx = owner.x; ty = owner.y + 19 + (FARM[owner.look.pet] ? FARM[owner.look.pet][1] : 14); }   // ต่ำกว่าป้ายชื่อโต๊ะ ไม่ทับป้าย
   const dx = tx - pet.x, dy = ty - pet.y, d = Math.hypot(dx, dy);
   if (d > 60) { pet.x = tx; pet.y = ty; }
   else if (d > 2) {
