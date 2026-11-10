@@ -300,7 +300,10 @@ function updatePet(owner, pet, dt) {
   const side = owner.dir === 'left' ? 1 : owner.dir === 'right' ? -1 : (pet.x >= owner.x ? 1 : -1);
   // สัตว์ตัวใหญ่ (วัว ม้า ฯลฯ) ยืนห่างออกไปตามขนาดตัว ไม่ทับเจ้าของ
   const pw = owner.look && FARM[owner.look.pet] ? FARM[owner.look.pet][0] : 14;
-  const tx = owner.x + side * Math.max(13, 7 + pw / 2), ty = owner.y + (owner.dir === 'up' ? 6 : 2);
+  let tx = owner.x + side * Math.max(13, 7 + pw / 2), ty = owner.y + (owner.dir === 'up' ? 6 : 2);
+  // นั่งหันหลัง (เก้าอี้เรียงกัน) + สัตว์/รถตัวใหญ่ = จอดไว้ข้างหลังเก้าอี้ ไม่ไปทับเก้าอี้/คนข้างๆ
+  const big = owner.sit && pw >= 24;
+  if (big && owner.dir === 'up') { tx = owner.x; ty = owner.y + 16 + (FARM[owner.look.pet] ? FARM[owner.look.pet][1] : 14) * 0.5; }
   const dx = tx - pet.x, dy = ty - pet.y, d = Math.hypot(dx, dy);
   if (d > 60) { pet.x = tx; pet.y = ty; }
   else if (d > 2) {
@@ -309,7 +312,8 @@ function updatePet(owner, pet, dt) {
     if (Math.abs(dx) > 1) pet.face = dx > 0;
     if (Math.abs(dy) > Math.abs(dx) * 1.2 && Math.abs(dy) > 1) pet.vert = dy > 0 ? 'down' : 'up'; else if (Math.abs(dx) > Math.abs(dy) * 1.2) pet.vert = null;
   } else pet.ft = 0;
-  if (!owner.walking && d <= 2) pet.face = owner.x > pet.x;
+  if (big) pet.vert = null;   // จอดแล้วเป็นภาพด้านข้างเสมอ (ภาพมองจากบนยาวไปทับเก้าอี้)
+  if (!owner.walking && d <= 2 && !big) pet.face = owner.x > pet.x;
 }
 
 // ---- เดินลื่นแบบเกมออนไลน์: เก็บตำแหน่งพร้อมเวลาที่เพื่อนส่ง แล้ววาดย้อนหลังเล็กน้อยระหว่างสองจุด ----
