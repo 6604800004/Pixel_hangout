@@ -246,9 +246,12 @@ async function handoff() {
 }
 const BOOT_ID = crypto.randomBytes(6).toString('hex');
 // ---------- กันเซิร์ฟเวอร์หลับ (Render ฟรีจะหลับเมื่อไม่มีคนเรียกเว็บ 15 นาที → ตื่นช้า ~1 นาที) ----------
-// เรียกเว็บตัวเองผ่านที่อยู่สาธารณะทุก 10 นาที · ปิดได้ด้วย KEEP_AWAKE=0
-// KEEP_AWAKE_HOURS=8-2 = ปลุกไว้เฉพาะ 08:00–02:00 เวลาไทย (นอกช่วงนั้นปล่อยให้หลับ ประหยัดชั่วโมงฟรี)
+// ปลุกไว้เฉพาะ "ตอนมีคนใช้" : มีคนออนไลน์อยู่ หรือคนสุดท้ายเพิ่งออกไปไม่เกิน 8 ชม. — หลังจากนั้นปล่อยให้หลับ (ประหยัดชั่วโมงฟรี)
+// เปลี่ยนจำนวนชั่วโมงได้ด้วย KEEP_AWAKE_AFTER=8 · ปิดทั้งหมด KEEP_AWAKE=0
+// KEEP_AWAKE_HOURS=8-2 = ปลุกเฉพาะ 08:00–02:00 เวลาไทยด้วย (ไม่ตั้ง = ไม่จำกัดช่วงเวลา)
 const KEEP_AWAKE = PUBLIC_URL && process.env.KEEP_AWAKE !== '0';
+const AWAKE_AFTER_MS = Math.max(0, Number(process.env.KEEP_AWAKE_AFTER ?? 8)) * 3600000;
+let lastActive = Date.now();   // เพิ่งบูต = ถือว่ามีคนเพิ่งเรียกเว็บ (คนที่ปลุกขึ้นมา)
 function awakeNow() {
   const m = /^(\d{1,2})-(\d{1,2})$/.exec(process.env.KEEP_AWAKE_HOURS || '');
   if (!m) return true;
@@ -257,10 +260,12 @@ function awakeNow() {
 }
 if (KEEP_AWAKE) {
   setInterval(() => {
+    if (peers.size) lastActive = Date.now();
+    if (!peers.size && Date.now() - lastActive > AWAKE_AFTER_MS) return;   // ไม่มีใครมา 8 ชม. แล้ว → ปล่อยหลับ
     if (!awakeNow()) return;
     fetch(`${PUBLIC_URL.replace(/\/$/, '')}/config?keepawake=1`, { signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'pixel-hangout-keepawake' } }).catch(() => {});
   }, 10 * 60 * 1000);
-  console.log('กันหลับ: เปิด' + (process.env.KEEP_AWAKE_HOURS ? ` (${process.env.KEEP_AWAKE_HOURS} น. เวลาไทย)` : ' (ตลอดวัน)'));
+  console.log(`กันหลับ: เปิดตอนมีคนใช้ + ${AWAKE_AFTER_MS / 3600000} ชม. หลังคนสุดท้ายออก` + (process.env.KEEP_AWAKE_HOURS ? ` (เฉพาะ ${process.env.KEEP_AWAKE_HOURS} น.)` : ''));
 }
 if (storeEmpty()) ghLoad();
 
@@ -785,6 +790,7 @@ wss.on('connection', (ws) => {
     const me = peers.get(key);
     if (!me || me.ws !== ws) return; // ถูกแทนที่ไปแล้ว
     peers.delete(key);
+    lastActive = Date.now();   // นับ 8 ชม. กันหลับจากตอนคนสุดท้ายออก
     broadcast({ t: 'peer-left', key });
     statsAccrue(me); statsLog('out', me.uid, me.p.n, { ms: Date.now() - (me.start || Date.now()) }); save();
     console.log(`- ${(me && me.p.n) || key} (${peers.size} ออนไลน์)`);
