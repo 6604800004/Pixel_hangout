@@ -2067,6 +2067,7 @@ $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal' && G.
 function setupVoice() {
   const V = makeVoice(G.net, (kind, msg) => {
     if (kind === 'error') toast(msg);
+    if (kind === 'info') toast(msg, 5000);
     if (kind === 'unlock') toast('แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียงเพื่อน');
     if (kind === 'mic-dead') { pres({ md: 1 }); toast('⚠️ ไมค์เปิดอยู่แต่ไม่มีเสียงเข้าเลย — ลองเลือกไมค์ตัวอื่นในตั้งค่าเสียง ⚙️ หรือปิดแอปอื่นที่ใช้ไมค์ แล้วรีเฟรช', 8000); }
     if (kind === 'mic-alive') pres({ md: null });

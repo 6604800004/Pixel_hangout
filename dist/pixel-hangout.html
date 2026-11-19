@@ -3691,6 +3691,9 @@ const SHARE_Q = {
   smooth: { w: 1280, h: 720, fps: 60, br: 4500000, name: '720p 60fps · ลื่น (แนะนำ)' },
   sharp: { w: 1920, h: 1080, fps: 30, br: 5000000, name: '1080p 30fps · คมชัด (ตัวหนังสือ/งาน)' },
   max: { w: 1920, h: 1080, fps: 60, br: 8000000, name: '1080p 60fps · สูงสุด (เน็ตแรงเท่านั้น)' },
+  // จอ 144Hz (เกม): ได้จริงกี่เฟรมขึ้นกับเบราว์เซอร์ + จอ + การ์ดจอ — บางเครื่องเบราว์เซอร์ล็อกไว้ที่ 60
+  hz144: { w: 1280, h: 720, fps: 144, br: 9000000, name: '720p 144fps · จอ 144Hz ลื่นสุด (เน็ต/เครื่องแรง)' },
+  hz144hd: { w: 1920, h: 1080, fps: 144, br: 15000000, name: '1080p 144fps · จอ 144Hz คม+ลื่น (เน็ตแรงมาก)' },
 };
 function makeVoice(net, onChange) {
   const sink = document.createElement('div');
@@ -4312,6 +4315,20 @@ registerProcessor('px-ns', PxNs);`;
       try { await t.applyConstraints({ frameRate: { ideal: so.fps, max: so.fps }, width: { max: so.w }, height: { max: so.h } }); } catch {}
       t.onended = () => V.stopScreen();
       V.screenOpts = so;
+      if (so.fps > 60) {
+        // วัดว่าได้จริงกี่เฟรม (นับเฟรมที่เข้ามาจริง 2 วิ · เบราว์เซอร์/จอบางรุ่นจำกัดไว้ 60 · จอนิ่ง = ส่งเฟรมน้อยลงเอง)
+        setTimeout(() => {
+          const v = V.selfScreen, done = (got) => {
+            if (V.screenTrack !== t || !got) return;
+            onChange('info', got >= 100 ? `🖥️ แชร์จอที่ ~${got} fps แล้ว` : `🖥️ ตอนนี้ส่งได้ ~${got} fps — ถ้าขยับจอแล้วยังไม่ถึง 144 แปลว่าเบราว์เซอร์/จอนี้จำกัดไว้`);
+          };
+          if (v && v.requestVideoFrameCallback) {
+            let n = 0; const t0 = performance.now();
+            const tick = () => { n++; if (performance.now() - t0 < 2000) v.requestVideoFrameCallback(tick); else done(Math.round(n / ((performance.now() - t0) / 1000))); };
+            v.requestVideoFrameCallback(tick);
+          } else done(Math.round((t.getSettings && t.getSettings().frameRate) || 0));
+        }, 1500);
+      }
       V.screenAudio = s.getAudioTracks()[0] || null;
       if (V.screenAudio) V.screenAudio.onended = () => { V.screenAudio = null; rebuildMix(); onChange('media'); };
       rebuildMix();
@@ -6594,6 +6611,7 @@ $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal' && G.
 function setupVoice() {
   const V = makeVoice(G.net, (kind, msg) => {
     if (kind === 'error') toast(msg);
+    if (kind === 'info') toast(msg, 5000);
     if (kind === 'unlock') toast('แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียงเพื่อน');
     if (kind === 'mic-dead') { pres({ md: 1 }); toast('⚠️ ไมค์เปิดอยู่แต่ไม่มีเสียงเข้าเลย — ลองเลือกไมค์ตัวอื่นในตั้งค่าเสียง ⚙️ หรือปิดแอปอื่นที่ใช้ไมค์ แล้วรีเฟรช', 8000); }
     if (kind === 'mic-alive') pres({ md: null });
